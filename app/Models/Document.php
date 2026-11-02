@@ -24,6 +24,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `delete()` moves a document (and a folder's subtree) to trash; trashed
  * documents leave queries and their search chunks are dropped, then rebuilt
  * on restore. `forceDelete()` is the purge (governance-model.md).
+ *
+ * @property \Illuminate\Support\Carbon|null $deleted_at
  */
 class Document extends Model implements RevertibleContent
 {

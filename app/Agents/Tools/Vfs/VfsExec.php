@@ -2,28 +2,47 @@
 
 namespace App\Agents\Tools\Vfs;
 
+use App\Agents\Tools\Vfs\Concerns\HandlesVfsJson;
+use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
+use App\Agents\Tools\Vfs\Support\VfsToolEnvelope;
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsCommandExecutor;
 use App\Domain\Vfs\Core\VfsCommandHelp;
 use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsOperationLog;
+use App\Domain\Vfs\Events\VfsOperationContext;
 use App\Models\User;
-use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class VfsExec implements Tool
+/**
+ * `vfs_exec`: run one unix-like command line in the VFS.
+ *
+ * Owns the tool envelope around VfsCommandExecutor (Stream A owns command
+ * semantics). Result contract, flat and compact:
+ *
+ *   {ok, exit_code, stdout, cwd, truncated?, next_cursor?, output_truncated?,
+ *    stderr?, error?, data? (responseFormat=structured), diagnostics?}
+ *
+ * - stdout appears exactly once; executor `result` is never echoed whole.
+ * - `error` is the only failure location: thrown errors and chained
+ *   failures (`a && b`, `;`, `||`) both land there, never in `result.error`.
+ * - Registry type stays `read` (Phase 1): CodeBridge classifies the effect
+ *   per pipeline; mutating commands compose vfs_write inside the executor.
+ *
+ * Every call emits VfsOperationLog with a redacted command.
+ */
+class VfsExec implements ReturnsVfsEnvelope, Tool
 {
+    use HandlesVfsJson;
+
+    public const TOOL_SLUG = 'vfs_exec';
+
     public function __construct(
         private readonly User $agent,
         private readonly VfsCommandExecutor $executor,
     ) {}
-
-    public function description(): string
-    {
-        return 'Execute a safe unix-like command inside the OpenCompany virtual filesystem. Supports read/navigation commands such as pwd, cd, ls, tree, find, rg, grep, cat, head, tail, wc, stat, file, du, jq, diff, and checksums. /files mutations such as mkdir, touch, tee, cp, mv, rm, and truncate compose vfs_exec with vfs_write and create normal approval requests when either required permission is approval-gated. This is not host shell access.';
-    }
 
     public function handle(Request $request): string
     {
@@ -31,61 +50,51 @@ class VfsExec implements Tool
         $ok = false;
         $errorCode = null;
         try {
-            $command = trim((string) ($request['command'] ?? ''));
+            $input = $this->input($request);
+            $command = trim($input->string('command'));
             if ($command === '') {
-                $errorCode = 'invalid_request';
-
-                return $this->encodeError('invalid_request', 'command is required.');
+                throw VfsError::invalid('command is required, e.g. "ls /".', ['field' => 'command']);
             }
-            $responseFormat = (string) ($request['responseFormat'] ?? 'default');
-            if (! in_array($responseFormat, ['default', 'structured'], true)) {
-                $errorCode = 'invalid_request';
+            $responseFormat = $input->choice('responseFormat');
 
-                return $this->encodeError('invalid_request', 'responseFormat must be default or structured.', ['field' => 'responseFormat']);
+            $result = $this->run($command, $input->string('cwd'), $input->budget(), $request->toArray(), $input->cursor());
+            $payload = $this->envelope($result, $responseFormat === 'structured', $command);
+            if ($input->bool('includeCommandSpec') && ($spec = $this->primaryCommandSpec($command)) !== null) {
+                $payload['diagnostics'] = ['command_spec' => $spec];
             }
-            $includeCommandSpec = $this->truthy($request['includeCommandSpec'] ?? false);
+            $ok = (bool) $payload['ok'];
+            $errorCode = $payload['error']['code'] ?? null;
 
-            $result = $this->executor->execute(
-                $this->agent,
-                $command,
-                (string) ($request['cwd'] ?? '/'),
-                new VfsBudget(
-                    maxEntries: $this->budgetInteger($request, 'maxEntries', 100, 1),
-                    maxDepth: $this->budgetInteger($request, 'maxDepth', 3, 0),
-                    maxBytes: $this->budgetInteger($request, 'maxBytes', 100000, 1),
-                    maxFiles: $this->budgetInteger($request, 'maxFiles', 100, 1),
-                    maxMatches: $this->budgetInteger($request, 'maxMatches', 100, 1),
-                ),
-                $request->toArray(),
-            );
-            $ok = (bool) ($result['ok'] ?? true);
-            $result['command'] = $command;
-            $result['exit_code'] = $ok ? 0 : 1;
-            $result['stderr'] = (string) ($result['result']['stderr'] ?? '');
-            $result['data'] = $result['result'] ?? null;
-            $result['diagnostics'] = [];
-            $commandSpec = $this->primaryCommandSpec($command);
-            if ($responseFormat === 'structured') {
-                $result['data'] = $this->structuredData($result, $commandSpec);
-            }
-            if ($includeCommandSpec && $commandSpec !== null) {
-                $result['diagnostics']['command_spec'] = $commandSpec;
-            }
-
-            return json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        } catch (VfsError $e) {
-            $errorCode = $e->errorCode;
-
-            return $this->encodeError($e->errorCode, $e->getMessage(), $e->context);
+            return VfsToolEnvelope::encode($payload);
         } catch (\Throwable $e) {
-            $errorCode = 'internal_error';
+            $payload = VfsToolEnvelope::fromThrowable($e, self::TOOL_SLUG);
+            // approval_required was already converted to the non-error
+            // pending shape by the shared encoder; pass it through as-is.
+            if (($payload['status'] ?? null) === 'pending_approval') {
+                return VfsToolEnvelope::encode($payload);
+            }
+            $errorCode = $payload['error']['code'];
+            // The executor attaches the command line's stdout/stderr so far and
+            // its exit status to the thrown error (earlier output survives a
+            // later failure). Surface them once, at the top level, like a
+            // normal result; the error keeps only diagnostic context.
+            $context = $payload['error']['context'];
+            $exitCode = is_int($context['exit_code'] ?? null) ? $context['exit_code'] : $this->failureExitCode($errorCode);
+            $flat = ['ok' => false, 'exit_code' => $exitCode, 'stdout' => (string) ($context['stdout'] ?? '')];
+            if (is_string($context['stderr'] ?? null) && $context['stderr'] !== '') {
+                $flat['stderr'] = $context['stderr'];
+            }
+            unset($payload['error']['context']['stdout'], $payload['error']['context']['stderr'], $payload['error']['context']['exit_code']);
+            $payload = $flat + $payload;
 
-            return $this->encodeError('internal_error', $e->getMessage());
+            return VfsToolEnvelope::encode($payload);
         } finally {
             event(VfsOperationLog::forAgent(
                 $this->agent,
-                'tool',
-                'vfs_exec',
+                // The caller's surface (tool, code, computer, approval_replay, …),
+                // the same one the facade's object events carry.
+                app(VfsOperationContext::class)->surface(),
+                self::TOOL_SLUG,
                 null,
                 (string) ($request['cwd'] ?? '/'),
                 $ok,
@@ -96,77 +105,115 @@ class VfsExec implements Tool
         }
     }
 
-    private function budgetInteger(Request $request, string $key, int $default, int $min): int
+    /**
+     * Run the executor. `cursor` continues a truncated listing/read from the
+     * executor's `next_cursor` (cursors are bound to path, adapter and actor).
+     *
+     * @param  array<string, mixed>  $toolParameters
+     * @return array<string, mixed>
+     */
+    private function run(string $command, string $cwd, VfsBudget $budget, array $toolParameters, ?string $cursor): array
     {
-        if (! isset($request[$key])) {
-            return $default;
-        }
-
-        $raw = $request[$key];
-        if (! is_int($raw) && (! is_string($raw) || preg_match('/^\d+$/', $raw) !== 1)) {
-            throw VfsError::invalid("{$key} must be an integer.", ['field' => $key]);
-        }
-
-        $value = (int) $raw;
-        if ($value < $min) {
-            throw VfsError::invalid("{$key} must be at least {$min}.", ['field' => $key, 'min' => $min]);
-        }
-
-        return $value;
-    }
-
-    public function schema(JsonSchema $schema): array
-    {
-        return [
-            'command' => $schema->string()->required()->description('Unix-like VFS command, e.g. `ls /docs`, `rg "refund" /docs`, `cat /tasks/counts.json`, or `/files` mutations like `mkdir /files/tmp` when vfs_write is allowed.'),
-            'cwd' => $schema->string()->description('Virtual working directory. Defaults to /.'),
-            'maxEntries' => $schema->integer()->description('Maximum entries returned by list-like commands. Default: 100.'),
-            'maxDepth' => $schema->integer()->description('Maximum recursion depth for tree/find/search. Default: 3.'),
-            'maxBytes' => $schema->integer()->description('Maximum bytes read from a single virtual file. Default: 100000.'),
-            'maxFiles' => $schema->integer()->description('Maximum files scanned by search commands. Default: 100.'),
-            'maxMatches' => $schema->integer()->description('Maximum matches returned by search commands. Default: 100.'),
-            'responseFormat' => $schema->string()->description('default or structured. Structured keeps stdout unchanged and enriches data for metadata-friendly commands.'),
-            'includeCommandSpec' => $schema->boolean()->description('Include the primary command spec in diagnostics.command_spec.'),
-        ];
+        return $this->executor->execute($this->agent, $command, $cwd, $budget, $toolParameters, $cursor);
     }
 
     /**
-     * @param  array<string, mixed>  $context
+     * Shape the executor result into the flat, stdout-once envelope.
+     *
+     * @param  array<string, mixed>  $result  {ok, cwd, stdout, result?, exit_code?, truncated?, next_cursor?, ...}
+     * @return array<string, mixed>
      */
-    private function encodeError(string $code, string $message, array $context = []): string
+    private function envelope(array $result, bool $structured, string $command): array
     {
+        $inner = is_array($result['result'] ?? null) ? $result['result'] : [];
+        $ok = (bool) ($result['ok'] ?? true);
+        $error = is_array($inner['error'] ?? null) ? $inner['error'] : (is_array($result['error'] ?? null) ? $result['error'] : null);
+
         $payload = [
-            'ok' => false,
-            'error' => [
-                'code' => $code,
-                'message' => $message,
-                'context' => $context,
-            ],
+            'ok' => $ok,
+            'exit_code' => (int) ($result['exit_code'] ?? $inner['exit_code'] ?? ($ok ? 0 : 1)),
+            'stdout' => (string) ($result['stdout'] ?? ''),
+            'cwd' => (string) ($result['cwd'] ?? '/'),
         ];
-        if (array_key_exists('stdout', $context)) {
-            $payload['stdout'] = (string) $context['stdout'];
+
+        foreach (['truncated', 'next_cursor', 'output_truncated'] as $key) {
+            $value = $result[$key] ?? $inner[$key] ?? null;
+            if ($value !== null && $value !== false) {
+                $payload[$key] = $value;
+            }
         }
 
-        return json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-
-    private function redactCommandForLog(string $command): string
-    {
-        $redacted = preg_replace('/\b(authorization\s*:\s*(?:bearer|basic)\s+)[^\r\n,;\'"]+/i', '$1[redacted]', $command) ?? $command;
-        $redacted = preg_replace('/\b(secret|token|auth|api[_-]?key|authorization|password|credential|bearer|cookie|session|client_secret|access_token)(\s*[:=]\s*)([^\s,&;\'"]+)/i', '$1$2[redacted]', $redacted) ?? $redacted;
-        $redacted = preg_replace('/\b(bearer|basic)\s+([A-Za-z0-9._~+\/=-]+(?:\s+[A-Za-z0-9._~+\/=-]+)?)/i', '$1 [redacted]', $redacted) ?? $redacted;
-        $redacted = preg_replace('/([?&](?:access_token|client_secret|secret|token|auth|api[_-]?key|authorization|password|credential|bearer|session)=)([^&\s\'"]+)/i', '$1[redacted]', $redacted) ?? $redacted;
-
-        return preg_replace('/(sk-[A-Za-z0-9_-]{12,}|[A-Za-z0-9_\/+=-]{32,})/', '[redacted]', $redacted) ?? $redacted;
-    }
-
-    private function truthy(mixed $value): bool
-    {
-        if (is_bool($value)) {
-            return $value;
+        // Truncation is never silent: say how to continue even when the
+        // executor did not append its own truncation line to stdout.
+        if (($payload['truncated'] ?? false) === true || ($payload['output_truncated'] ?? false) === true) {
+            $payload['hint'] = isset($payload['next_cursor'])
+                ? 'More output exists: repeat the same command with cursor=next_cursor, or narrow the path.'
+                : 'Output was cut by a budget (maxEntries, maxBytes, maxMatches, maxFiles); raise it or narrow the path. A cut listing is not a complete count.';
         }
 
-        return in_array($value, [1, '1', 'true', 'yes', 'on'], true);
+        $stderr = (string) ($result['stderr'] ?? $inner['stderr'] ?? '');
+        if ($stderr !== '') {
+            $payload['stderr'] = $stderr;
+        }
+
+        // A pending approval inside a command line is reported in the shared
+        // non-error pending shape (see VfsToolEnvelope::error), keeping any
+        // stdout produced before the gated command.
+        if (! $ok && $error !== null && ($error['code'] ?? null) === 'approval_required') {
+            $pending = VfsToolEnvelope::error('approval_required', (string) ($error['message'] ?? ''), is_array($error['context'] ?? null) ? $error['context'] : []);
+            if (($pending['status'] ?? null) === 'pending_approval') {
+                return $pending + ['stdout' => $payload['stdout'], 'cwd' => $payload['cwd']];
+            }
+        }
+
+        if (! $ok && $error !== null) {
+            $payload['error'] = [
+                'code' => (string) ($error['code'] ?? 'invalid_request'),
+                'message' => (string) ($error['message'] ?? 'Command failed.'),
+                'context' => is_array($error['context'] ?? null) ? $error['context'] : [],
+            ];
+        }
+
+        if ($structured) {
+            $payload['data'] = $this->structuredData($inner, $payload['stdout'], $command);
+        }
+
+        return $payload;
+    }
+
+    private function failureExitCode(string $errorCode): int
+    {
+        // Usage-style failures exit 2 like POSIX tools; everything else 1.
+        return in_array($errorCode, ['invalid_request', 'unsupported'], true) ? 2 : 1;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inner
+     * @return array<string, mixed>|null
+     */
+    private function structuredData(array $inner, string $stdout, string $command): ?array
+    {
+        unset($inner['stdout'], $inner['error'], $inner['stderr']);
+        $data = $inner;
+        $spec = $this->primaryCommandSpec($command);
+        $name = (string) ($spec['name'] ?? '');
+        $lines = fn (): array => array_values(array_filter(preg_split('/\r\n|\r|\n/', trim($stdout)) ?: [], fn (string $line): bool => $line !== ''));
+
+        if ($name === 'stat') {
+            $decoded = json_decode($stdout, true);
+            if (is_array($decoded)) {
+                $data['stat'] = $decoded;
+            }
+        } elseif (in_array($name, ['ls', 'find'], true)) {
+            $data['paths'] = $lines();
+        } elseif (in_array($name, ['grep', 'rg', 'zgrep'], true)) {
+            $data['matches_text'] = $lines();
+        }
+        if ($spec !== null) {
+            $data['command'] = $name;
+        }
+
+        return $data === [] ? null : $data;
     }
 
     /**
@@ -185,32 +232,13 @@ class VfsExec implements Tool
         return VfsCommandHelp::commandEntry($canonical);
     }
 
-    /**
-     * @param  array<string, mixed>  $result
-     * @param  array<string, mixed>|null  $commandSpec
-     * @return array<string, mixed>|null
-     */
-    private function structuredData(array $result, ?array $commandSpec): ?array
+    private function redactCommandForLog(string $command): string
     {
-        $data = is_array($result['result'] ?? null) ? $result['result'] : [];
-        $command = (string) ($commandSpec['name'] ?? '');
-        $stdout = (string) ($result['stdout'] ?? '');
-        if (in_array($command, ['stat'], true)) {
-            $decoded = json_decode($stdout, true);
-            if (is_array($decoded)) {
-                $data['stat'] = $decoded;
-            }
-        } elseif (in_array($command, ['ls', 'find'], true)) {
-            $data['paths'] = array_values(array_filter(preg_split('/\r\n|\r|\n/', trim($stdout)) ?: [], fn (string $line): bool => $line !== ''));
-        } elseif (in_array($command, ['grep', 'rg', 'search', 'zgrep'], true)) {
-            $data['matches_text'] = array_values(array_filter(preg_split('/\r\n|\r|\n/', trim($stdout)) ?: [], fn (string $line): bool => $line !== ''));
-        } elseif (in_array($command, ['file', 'du', 'which', 'type', 'help', 'man'], true)) {
-            $data['lines'] = array_values(array_filter(preg_split('/\r\n|\r|\n/', trim($stdout)) ?: [], fn (string $line): bool => $line !== ''));
-        }
-        if ($commandSpec !== null) {
-            $data['command_spec'] = $commandSpec;
-        }
+        $redacted = preg_replace('/\b(authorization\s*:\s*(?:bearer|basic)\s+)[^\r\n,;\'"]+/i', '$1[redacted]', $command) ?? $command;
+        $redacted = preg_replace('/\b(secret|token|auth|api[_-]?key|authorization|password|credential|bearer|cookie|session|client_secret|access_token)(\s*[:=]\s*)([^\s,&;\'"]+)/i', '$1$2[redacted]', $redacted) ?? $redacted;
+        $redacted = preg_replace('/\b(bearer|basic)\s+([A-Za-z0-9._~+\/=-]+(?:\s+[A-Za-z0-9._~+\/=-]+)?)/i', '$1 [redacted]', $redacted) ?? $redacted;
+        $redacted = preg_replace('/([?&](?:access_token|client_secret|secret|token|auth|api[_-]?key|authorization|password|credential|bearer|session)=)([^&\s\'"]+)/i', '$1[redacted]', $redacted) ?? $redacted;
 
-        return $data === [] ? null : $data;
+        return preg_replace('/(sk-[A-Za-z0-9_-]{12,}|[A-Za-z0-9_\/+=-]{32,})/', '[redacted]', $redacted) ?? $redacted;
     }
 }

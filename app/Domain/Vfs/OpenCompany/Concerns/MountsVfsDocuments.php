@@ -11,6 +11,11 @@ use App\Models\User;
 
 /**
  * Document mount operations for OpenCompanyVfs.
+ *
+ * Listing names follow the friendly-name contract (slug, `--{id8}` on sibling
+ * collisions); every entry's canonical path is /docs/by-id/{id}. `/docs/.trash/`
+ * lists trashed documents the agent can still see (MountsVfsTrash). Writes,
+ * deletes, moves and folder creation live in MutatesVfsDocumentRecords.
  */
 trait MountsVfsDocuments
 {
@@ -40,19 +45,23 @@ trait MountsVfsDocuments
     {
         $prefix = null;
 
+        if (($segments[1] ?? null) === '.trash') {
+            return $this->paginateVfsStaticEntries($this->listDocumentTrash($agent, $segments, $path, $budget), $budget->maxEntries, $state);
+        }
+
         if (count($segments) === 1) {
             $prefix = new VfsEntry('by-id', '/docs/by-id', 'directory', capabilities: ['browse']);
             $query = Document::forWorkspace()
                 ->whereNull('parent_id')
                 ->where('is_system', false);
-            $entryPath = fn (Document $doc): string => '/docs/'.$this->slug($doc->title);
+            $entryPath = fn (Document $doc): string => '/docs/'.$this->documentToken($doc);
         } elseif (($segments[1] ?? null) === 'by-id' && ! isset($segments[2])) {
             $query = Document::forWorkspace()->where('is_system', false);
             $entryPath = fn (Document $doc): string => "/docs/by-id/{$doc->id}";
         } else {
             $folder = ($segments[1] ?? null) === 'by-id'
-                ? $this->documentFromByIdSegments($segments, $path)
-                : $this->resolveDocumentPath(array_slice($segments, 1), $path);
+                ? $this->documentFromByIdSegments($agent, $segments, $path)
+                : $this->resolveDocumentPath($agent, array_slice($segments, 1), $path);
 
             if (! $this->canAccessDocument($agent, $folder)) {
                 throw VfsError::permissionDenied($path, 'document folder scope');
@@ -70,7 +79,7 @@ trait MountsVfsDocuments
             $basePath = ($segments[1] ?? null) === 'by-id'
                 ? "/docs/by-id/{$folder->id}"
                 : $path;
-            $entryPath = fn (Document $doc): string => rtrim($basePath, '/').'/'.$this->slug($doc->title);
+            $entryPath = fn (Document $doc): string => rtrim($basePath, '/').'/'.$this->documentToken($doc);
         }
 
         return $this->paginateVfsMountQuery(
@@ -93,10 +102,20 @@ trait MountsVfsDocuments
         if (count($segments) === 1) {
             return $this->entriesToText($this->listDocs($agent, $segments, $path, $budget));
         }
+        if ($segments[1] === '.trash') {
+            return $this->readDocumentTrash($agent, $segments, $path, $budget);
+        }
+        if ($segments === ['docs', 'by-id']) {
+            if ($budget->isContentRead()) {
+                throw VfsError::notReadable($path);
+            }
 
-        $doc = (isset($segments[1], $segments[2]) && $segments[1] === 'by-id')
-            ? $this->documentFromByIdSegments($segments, $path)
-            : $this->resolveDocumentPath(array_slice($segments, 1), $path);
+            return $this->entriesToText($this->listDocs($agent, $segments, $path, $budget));
+        }
+
+        $doc = (isset($segments[2]) && $segments[1] === 'by-id')
+            ? $this->documentFromByIdSegments($agent, $segments, $path)
+            : $this->resolveDocumentPath($agent, array_slice($segments, 1), $path);
 
         if (! $this->canAccessDocument($agent, $doc)) {
             throw VfsError::permissionDenied($path, 'document folder scope');
@@ -106,10 +125,20 @@ trait MountsVfsDocuments
         }
 
         if ($doc->is_folder) {
+            // A content read is for bytes that may be written back; a folder
+            // listing must never become file content.
+            if ($budget->isContentRead()) {
+                throw VfsError::notReadable($path);
+            }
+
             return $this->entriesToText($this->documentChildren($agent, $doc, $path, $budget));
         }
 
-        return VfsText::truncate((string) $doc->content, $budget->maxBytes);
+        $content = (string) $doc->content;
+        $budget->recordReadVersion($this->version($doc->updated_at?->toIso8601String(), $content));
+        $budget->recordCanonicalPath("/docs/by-id/{$doc->id}");
+
+        return VfsText::fit($content, $budget, $path);
     }
 
     /**
@@ -133,7 +162,7 @@ trait MountsVfsDocuments
             toEntry: fn (Document $doc): VfsEntry => $this->documentEntry(
                 $agent,
                 $doc,
-                rtrim($path, '/').'/'.$this->slug($doc->title),
+                rtrim($path, '/').'/'.$this->documentToken($doc),
             ),
         )['entries'];
     }
@@ -156,7 +185,7 @@ trait MountsVfsDocuments
                 ['vfs_patch'],
                 'Patch this document with vfs_patch using a targeted search/replace payload.',
                 $this->canPatchDocument($agent, $doc),
-                'Document patches require a non-system file inside an explicitly allowed document folder.',
+                $this->documentWriteDenial($agent, $doc, null),
             );
             $capabilities = $this->mutationCapabilities($capabilities, ['patch' => $patchDecision]);
             $metadata = [

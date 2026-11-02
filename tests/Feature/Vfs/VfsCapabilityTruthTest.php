@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Vfs;
 
+use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Models\AgentPermission;
@@ -369,6 +370,20 @@ class VfsCapabilityTruthTest extends TestCase
             $this->fail("Expected VFS error {$expectedCode}.");
         } catch (VfsError $error) {
             $this->assertSame($expectedCode, $error->errorCode);
+        }
+    }
+
+    // IntegrationRuntime maps VFS ok:false envelopes to typed Code Mode
+    // failures only for tools carrying the ReturnsVfsEnvelope marker. A new
+    // VFS tool without it would silently hand failures back as values.
+    public function test_every_vfs_tool_is_marked_as_returning_the_vfs_envelope(): void
+    {
+        $classes = collect(glob(app_path('Agents/Tools/Vfs/Vfs*.php')) ?: [])
+            ->map(fn (string $file): string => 'App\\Agents\\Tools\\Vfs\\'.basename($file, '.php'));
+
+        $this->assertNotEmpty($classes);
+        foreach ($classes as $class) {
+            $this->assertTrue(is_subclass_of($class, ReturnsVfsEnvelope::class), "{$class} must implement ReturnsVfsEnvelope");
         }
     }
 

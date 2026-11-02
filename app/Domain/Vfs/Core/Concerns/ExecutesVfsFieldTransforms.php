@@ -2,189 +2,244 @@
 
 namespace App\Domain\Vfs\Core\Concerns;
 
+use App\Domain\Vfs\Core\VfsArgs;
+use App\Domain\Vfs\Core\VfsAwkProgram;
 use App\Domain\Vfs\Core\VfsBudget;
+use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 use App\Domain\Vfs\Core\VfsError;
-use App\Domain\Vfs\Core\VfsText;
+use App\Domain\Vfs\Core\VfsPrintf;
 use App\Models\User;
 
 /**
- * Field-oriented unix transforms that need either a command callback or VFS reads.
+ * Field-oriented commands: awk (VfsAwkProgram), xargs, paste.
+ *
+ * xargs invariant: items from stdin are data. Generated argv words are marked
+ * literal, so an item never globs or turns into a flag, and the inner command
+ * goes through the same routing, preflight, and write guards as a typed one.
  */
 trait ExecutesVfsFieldTransforms
 {
-    private function awk(array $tokens, ?string $stdin): array
+    /**
+     * @param  list<string>  $words
+     * @return array<string, mixed>
+     */
+    private function awk(User $agent, array $words, string $cwd, ?string $stdin): array
     {
-        $this->assertSupportedOptionsForCommand($tokens, 'awk');
-        if (in_array('-f', $tokens, true)) {
-            throw VfsError::unsupported('awk -f programs are not supported by the safe VFS awk subset.');
+        $args = $this->args('awk', $words);
+        $program = $args->operands[0] ?? throw VfsError::invalid("awk requires a program, e.g. awk '{print \$1}' file.");
+        $separator = $args->value('-F');
+        if ($separator !== null) {
+            $separator = $separator === 't' ? "\t" : VfsPrintf::escapes($separator, false);
         }
-        $delimiter = null;
-        $variables = [];
-        $program = null;
-        for ($i = 0; $i < count($tokens); $i++) {
-            if ($tokens[$i] === '-F') {
-                $delimiter = (string) ($tokens[$i + 1] ?? '');
-                $i++;
-
-                continue;
+        $assignments = [];
+        foreach ($args->values('-v') as $assignment) {
+            if (preg_match('/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/s', $assignment, $m) !== 1) {
+                throw VfsError::invalid("awk -v expects NAME=VALUE, got \"{$assignment}\".");
             }
-            if ($tokens[$i] === '-v') {
-                [$key, $value] = array_pad(explode('=', (string) ($tokens[$i + 1] ?? ''), 2), 2, '');
-                if ($key !== '') {
-                    $variables[$key] = $value;
-                }
-                $i++;
-
-                continue;
-            }
-            if (str_starts_with($tokens[$i], '-F') && strlen($tokens[$i]) > 2) {
-                $delimiter = substr($tokens[$i], 2);
-
-                continue;
-            }
-            $program ??= $tokens[$i];
+            $assignments[$m[1]] = VfsPrintf::escapes($m[2], false);
         }
+        $result = VfsAwkProgram::parse($program)->run($this->inputsFrom($agent, $args, $cwd, $stdin, 1), $separator ?? ' ', $assignments, $this->contentCeiling());
 
-        if ($program === null || preg_match('/^\{\s*print\s+(.+)\s*\}$/', $program, $matches) !== 1) {
-            throw VfsError::unsupported('Only awk field extraction is supported, e.g. awk -F , \'{print $2}\'.');
-        }
-
-        $selectors = array_map('trim', explode(',', $matches[1]));
-        $lines = array_map(function (string $line) use ($delimiter, $selectors, $variables): string {
-            $fields = $delimiter === null || $delimiter === ''
-                ? preg_split('/\s+/', trim($line)) ?: []
-                : explode($delimiter, $line);
-
-            return implode(' ', array_map(function (string $selector) use ($fields, $variables): string {
-                if ($selector === '$0') {
-                    return implode(' ', $fields);
-                }
-                if (array_key_exists($selector, $variables)) {
-                    return $variables[$selector];
-                }
-                if (preg_match('/^\$(\d+)$/', $selector, $fieldMatch) !== 1) {
-                    throw VfsError::unsupported('Only awk print field selectors like $1 and $2 are supported.');
-                }
-
-                return $fields[((int) $fieldMatch[1]) - 1] ?? '';
-            }, $selectors));
-        }, VfsText::lines($stdin ?? ''));
-
-        return ['stdout' => implode("\n", $lines), 'class' => 'read-transform'];
+        return ['stdout' => $result['output'], 'class' => 'read-transform', 'exit_code' => $result['exit_code']];
     }
 
-    private function xargs(User $agent, array $tokens, string $cwd, VfsBudget $budget, ?string $stdin): array
+    /**
+     * @param  list<string>  $words
+     * @return array<string, mixed>
+     */
+    private function xargs(User $agent, array $words, string $cwd, VfsBudget $budget, ?string $stdin): array
     {
-        $nullSeparated = in_array('-0', $tokens, true);
-        $rawItems = $nullSeparated
-            ? explode("\0", rtrim($stdin ?? '', "\0"))
-            : array_map('trim', VfsText::lines($stdin ?? ''));
-        $items = array_values(array_filter($rawItems, fn (string $line): bool => $line !== ''));
-        $items = array_slice($items, 0, $budget->maxEntries);
+        $spec = VfsCommandSpecRegistry::get('xargs') ?? throw VfsError::invalid('xargs is not registered.');
+        $null = false;
+        $noRunIfEmpty = false;
         $placeholder = null;
-        $maxArgs = 1;
-        $commandStart = 0;
-        for ($i = 0; $i < count($tokens); $i++) {
-            $token = $tokens[$i];
-            if ($token === '-I') {
-                $placeholder = (string) ($tokens[$i + 1] ?? '{}');
+        $maxArgs = null;
+        $delimiter = null;
+        $start = 0;
+        for ($i = 0; $i < count($words); $i++) {
+            $word = $words[$i];
+            if (($this->argLiteral[$i] ?? false) || ! str_starts_with($word, '-') || $word === '-') {
+                break;
+            }
+            $value = function (string $option, string $attached) use ($words, &$i): string {
+                if ($attached !== '') {
+                    return $attached;
+                }
+                if (! array_key_exists($i + 1, $words)) {
+                    throw VfsError::invalid("xargs {$option} requires a value.");
+                }
+
+                return $words[++$i];
+            };
+            if ($word === '--') {
                 $i++;
 
-                continue;
+                break;
             }
-            if (str_starts_with($token, '-I') && strlen($token) > 2) {
-                $placeholder = substr($token, 2);
-
-                continue;
-            }
-            if (in_array($token, ['-n', '--max-args'], true)) {
-                if (! isset($tokens[$i + 1]) || ! preg_match('/^\d+$/', (string) $tokens[$i + 1])) {
-                    throw VfsError::invalid('xargs max args requires a positive integer.');
-                }
-                $maxArgs = max(1, (int) ($tokens[$i + 1] ?? 1));
-                $i++;
-
-                continue;
-            }
-            if (str_starts_with($token, '--max-args=')) {
-                $value = substr($token, strlen('--max-args='));
-                if (! preg_match('/^\d+$/', $value)) {
-                    throw VfsError::invalid('xargs max args requires a positive integer.');
-                }
-                $maxArgs = max(1, (int) $value);
-
-                continue;
-            }
-            if ($token === '-0') {
-                continue;
-            }
-            if (str_starts_with($token, '-')) {
-                throw VfsError::unsupported("Unsupported xargs flag: {$token}");
-            }
-
-            $commandStart = $i;
-            break;
+            match (true) {
+                $word === '-0' || $word === '--null' => $null = true,
+                $word === '-r' || $word === '--no-run-if-empty' => $noRunIfEmpty = true,
+                str_starts_with($word, '-I') => $placeholder = $value('-I', substr($word, 2)),
+                str_starts_with($word, '--max-args=') => $maxArgs = substr($word, 11),
+                $word === '--max-args' => $maxArgs = $value('--max-args', ''),
+                str_starts_with($word, '-n') => $maxArgs = $value('-n', substr($word, 2)),
+                str_starts_with($word, '--delimiter=') => $delimiter = substr($word, 12),
+                str_starts_with($word, '-d') => $delimiter = $value('-d', substr($word, 2)),
+                default => throw VfsArgs::unsupportedFlag($spec, $word),
+            };
         }
-        $tokens = array_slice($tokens, $commandStart);
-        $baseTokens = $tokens === [] ? ['echo'] : $tokens;
-        $outputs = [];
+        $start = $i;
+        if ($maxArgs !== null && preg_match('/^[1-9]\d*$/', (string) $maxArgs) !== 1) {
+            throw VfsError::invalid('xargs -n requires a positive integer.');
+        }
+        $maxArgs = $maxArgs === null ? null : (int) $maxArgs;
+        $baseWords = array_slice($words, $start);
+        $baseLiteral = array_slice($this->argLiteral, $start);
+        $baseGlob = array_slice($this->argGlob, $start);
+        if ($baseWords === []) {
+            $baseWords = ['echo'];
+            $baseLiteral = [false];
+            $baseGlob = [false];
+        }
 
-        foreach (array_chunk($items, $placeholder === null ? $maxArgs : 1) as $chunk) {
-            $item = implode(' ', $chunk);
-            if ($placeholder !== null) {
-                $replaced = false;
-                $commandTokens = array_map(function (string $token) use ($placeholder, $item, &$replaced): string {
-                    if (str_contains($token, $placeholder)) {
-                        $replaced = true;
+        $input = $stdin ?? '';
+        if ($null) {
+            $items = explode("\0", rtrim($input, "\0"));
+        } elseif ($delimiter !== null) {
+            $items = explode(VfsPrintf::escapes($delimiter, false), $input);
+        } else {
+            $items = array_map('trim', $this->splitLines($input));
+        }
+        $items = array_values(array_filter($items, fn (string $item): bool => $item !== ''));
+        if (count($items) > $budget->maxEntries) {
+            $this->noteTruncation('xargs ran '.$budget->maxEntries.' of '.count($items).' items (maxEntries).');
+            $items = array_slice($items, 0, $budget->maxEntries);
+        }
+        if ($items === [] && $noRunIfEmpty) {
+            return ['stdout' => '', 'cwd' => $cwd, 'class' => 'read-transform', 'returned' => 0];
+        }
 
-                        return str_replace($placeholder, $item, $token);
+        $chunks = $items === [] ? [[]] : array_chunk($items, $placeholder !== null ? 1 : ($maxArgs ?? max(1, count($items))));
+        $outputs = '';
+        $stderr = [];
+        $failed = false;
+        $savedLiteral = $this->argLiteral;
+        $savedGlob = $this->argGlob;
+        try {
+            foreach ($chunks as $chunk) {
+                $commandWords = $baseWords;
+                $literal = $baseLiteral;
+                $glob = $baseGlob;
+                if ($placeholder !== null) {
+                    $item = $chunk[0] ?? '';
+                    $replaced = false;
+                    foreach ($commandWords as $index => $word) {
+                        if ($index > 0 && str_contains($word, $placeholder)) {
+                            $commandWords[$index] = str_replace($placeholder, $item, $word);
+                            $literal[$index] = true;
+                            $glob[$index] = false;
+                            $replaced = true;
+                        }
                     }
-
-                    return $token;
-                }, $baseTokens);
-                if (! $replaced) {
-                    $commandTokens[] = $item;
+                    if (! $replaced) {
+                        $commandWords[] = $item;
+                        $literal[] = true;
+                        $glob[] = false;
+                    }
+                } else {
+                    foreach ($chunk as $item) {
+                        $commandWords[] = $item;
+                        $literal[] = true;
+                        $glob[] = false;
+                    }
                 }
-            } else {
-                $commandTokens = [...$baseTokens, ...$chunk];
+                $this->argLiteral = array_slice($literal, 1);
+                $this->argGlob = array_slice($glob, 1);
+                try {
+                    $result = $this->runCommand($agent, $commandWords, $cwd, $budget, null);
+                } catch (VfsError $e) {
+                    if (in_array($e->errorCode, ['approval_required', 'unsupported'], true)) {
+                        throw $e;
+                    }
+                    $stderr[] = $e->getMessage();
+                    $failed = true;
+
+                    continue;
+                }
+                if ((int) ($result['exit_code'] ?? 0) !== 0) {
+                    $failed = true;
+                }
+                if (($result['stderr'] ?? '') !== '') {
+                    $stderr[] = (string) $result['stderr'];
+                }
+                $chunkOutput = (string) ($result['stdout'] ?? '');
+                if ($chunkOutput !== '' && $outputs !== '' && ! str_ends_with($outputs, "\n")) {
+                    $outputs .= "\n";
+                }
+                $outputs .= $chunkOutput;
+                $this->assertPipeWithinBudget($outputs);
             }
-            $result = $this->runCommand($agent, $commandTokens, $cwd, $budget, null);
-            $stdout = trim((string) ($result['stdout'] ?? ''));
-            if ($stdout !== '') {
-                $outputs[] = $stdout;
-            }
+        } finally {
+            $this->argLiteral = $savedLiteral;
+            $this->argGlob = $savedGlob;
         }
 
         return [
-            'stdout' => implode("\n", $outputs),
+            'stdout' => $outputs,
+            'stderr' => implode("\n", $stderr),
             'cwd' => $cwd,
             'class' => 'read-transform',
+            // GNU: 123 when any invocation failed.
+            'exit_code' => $failed ? 123 : 0,
             'returned' => count($items),
             'limit' => $budget->maxEntries,
-            'truncated' => count(VfsText::lines($stdin ?? '')) > count($items),
         ];
     }
 
-    private function paste(User $agent, array $tokens, string $cwd, VfsBudget $budget, ?string $stdin): array
+    /**
+     * @param  list<string>  $words
+     * @return array<string, mixed>
+     */
+    private function paste(User $agent, array $words, string $cwd, ?string $stdin): array
     {
-        $this->assertSupportedOptionsForCommand($tokens, 'paste');
-        $delimiter = $this->optionValue($tokens, ['-d']) ?? "\t";
-        $serial = $this->shortFlags($tokens, ['s'])['s'] ?? false;
-        $paths = $this->pathArgs($tokens, $cwd);
-        if ($paths === []) {
-            return ['stdout' => implode($delimiter, VfsText::lines($stdin ?? '')), 'cwd' => $cwd, 'class' => 'read-transform'];
-        }
+        $args = $this->args('paste', $words);
+        // -d LIST cycles through its characters; -d '' joins without one.
+        $delimiterList = $args->value('-d');
+        $delimiters = $delimiterList === null ? ["\t"] : ($delimiterList === '' ? [''] : mb_str_split(VfsPrintf::escapes($delimiterList, false)));
+        $paths = $this->operandPaths($args, $cwd) ?: ['-'];
+        $stdinUsed = false;
+        $columns = array_map(function (string $path) use ($agent, $stdin, &$stdinUsed): array {
+            if ($path === '-') {
+                $lines = $stdinUsed ? [] : $this->splitLines((string) $stdin);
+                $stdinUsed = true;
 
-        $columns = array_map(fn (string $path): array => VfsText::lines($this->vfs->read($agent, $path, $budget)), $paths);
-        if ($serial) {
-            return ['stdout' => implode("\n", array_map(fn (array $column): string => implode($delimiter, $column), $columns)), 'cwd' => $cwd, 'class' => 'read-transform'];
+                return $lines;
+            }
+
+            return $this->splitLines($this->readFull($agent, $path));
+        }, $paths);
+
+        $join = function (array $cells) use ($delimiters): string {
+            $out = '';
+            foreach ($cells as $index => $cell) {
+                if ($index > 0) {
+                    $out .= $delimiters[($index - 1) % count($delimiters)];
+                }
+                $out .= $cell;
+            }
+
+            return $out;
+        };
+
+        if ($args->has('s')) {
+            return ['stdout' => $this->linesOut(array_map($join, $columns)), 'cwd' => $cwd, 'class' => 'read-transform'];
         }
-        $max = max(array_map('count', $columns));
+        $rows = max(array_map('count', $columns));
         $lines = [];
-        for ($row = 0; $row < $max; $row++) {
-            $lines[] = implode($delimiter, array_map(fn (array $column): string => $column[$row] ?? '', $columns));
+        for ($row = 0; $row < $rows; $row++) {
+            $lines[] = $join(array_map(fn (array $column): string => $column[$row] ?? '', $columns));
         }
 
-        return ['stdout' => implode("\n", $lines), 'cwd' => $cwd, 'class' => 'read-transform'];
+        return ['stdout' => $this->linesOut($lines), 'cwd' => $cwd, 'class' => 'read-transform'];
     }
 }

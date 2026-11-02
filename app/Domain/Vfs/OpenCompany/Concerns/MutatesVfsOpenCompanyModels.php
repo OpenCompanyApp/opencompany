@@ -10,7 +10,11 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
  */
 trait MutatesVfsOpenCompanyModels
 {
+    use MutatesVfsAgentArea;
+    use MutatesVfsDocumentRecords;
     use MutatesVfsDocuments;
     use MutatesVfsFiles;
+    use MutatesVfsListItems;
+    use MutatesVfsTableRows;
     use PatchesVfsRecords;
 }

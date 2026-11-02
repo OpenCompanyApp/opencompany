@@ -32,6 +32,9 @@ class DocumentVersion extends Model
         'author_id',
         'version_number',
         'change_description',
+        'run_id',
+        'before_version',
+        'after_version',
     ];
 
     /** @return BelongsTo<Document, $this> */

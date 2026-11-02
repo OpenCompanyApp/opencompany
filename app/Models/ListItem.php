@@ -16,6 +16,9 @@ use App\Models\Concerns\Trashable;
  * ListItem - Items in a kanban board/list (renamed from Task)
  * For discrete work tracking, see the Task model instead.
  *
+ * Deletes are soft (governance model: delete means trash); the VFS
+ * `/lists/.trash/` view restores them.
+ *
  * @property string $title
  * @property string|null $description
  * @property string $status
@@ -31,6 +34,8 @@ use App\Models\Concerns\Trashable;
  * @property \Carbon\Carbon|null $updated_at
  * @property \Carbon\Carbon|null $completed_at
  * @property \Carbon\Carbon|null $due_date
+ * @property string $workspace_id
+ * @property \Illuminate\Support\Carbon|null $deleted_at
  */
 class ListItem extends Model implements RevertibleContent
 {

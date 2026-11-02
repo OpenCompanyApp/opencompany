@@ -11,9 +11,23 @@ use Illuminate\Support\Str;
 
 /**
  * Read-only routine mount.
+ *
+ * Listing metadata (name, active) stays visible to every agent. The body
+ * fields that carry instructions, code or external data
+ * ($routinePrivateFields) are only served to agents allowed the routine read
+ * tool (`get_routine`) without approval, so the VFS never shows more than the
+ * domain tool would without a human. Routines replace Automations
+ * (docs/planning/connections-events-routines.md).
  */
 trait MountsVfsRoutines
 {
+    /**
+     * Fields hidden unless the agent may use get_routine.
+     *
+     * @var list<string>
+     */
+    private static array $routinePrivateFields = ['instructions', 'script', 'last_result', 'content', 'config'];
+
     /**
      * @param  list<string>  $segments
      * @return list<VfsEntry>
@@ -61,8 +75,28 @@ trait MountsVfsRoutines
         }
 
         $routine = $this->resolveRoutineToken(Str::before($segments[1], '.json'), $path);
+        $payload = $routine->toArray();
 
-        return json_encode($routine->toArray(), JSON_PRETTY_PRINT);
+        // Invariant: approval-gated means "not without a human". Serving the
+        // body when get_routine is allowed only with approval would bypass that
+        // gate; redact and point at the gated tool instead (a read never
+        // auto-creates an approval request).
+        $decision = $this->permissions->resolveToolPermission($agent, 'get_routine', 'read');
+        if (! $decision['allowed'] || $decision['requires_approval']) {
+            $hidden = [];
+            foreach (self::$routinePrivateFields as $field) {
+                if (array_key_exists($field, $payload)) {
+                    unset($payload[$field]);
+                    $hidden[] = $field;
+                }
+            }
+            $payload['redacted_fields'] = $hidden;
+            $payload['redaction_reason'] = $decision['allowed']
+                ? 'Routine instructions, code and results need human approval for this agent: call the get_routine tool, which asks for approval, instead of reading this file.'
+                : 'Routine instructions, code and results require the get_routine tool permission.';
+        }
+
+        return json_encode($payload, JSON_PRETTY_PRINT);
     }
 
     private function routineEntry(Routine $routine, string $path): VfsEntry

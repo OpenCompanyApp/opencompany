@@ -59,3 +59,11 @@ Broadcast::channel('workspace.{workspaceId}.approvals', function ($user, $worksp
 Broadcast::channel('notifications.{userId}', function ($user, $userId) {
     return $user->id === $userId;
 });
+
+// Workspace-scoped VFS object change signals (App\Events\VfsObjectChanged).
+// The payload is a refresh trigger with ids only; panels refetch through the
+// permission-checked API, so workspace membership is sufficient here.
+Broadcast::channel('workspace.{workspaceId}.vfs', function ($user, $workspaceId) {
+    return $user->workspaces()->where('workspaces.id', $workspaceId)->exists()
+        || $user->workspace_id === $workspaceId;
+});

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Vfs\OpenCompany\Approvals;
 
+use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
 use App\Models\ApprovalRequest;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -12,13 +13,47 @@ use Illuminate\Support\Str;
  * Direct agent-tool approval remains owned by ToolRegistry/ApprovalWrappedTool.
  * This factory handles backing permissions such as update_table_row and also
  * protects direct domain-service calls that do not pass through a tool wrapper.
+ *
+ * Stored `vfs_approval` context (internal; replay and /approvals read it):
+ *   requester_id, direct_tool_slug, operation, subject, required_tools,
+ *   approval_tool, approved_tools, parameters_hash  — replay matching keys
+ *   action_class   — governance reversibility class (VfsActionClass)
+ *   preview        — what the approver sees (VfsApprovalPreviewBuilder)
+ *   base_version   — version of the object when the request was made; replay
+ *                    refuses to apply a non-anchored change to a moved object
+ *   origin         — {run_id, task_id, channel_id}; the outcome is posted to
+ *                    channel_id and a parked run is resumed there
  */
 class VfsApprovalRequestFactory
 {
+    public function __construct(
+        private readonly VfsApprovalOrigin $origin,
+        private readonly VfsApprovalPreviewBuilder $previews,
+    ) {}
+
     /**
+     * Create one approval for a VFS operation, or return the identical one
+     * that is still pending.
+     *
+     * Contract:
+     * - `approved_tools` lists EVERY approval-gated tool the operation needs
+     *   ($approvalTools), so a single human decision lets the replay pass all
+     *   of them. `approval_tool` stays the first one for older readers.
+     * - Dedupe: a pending request from the same requester with the same
+     *   direct tool, operation, subject and parameters_hash, whose
+     *   approved_tools already cover $approvalTools, is returned instead of
+     *   creating a duplicate. Agents (and rescued Code Mode retries) therefore
+     *   get a stable approval id for a retried call.
+     *
+     * The approval_requests table has no workspace_id column at this commit;
+     * workspace scope is implied by the requester (see
+     * ApprovalExecutionService::executeApprovedTool).
+     *
      * @param  list<string>  $requiredTools
      * @param  array<string, mixed>  $parameters
      * @param  array<string, mixed>|null  $preview
+     * @param  list<string>  $approvalTools  Every gated tool; defaults to [$approvalTool]
+     * @param  string|null  $actionClass  Governance action class; derived when null
      */
     public function create(
         User $agent,
@@ -30,14 +65,33 @@ class VfsApprovalRequestFactory
         array $parameters,
         ?string $channelId = null,
         ?array $preview = null,
+        array $approvalTools = [],
+        ?string $actionClass = null,
     ): ApprovalRequest {
+        $approvalTools = array_values(array_unique($approvalTools === [] ? [$approvalTool] : $approvalTools));
         $hash = $this->hashParameters($parameters);
+
+        $existing = $this->pendingDuplicate($agent, $directToolSlug, $operation, $subject, $hash, $approvalTools);
+        if ($existing !== null) {
+            if ($agent->must_wait_for_approval) {
+                $agent->update(['awaiting_approval_id' => $existing->id]);
+            }
+
+            return $existing;
+        }
+
+        $actionClass ??= VfsActionClass::classify($operation, $subject, $requiredTools);
+        $origin = $this->origin->capture($agent, $parameters);
+        // Computed outside any write transaction (policy runs before the
+        // locked write), through the agent's own read authorization.
+        $built = $this->previews->build($agent, $directToolSlug, $operation, $subject, $parameters, $preview);
+
         $approval = ApprovalRequest::create([
             'id' => Str::uuid()->toString(),
             'type' => 'action',
             'workspace_id' => $agent->workspace_id,
-            'title' => $this->title($operation, $approvalTool),
-            'description' => $this->description($agent, $operation, $subject, $approvalTool),
+            'title' => $this->title($operation, $approvalTools),
+            'description' => $this->description($agent, $operation, $subject, $approvalTools),
             'requester_id' => $agent->id,
             'status' => 'pending',
             'tool_execution_context' => [
@@ -49,13 +103,16 @@ class VfsApprovalRequestFactory
                     'operation' => $operation,
                     'subject' => $subject,
                     'required_tools' => $requiredTools,
-                    'approval_tool' => $approvalTool,
-                    'approved_tools' => [$approvalTool],
+                    'approval_tool' => $approvalTools[0],
+                    'approved_tools' => $approvalTools,
                     'parameters_hash' => $hash,
-                    'preview' => $preview,
+                    'action_class' => $actionClass,
+                    'preview' => $built['preview'],
+                    'base_version' => $built['base_version'],
+                    'origin' => $origin,
                 ],
             ],
-            'channel_id' => $channelId,
+            'channel_id' => $channelId ?? $origin['channel_id'],
         ]);
 
         if ($agent->must_wait_for_approval) {
@@ -63,6 +120,35 @@ class VfsApprovalRequestFactory
         }
 
         return $approval;
+    }
+
+    /**
+     * @param  list<string>  $approvalTools
+     */
+    private function pendingDuplicate(User $agent, string $directToolSlug, string $operation, string $subject, string $hash, array $approvalTools): ?ApprovalRequest
+    {
+        // Filtered in PHP: tool_execution_context is a JSON column and this
+        // must behave identically on sqlite and Postgres. The candidate set is
+        // one requester's pending approvals, which stays small.
+        return ApprovalRequest::query()
+            ->where('requester_id', $agent->id)
+            ->where('status', 'pending')
+            ->orderBy('created_at')
+            ->get()
+            ->first(function (ApprovalRequest $approval) use ($directToolSlug, $operation, $subject, $hash, $approvalTools): bool {
+                $context = $approval->tool_execution_context['vfs_approval'] ?? null;
+                if (! is_array($context)) {
+                    return false;
+                }
+
+                $covered = is_array($context['approved_tools'] ?? null) ? $context['approved_tools'] : [];
+
+                return ($context['direct_tool_slug'] ?? null) === $directToolSlug
+                    && ($context['operation'] ?? null) === $operation
+                    && ($context['subject'] ?? null) === $subject
+                    && ($context['parameters_hash'] ?? null) === $hash
+                    && array_diff($approvalTools, $covered) === [];
+            });
     }
 
     /**
@@ -75,8 +161,17 @@ class VfsApprovalRequestFactory
         return hash('sha256', json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '');
     }
 
-    private function title(string $operation, string $approvalTool): string
+    /**
+     * @param  list<string>  $approvalTools
+     */
+    private function title(string $operation, array $approvalTools): string
     {
+        if (count($approvalTools) > 1) {
+            return 'Approve VFS '.($operation === 'exec_write' ? 'file write command' : $operation).' ('.implode(' + ', $approvalTools).')';
+        }
+
+        $approvalTool = $approvalTools[0];
+
         return match ($approvalTool) {
             'update_table_row' => 'Approve table row update through VFS',
             'update_agent_identity_file' => 'Approve agent identity update through VFS',
@@ -87,7 +182,10 @@ class VfsApprovalRequestFactory
         };
     }
 
-    private function description(User $agent, string $operation, string $subject, string $approvalTool): string
+    /**
+     * @param  list<string>  $approvalTools
+     */
+    private function description(User $agent, string $operation, string $subject, array $approvalTools): string
     {
         $label = match ($operation) {
             'patch' => 'patch',
@@ -95,8 +193,11 @@ class VfsApprovalRequestFactory
             'exec_write' => 'run a file-mutating VFS command',
             default => $operation,
         };
+        $permissions = implode(', ', $approvalTools);
+        $label = $operation === 'remove' ? 'move to trash' : $label;
+        $noun = count($approvalTools) > 1 ? 'Required permissions (all covered by this approval)' : 'Required permission';
 
-        return "Agent {$agent->name} wants to {$label} {$subject}. Required permission: {$approvalTool}.";
+        return "Agent {$agent->name} wants to {$label} {$subject}. {$noun}: {$permissions}.";
     }
 
     private function normalize(mixed $value): mixed

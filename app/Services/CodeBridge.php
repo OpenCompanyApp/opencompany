@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Agents\Tools\ToolRegistry;
+use App\Domain\Vfs\Core\VfsCommandExecutor;
 use App\Models\User;
 use Bowerbird\RubyEngine\CapabilityFailure;
 use Illuminate\Support\Str;
@@ -36,6 +37,15 @@ final class CodeBridge
 
     private OpenCompanyScriptToolInvoker $invoker;
 
+    /** @var array<string, string> Function path => tool slug for this actor. */
+    private array $functionMap;
+
+    /** @var array<string, list<array<string, mixed>>> Function path => parameter definitions. */
+    private array $parameterMap;
+
+    /** @var array<string, array<string, mixed>> Alias path => argument defaults (CodeApiDocGenerator::ALIAS_ARGUMENT_DEFAULTS). */
+    private array $aliasDefaults;
+
     /**
      * @param  array<string, int|float|bool>  $profile  Resolved host-owned runtime profile
      */
@@ -45,10 +55,13 @@ final class CodeBridge
         CodeApiDocGenerator $docGenerator,
         private readonly array $profile,
     ) {
-        $this->paths = array_keys($docGenerator->buildFunctionMap($agent));
+        $this->functionMap = $docGenerator->buildFunctionMap($agent);
+        $this->parameterMap = $docGenerator->buildParameterMap($agent);
+        $this->aliasDefaults = CodeApiDocGenerator::ALIAS_ARGUMENT_DEFAULTS;
+        $this->paths = array_keys($this->functionMap);
         $this->bridge = new ScriptBridge(
-            $docGenerator->buildFunctionMap($agent),
-            $docGenerator->buildParameterMap($agent),
+            $this->functionMap,
+            $this->parameterMap,
             $this->invoker = new OpenCompanyScriptToolInvoker(
                 $agent,
                 $registry,
@@ -131,6 +144,12 @@ final class CodeBridge
         $this->callbackCount++;
         $start = microtime(true);
 
+        $args = $this->withAliasDefaults($path, $args);
+        // Invariant: classify immediately before dispatch, every call, so a
+        // hint can never survive into a different callback.
+        $toolSlug = $this->functionMap[$path] ?? null;
+        $this->invoker->classifyNextCall((string) $toolSlug, $toolSlug === null ? null : $this->classifyEffect($toolSlug, $path, $args));
+
         try {
             $result = $this->bridge->call($path, ...$args);
         } catch (ScriptBridgeException $exception) {
@@ -179,6 +198,91 @@ final class CodeBridge
         }
 
         return $result;
+    }
+
+    /**
+     * Per-call effect for tools whose effect depends on their arguments.
+     *
+     * Today that is only vfs_exec: the registry types it as a read, but a
+     * pipeline containing a mutating command must open a durable write
+     * receipt and appear as a write in the ledger. Returns null when the
+     * registry's static type should stand.
+     *
+     * @param  array<int, mixed>  $args
+     * @return 'read'|'write'|null
+     */
+    private function classifyEffect(string $toolSlug, string $path, array $args): ?string
+    {
+        if ($toolSlug !== 'vfs_exec') {
+            return null;
+        }
+
+        $command = $this->argument($path, $args, 'command');
+
+        // Fail closed: a missing or non-string command is not provably a read.
+        return is_string($command)
+            ? app(VfsCommandExecutor::class)->classifyEffect($command)
+            : 'write';
+    }
+
+    /**
+     * Read one named argument from either calling convention ScriptBridge
+     * accepts: a single named-argument object, or positional arguments mapped
+     * by the parameter catalog order.
+     *
+     * @param  array<int, mixed>  $args
+     */
+    private function argument(string $path, array $args, string $name): mixed
+    {
+        if (count($args) === 1 && is_array($args[0]) && ! array_is_list($args[0])) {
+            return $args[0][$name] ?? null;
+        }
+
+        foreach ($this->parameterMap[$path] ?? [] as $index => $definition) {
+            if (($definition['name'] ?? null) === $name) {
+                return $args[$index] ?? null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Apply host-owned defaults for alias paths (e.g. `vfs.grep` is literal,
+     * so it defaults `regex: false` even though `vfs.rg` defaults to regex).
+     * Caller-supplied values always win. Positional calls are converted to the
+     * named form so the default can be added without guessing a position.
+     *
+     * @param  array<int, mixed>  $args
+     * @return array<int, mixed>
+     */
+    private function withAliasDefaults(string $path, array $args): array
+    {
+        $defaults = $this->aliasDefaults[$path] ?? [];
+        if ($defaults === []) {
+            return $args;
+        }
+
+        if ($args === []) {
+            return [$defaults];
+        }
+
+        if (count($args) === 1 && is_array($args[0]) && ! array_is_list($args[0])) {
+            return [$args[0] + $defaults];
+        }
+
+        $named = [];
+        foreach ($args as $index => $value) {
+            $name = (string) ($this->parameterMap[$path][$index]['name'] ?? '');
+            if ($name === '') {
+                // More positional values than catalog entries: leave the call
+                // untouched so ScriptBridge reports its usual argument error.
+                return $args;
+            }
+            $named[$name] = $value;
+        }
+
+        return [$named + $defaults];
     }
 
     /**

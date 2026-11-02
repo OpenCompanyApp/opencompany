@@ -5,6 +5,7 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsSecretRedactor;
 use App\Models\ApprovalRequest;
 use App\Models\User;
 use Carbon\CarbonInterface;
@@ -12,7 +13,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 /**
- * Approval-request mount with conservative redaction.
+ * Approval-request mount: the acting agent's own approvals.
+ *
+ * `/approvals/{id}.json` shows the stored request including the VFS block
+ * (operation, subject, required tools, action class, preview/diff, pinned
+ * base version, origin) and the replay disposition (`execution`), so an
+ * agent can tell its pending changes apart and learn what happened to them.
+ * Secrets are redacted precisely (VfsSecretRedactor); UUIDs, paths and
+ * hashes stay readable.
  */
 trait MountsVfsApprovals
 {
@@ -26,9 +34,31 @@ trait MountsVfsApprovals
     }
 
     /**
-     * Page only approvals requested by the acting agent. Requester workspace
-     * validation remains inside every continuation query rather than trusting
-     * the actor binding stored in the cursor.
+     * The acting agent's own approvals in the agent's (bound) workspace.
+     *
+     * Invariant: scope by the approval's persisted workspace_id, never by the
+     * requester's current workspace. An agent reassigned from W1 to W2 used
+     * to satisfy a whereHas(requester) check with its new workspace and could
+     * read W1's descriptions, parameters and previews. The facade already
+     * asserts that the bound workspace equals $agent->workspace_id
+     * (OpenCompanyVfs::assertBoundWorkspace), and replay refuses the same
+     * reassignment (ApprovalExecutionService). Rows without a workspace_id
+     * fail closed. Every approval read (listing, file, stat, /me/pending)
+     * must start from this query.
+     *
+     * @return Builder<ApprovalRequest>
+     */
+    private function agentApprovalsQuery(User $agent): Builder
+    {
+        return ApprovalRequest::query()
+            ->where('requester_id', $agent->id)
+            ->where('workspace_id', $agent->workspace_id);
+    }
+
+    /**
+     * Page only approvals requested by the acting agent. Workspace scoping
+     * (agentApprovalsQuery) runs inside every continuation query rather than
+     * trusting the actor binding stored in the cursor.
      *
      * @param  list<string>  $segments
      * @param  array<string, mixed>  $state
@@ -41,9 +71,7 @@ trait MountsVfsApprovals
         }
 
         return $this->paginateVfsTimestampQuery(
-            ApprovalRequest::query()
-                ->where('requester_id', $agent->id)
-                ->whereHas('requester', fn (Builder $query) => $query->where('workspace_id', $agent->workspace_id)),
+            $this->agentApprovalsQuery($agent),
             'created_at',
             'desc',
             $budget->maxEntries,
@@ -74,10 +102,8 @@ trait MountsVfsApprovals
         }
 
         $id = Str::before($segments[1], '.json');
-        $approval = ApprovalRequest::query()
+        $approval = $this->agentApprovalsQuery($agent)
             ->where('id', $id)
-            ->where('requester_id', $agent->id)
-            ->whereHas('requester', fn (Builder $query) => $query->where('workspace_id', $agent->workspace_id))
             ->first() ?? throw VfsError::notFound($path);
 
         return json_encode($this->approvalPayload($approval), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -110,33 +136,12 @@ trait MountsVfsApprovals
         ];
     }
 
+    /**
+     * Precise secret redaction (VfsSecretRedactor): secret-like keys and known
+     * secret patterns only, so ids, paths, subjects and hashes stay readable.
+     */
     private function redactSecrets(mixed $value): mixed
     {
-        if (is_array($value)) {
-            $redacted = [];
-            foreach ($value as $key => $item) {
-                $keyString = (string) $key;
-                $redacted[$key] = preg_match('/(secret|token|auth|api[_-]?key|authorization|password|credential|bearer|cookie|session)/i', $keyString) === 1
-                    ? '[redacted]'
-                    : $this->redactSecrets($item);
-            }
-
-            return $redacted;
-        }
-
-        if (is_string($value)) {
-            $redacted = preg_replace('/\b(authorization\s*:\s*(?:bearer|basic)\s+)[^\r\n,;]+/i', '$1[redacted]', $value) ?? $value;
-            $redacted = preg_replace('/\b(secret|token|auth|api[_-]?key|authorization|password|credential|bearer|cookie|session)(\s*[:=]\s*)([^\s,&;]+)/i', '$1$2[redacted]', $redacted) ?? $redacted;
-            $redacted = preg_replace('/\b(bearer|basic)\s+([A-Za-z0-9._~+\/=-]+(?:\s+[A-Za-z0-9._~+\/=-]+)?)/i', '$1 [redacted]', $redacted) ?? $redacted;
-            $redacted = preg_replace('/([?&](?:access_token|client_secret|secret|token|auth|api[_-]?key|authorization|password|credential|bearer|session)=)([^&\s]+)/i', '$1[redacted]', $redacted) ?? $redacted;
-
-            if (preg_match('/(sk-[A-Za-z0-9_-]{12,}|[A-Za-z0-9_\/+=-]{32,})/', $redacted) === 1) {
-                return '[redacted]';
-            }
-
-            return $redacted;
-        }
-
-        return $value;
+        return VfsSecretRedactor::redact($value);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Domain\Authorization\Application\OnBehalfOf;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsSecretRedactor;
 use App\Models\Concerns\BelongsToWorkspace;
 use Database\Factories\ApprovalRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,6 +32,7 @@ class ApprovalRequest extends Model
 {
     /** @use HasFactory<ApprovalRequestFactory> */
     use BelongsToWorkspace;
+
     use HasFactory;
 
     protected $keyType = 'string';
@@ -113,6 +115,13 @@ class ApprovalRequest extends Model
      * instance for ApprovalExecutionService. Only array/JSON presentation is
      * redacted so humans can inspect approval history safely.
      *
+     * Redaction is the precise VfsSecretRedactor (secret-named keys and known
+     * credential formats), the same as the VFS `/approvals` view: ids, UUIDs,
+     * hashes and paths stay readable so approvals can be told apart. The
+     * legacy redactSecretValue() heuristic (any 32+ character token) is kept
+     * only for outbound chat rendering (Telegram), where over-redaction is
+     * the safer failure.
+     *
      * @return array<string, mixed>
      */
     public function toArray(): array
@@ -120,13 +129,13 @@ class ApprovalRequest extends Model
         $array = parent::toArray();
 
         if (array_key_exists('title', $array)) {
-            $array['title'] = self::redactSecretValue($array['title']);
+            $array['title'] = VfsSecretRedactor::redact($array['title']);
         }
         if (array_key_exists('description', $array)) {
-            $array['description'] = self::redactSecretValue($array['description']);
+            $array['description'] = VfsSecretRedactor::redact($array['description']);
         }
         if (array_key_exists('tool_execution_context', $array)) {
-            $array['tool_execution_context'] = self::redactSecretValue($array['tool_execution_context']);
+            $array['tool_execution_context'] = VfsSecretRedactor::redact($array['tool_execution_context']);
         }
         $vfs = $this->tool_execution_context['vfs_approval'] ?? null;
         if (is_array($vfs)) {
@@ -182,7 +191,7 @@ class ApprovalRequest extends Model
         ];
 
         if (is_array($vfs['preview'] ?? null)) {
-            $lines[] = 'Preview: '.json_encode(self::redactSecretValue($vfs['preview']), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            $lines[] = 'Preview: '.json_encode(VfsSecretRedactor::redact($vfs['preview']), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         }
 
         return implode("\n", $lines);

@@ -11,9 +11,11 @@ use App\Agents\Support\UntrustedContent;
 use App\Agents\Support\UntrustedOutputTool;
 use App\Agents\Tools\System\RunGuardedTool;
 use App\Agents\Tools\ToolRegistry;
+use App\Agents\Tools\Vfs\Support\VfsOffloadingTool;
 use App\Agents\Tools\Web\WebFetchTool;
 use App\Agents\Tools\Web\WebSearchTool;
 use App\Ai\Contracts\HasSystemPrompts;
+use App\Domain\Vfs\Spec\VfsGuide;
 use App\Models\AppSetting;
 use App\Models\Channel;
 use App\Models\Task;
@@ -295,7 +297,25 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
         }
         $sections[] = ['label' => 'Apps', 'content' => $apps];
 
+        // VFS orientation: constant text (VfsGuide::promptBlock), so it stays
+        // in the cacheable stable frame; only included when the agent can call
+        // at least one VFS tool.
+        if ($this->hasVfsTools()) {
+            $sections[] = ['label' => 'VFS', 'content' => VfsGuide::promptBlock()."\n\n"];
+        }
+
         return $sections;
+    }
+
+    private function hasVfsTools(): bool
+    {
+        foreach ($this->toolRegistry->getToolSlugsForAgent($this->agent) as $slug) {
+            if (str_starts_with($slug, 'vfs_')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -419,7 +439,9 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
 
         $tools = [
             ...array_map(
-                fn ($tool) => $tool instanceof Tool ? $this->labelUntrustedOutput($tool) : $tool,
+                // VFS tools get the model-facing result cap (offloading);
+                // Code Mode callbacks never pass through this list.
+                fn ($tool) => $tool instanceof Tool ? VfsOffloadingTool::wrapIfVfs($this->labelUntrustedOutput($tool), $this->agent) : $tool,
                 $this->toolRegistry->getToolsForAgent($this->agent),
             ),
             OrchestrateSubagents::for($this->agent, $this->channelId, $this->taskId),

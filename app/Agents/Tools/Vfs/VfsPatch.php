@@ -2,25 +2,36 @@
 
 namespace App\Agents\Tools\Vfs;
 
+use App\Agents\Tools\Vfs\Concerns\HandlesVfsJson;
+use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsOperationLog;
+use App\Domain\Vfs\Events\VfsOperationContext;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Models\User;
-use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class VfsPatch implements Tool
+/**
+ * `vfs_patch`: structured record patches (task/list fields, table rows with
+ * `base`) and single text search/replace.
+ *
+ * Thin envelope over OpenCompanyVfs::patch(), which owns parsing, composed
+ * permissions (vfs_patch + update_table_row / update_agent_identity_file),
+ * approvals and the atomic version-checked write. The raw request array is
+ * forwarded as tool parameters: approvals hash and replay exactly this call
+ * (vfs_edit relies on that by submitting a vfs_patch-shaped parameter set).
+ */
+class VfsPatch implements ReturnsVfsEnvelope, Tool
 {
+    use HandlesVfsJson;
+
+    public const TOOL_SLUG = 'vfs_patch';
+
     public function __construct(
         private readonly User $agent,
         private readonly OpenCompanyVfs $vfs,
     ) {}
-
-    public function description(): string
-    {
-        return 'Patch writable virtual content with stale-write protection. VFS composes this primitive with existing domain permissions: table row patches also require update_table_row, agent identity patches also require update_agent_identity_file, and approval-gated backing tools create normal approval requests. Supports JSON {"search":"old","replace":"new"} patches, table row {"data": {...}} patches, or SEARCH/REPLACE blocks.';
-    }
 
     public function handle(Request $request): string
     {
@@ -28,34 +39,36 @@ class VfsPatch implements Tool
         $ok = false;
         $errorCode = null;
         try {
-            $path = (string) ($request['path'] ?? '');
-            $patch = (string) ($request['patch'] ?? '');
-            if ($path === '' || $patch === '') {
-                $errorCode = 'invalid_request';
-
-                return $this->encodeError('invalid_request', 'path and patch are required.');
+            $input = $this->input($request);
+            $path = trim($input->string('path'));
+            $patch = $request['patch'] ?? '';
+            // Code Mode callers naturally pass a Hash; accept it as the same
+            // JSON the string form carries.
+            if (is_array($patch)) {
+                $patch = (string) json_encode($patch, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            }
+            if ($path === '' || ! is_string($patch) || $patch === '') {
+                throw VfsError::invalid('path and patch are required.', [
+                    'field' => $path === '' ? 'path' : 'patch',
+                    'hint' => 'Example: {"path": "/tasks/by-id/ID", "patch": "{\"status\":\"completed\"}"}. Use vfs_edit for text.',
+                ]);
             }
 
-            $result = $this->vfs->patch($this->agent, $path, $patch, $request['version'] ?? null, $request->toArray());
+            $result = $this->vfs->patch($this->agent, $path, $patch, $input->optionalString('version'), $request->toArray());
             $ok = true;
 
-            return json_encode([
-                'ok' => true,
-                'result' => $result,
-            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        } catch (VfsError $e) {
-            $errorCode = $e->errorCode;
-
-            return $this->encodeError($e->errorCode, $e->getMessage(), $e->context);
+            return $this->encodeResult($result);
         } catch (\Throwable $e) {
-            $errorCode = 'internal_error';
+            $errorCode = $e instanceof VfsError ? $e->errorCode : 'internal_error';
 
-            return $this->encodeError('internal_error', $e->getMessage());
+            return $this->errorResponse($e);
         } finally {
             event(VfsOperationLog::forAgent(
                 $this->agent,
-                'tool',
-                'vfs_patch',
+                // The caller's surface (tool, code, computer, approval_replay, …),
+                // the same one the facade's object events carry.
+                app(VfsOperationContext::class)->surface(),
+                self::TOOL_SLUG,
                 (string) ($request['path'] ?? ''),
                 null,
                 $ok,
@@ -63,22 +76,5 @@ class VfsPatch implements Tool
                 (int) round((microtime(true) - $started) * 1000),
             ));
         }
-    }
-
-    public function schema(JsonSchema $schema): array
-    {
-        return [
-            'path' => $schema->string()->required()->description('Virtual path to patch, preferably canonical. /docs/by-id/... requires an explicit allowed document-folder scope; table rows require update_table_row; agent identity/memory paths enforce relationship-specific write rules.'),
-            'patch' => $schema->string()->required()->description('Patch content. Use JSON {"search":"old","replace":"new"}, table row JSON {"data": {...}}, or a <<<<<<< SEARCH / ======= / >>>>>>> REPLACE block.'),
-            'version' => $schema->string()->description('Optional version token from stat. If provided, the patch fails when stale.'),
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $context
-     */
-    private function encodeError(string $code, string $message, array $context = []): string
-    {
-        return json_encode(['ok' => false, 'error' => ['code' => $code, 'message' => $message, 'context' => $context]], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     }
 }

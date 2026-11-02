@@ -72,6 +72,16 @@ final class VfsPageCursor
         return ['state' => $state, 'seen' => $payload['seen']];
     }
 
+    /**
+     * Scope binding a cursor to one workspace and acting agent. Must stay
+     * identical to OpenCompanyVfs's pagination scope so shell-owned cursors
+     * (find) and mount cursors share the same replay protection.
+     */
+    public static function agentScope(\App\Models\User $agent): string
+    {
+        return hash('sha256', (string) $agent->workspace_id.'|'.(string) $agent->id);
+    }
+
     private static function invalid(): VfsError
     {
         return VfsError::invalid('cursor is invalid, expired, or belongs to another listing.', [

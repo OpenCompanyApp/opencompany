@@ -3,47 +3,44 @@
 namespace App\Agents\Tools\Vfs;
 
 use App\Agents\Tools\Vfs\Concerns\HandlesVfsJson;
+use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Models\User;
-use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class VfsMv implements Tool
+/**
+ * Code Mode helper `app.vfs.mv` (`vfs_mv`, script-only, write).
+ *
+ * File move/rename through the facade write policy. Governed by the `vfs_write` permission
+ * (ToolRegistry `permissionAs`); authorization and audit are the
+ * OpenCompanyVfs facade's. Description and schema come from
+ * VfsOperationSpecRegistry.
+ */
+class VfsMv implements ReturnsVfsEnvelope, Tool
 {
     use HandlesVfsJson;
+
+    public const TOOL_SLUG = 'vfs_mv';
 
     public function __construct(
         private readonly User $agent,
         private readonly OpenCompanyVfs $vfs,
     ) {}
 
-    public function description(): string
-    {
-        return 'Code Mode helper for moving writable workspace files.';
-    }
-
     public function handle(Request $request): string
     {
         try {
             return $this->encodeResult($this->vfs->move(
                 $this->agent,
-                (string) ($request['source'] ?? $request['src'] ?? ''),
-                (string) ($request['destination'] ?? $request['dst'] ?? $request['dest'] ?? ''),
+                $this->input($request)->string('source'),
+                $this->input($request)->string('destination'),
+                // Full call as toolParameters: idempotency_key reaches the
+                // facade and approval replay hashes the same parameters.
+                $request->toArray(),
             ));
         } catch (\Throwable $e) {
             return $this->errorResponse($e);
         }
-    }
-
-    public function schema(JsonSchema $schema): array
-    {
-        return [
-            'source' => $schema->string()->required()->description('Source /files path.'),
-            'destination' => $schema->string()->required()->description('Destination /files path.'),
-            'src' => $schema->string()->description('Alias for source.'),
-            'dst' => $schema->string()->description('Alias for destination.'),
-            'dest' => $schema->string()->description('Alias for destination.'),
-        ];
     }
 }

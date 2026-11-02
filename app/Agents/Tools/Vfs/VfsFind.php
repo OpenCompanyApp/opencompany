@@ -3,37 +3,43 @@
 namespace App\Agents\Tools\Vfs;
 
 use App\Agents\Tools\Vfs\Concerns\HandlesVfsJson;
+use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsPageCursor;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Models\User;
-use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
-class VfsFind implements Tool
+/**
+ * Code Mode helper `app.vfs.find` (`vfs_find`, script-only, read).
+ *
+ * Resumable depth-first name/type search; cursors are bound to paths, filters, workspace and actor. Governed by the `vfs_exec` permission
+ * (ToolRegistry `permissionAs`); authorization and audit are the
+ * OpenCompanyVfs facade's. Description and schema come from
+ * VfsOperationSpecRegistry.
+ */
+class VfsFind implements ReturnsVfsEnvelope, Tool
 {
     use HandlesVfsJson;
+
+    public const TOOL_SLUG = 'vfs_find';
 
     public function __construct(
         private readonly User $agent,
         private readonly OpenCompanyVfs $vfs,
     ) {}
 
-    public function description(): string
-    {
-        return 'Code Mode helper for finding VFS entries by name/type across bounded directory trees.';
-    }
-
     public function handle(Request $request): string
     {
         try {
+            $input = $this->input($request);
             $paths = $request['paths'] ?? [$request['path'] ?? '/'];
             $paths = is_array($paths) ? array_map(fn (mixed $path): string => $this->vfs->normalizePath((string) $path), array_values($paths)) : [$this->vfs->normalizePath((string) $paths)];
-            $budget = $this->budgetFromRequest($request);
-            $name = (string) ($request['name'] ?? $request['glob'] ?? '*');
+            $budget = $input->budget();
+            $name = $input->string('name');
             $type = $request['type'] ?? null;
             if ($type !== null && ! is_string($type)) {
                 throw VfsError::invalid('type must be a string.', ['field' => 'type']);
@@ -46,7 +52,7 @@ class VfsFind implements Tool
                 'max_depth' => $budget->maxDepth,
             ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
             $scope = hash('sha256', (string) $this->agent->workspace_id.'|'.(string) $this->agent->id);
-            $cursor = $this->pageCursor($request);
+            $cursor = $input->cursor();
             $payload = VfsPageCursor::decode($cursor, $binding, 'find-depth-first-v1', $scope);
             $state = $this->findState($payload['state']);
             $items = [];
@@ -83,20 +89,6 @@ class VfsFind implements Tool
         }
     }
 
-    public function schema(JsonSchema $schema): array
-    {
-        return [
-            'paths' => $schema->array()->description('Directory paths to search. Defaults to /.'),
-            'name' => $schema->string()->description('fnmatch-style name filter such as *.md. Default: *.'),
-            'glob' => $schema->string()->description('Alias for name, for Code Mode callers that think in glob filters.'),
-            'type' => $schema->string()->description('Optional entry type: file or directory.'),
-            'limit' => $schema->integer()->description('Maximum entries to return. Default: 100.'),
-            'cursor' => $schema->string()->description('Opaque cursor from a previous truncated response.'),
-            'maxDepth' => $schema->integer()->description('Maximum recursion depth. Default: 3.'),
-            'maxFiles' => $schema->integer()->description('Maximum entries to scan. Default: 100.'),
-        ];
-    }
-
     /**
      * Resume a depth-first traversal without replaying earlier result offsets.
      * Directory frames retain their mount-owned listing cursor, while visited
@@ -116,7 +108,7 @@ class VfsFind implements Tool
 
                 $path = $paths[$state['root_index']];
                 $state['root_index']++;
-                $state['stack'][] = $this->findFrame($path, basename($path) === '' ? '/' : basename($path), 0);
+                $state['stack'][] = [...$this->findFrame($path, basename($path) === '' ? '/' : basename($path), 0), 'display' => $path];
             }
 
             $frameIndex = array_key_last($state['stack']);
@@ -194,12 +186,27 @@ class VfsFind implements Tool
                 }
 
                 $entry = $page->entries[0];
-                $state['stack'][] = $this->findFrame(
+                // Alias mounts (/me) duplicate canonical objects (VfsEntry::isAlias()).
+                if ($entry->isAlias()) {
+                    unset($frame);
+
+                    continue;
+                }
+                // Items report the friendly path under the requested root
+                // (parent display path + disambiguated entry name) and keep
+                // the by-id path in canonical_path; traversal and the
+                // visited set use the canonical path (docs/tools/vfs.md
+                // "Paths in search and find output").
+                $display = rtrim((string) ($frame['display'] ?? $frame['item']['path'] ?? $frame['path']), '/').'/'.$entry->name;
+                $payload = $this->entryPayload($entry);
+                $payload['canonical_path'] ??= $entry->canonicalPath ?? $entry->path;
+                $payload['path'] = $display;
+                $state['stack'][] = [...$this->findFrame(
                     $entry->canonicalPath ?? $entry->path,
                     $entry->name,
                     ((int) $frame['depth']) + 1,
-                    $this->entryPayload($entry),
-                );
+                    $payload,
+                ), 'display' => $display];
                 unset($frame);
             } catch (\Throwable) {
                 $skipped++;

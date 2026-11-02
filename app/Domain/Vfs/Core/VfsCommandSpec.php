@@ -5,19 +5,31 @@ namespace App\Domain\Vfs\Core;
 /**
  * Machine-readable command contract for the VFS shell.
  *
- * The runtime intentionally keeps command execution in focused traits, but
- * discovery, conditional preflight, docs, and tests need one canonical source
- * for command names, aliases, supported option syntax, and safety boundaries.
+ * The runtime keeps command execution in focused traits, but discovery,
+ * preflight, argv parsing (VfsArgs), docs, and tests share this one source for
+ * names, aliases, option syntax, GNU deviations, and governance class.
+ *
+ * Invariant: every flag listed here is implemented (or is in the explicit,
+ * reasoned allowlist of VfsShellFlagCoverageTest). Flags that the VFS refuses
+ * on purpose (`tail -f`, `ln -s`, `touch -d`) are NOT listed; the command
+ * rejects them with a specific reason before argv parsing instead.
+ *
+ * `actionClass` is the reversibility class the future policy engine gates on
+ * (docs/architecture/governance-model.md): read, reversible_edit, delete,
+ * structural, governance. It names the most impactful mode of the command
+ * (sed is reversible_edit because of `sed -i`); today's enforcement remains
+ * the tool-permission + approval checks in the mutation paths.
  */
 final readonly class VfsCommandSpec
 {
     /**
      * @param  list<string>  $aliases
-     * @param  list<string>  $shortFlags
-     * @param  list<string>  $valueOptions
-     * @param  list<string>  $longFlags
+     * @param  list<string>  $shortFlags  Single letters, e.g. ['l', 'a'].
+     * @param  list<string>  $valueOptions  Spelled as typed, e.g. ['-n', '--lines', '-maxdepth'].
+     * @param  list<string>  $longFlags  Boolean long options, e.g. ['--hidden'].
+     * @param  array<string, string>  $longAliases  Long spelling => canonical option, e.g. ['--ignore-case' => '-i'].
      * @param  list<string>  $examples
-     * @param  list<string>  $notes
+     * @param  list<string>  $notes  Where VFS semantics differ from GNU.
      * @param  list<string>  $unsupportedExamples
      */
     public function __construct(
@@ -41,6 +53,8 @@ final readonly class VfsCommandSpec
         public array $unsupportedExamples = [],
         public ?string $unsupportedReason = null,
         public ?string $suggestion = null,
+        public array $longAliases = [],
+        public ?string $actionClass = null,
     ) {}
 
     /**
@@ -50,6 +64,7 @@ final readonly class VfsCommandSpec
     {
         return array_filter([
             'class' => $this->class,
+            'action_class' => $this->actionClass(),
             'description' => $this->description,
             'status' => $this->status,
             'usage' => $this->usage ?? $this->defaultUsage(),
@@ -62,6 +77,7 @@ final readonly class VfsCommandSpec
             'short_flags' => $this->shortFlags === [] ? null : array_map(fn (string $flag): string => "-{$flag}", $this->shortFlags),
             'value_options' => $this->valueOptions === [] ? null : $this->valueOptions,
             'long_flags' => $this->longFlags === [] ? null : $this->longFlags,
+            'long_aliases' => $this->longAliases === [] ? null : $this->longAliases,
             'numeric_shorthand' => $this->numericShorthand ?: null,
             'examples' => $this->examples === [] ? $this->defaultExamples() : $this->examples,
             'notes' => $this->notes === [] ? null : $this->notes,
@@ -69,6 +85,35 @@ final readonly class VfsCommandSpec
             'unsupported_reason' => $this->unsupportedReason,
             'suggestion' => $this->suggestion,
         ], fn (mixed $value): bool => $value !== null && $value !== []);
+    }
+
+    /**
+     * Reversibility class for governance (see class docblock).
+     */
+    public function actionClass(): ?string
+    {
+        return $this->actionClass ?? match ($this->class) {
+            'browse', 'read', 'read-transform' => 'read',
+            'write', 'binary-archive' => 'reversible_edit',
+            'destructive' => 'delete',
+            default => null,
+        };
+    }
+
+    /**
+     * Every flag spelling the command accepts, for error contexts.
+     *
+     * @return list<string>
+     */
+    public function supportedFlagList(): array
+    {
+        return array_values(array_unique([
+            ...array_map(fn (string $flag): string => "-{$flag}", $this->shortFlags),
+            ...$this->valueOptions,
+            ...$this->longFlags,
+            ...array_keys($this->longAliases),
+            ...($this->numericShorthand ? ['-N'] : []),
+        ]));
     }
 
     public function defaultUsage(): string
@@ -80,8 +125,8 @@ final readonly class VfsCommandSpec
         return match ($this->class) {
             'browse' => "{$this->name} [options] [path]",
             'read' => "{$this->name} [options] [path ...]",
-            'read-transform' => "{$this->name} [options] [args ...]",
-            'write', 'destructive' => "{$this->name} [options] /files/path",
+            'read-transform' => "{$this->name} [options] [file ...]",
+            'write', 'destructive' => "{$this->name} [options] /files/path ...",
             'binary-archive' => "{$this->name} [options] archive paths...",
             default => "{$this->name} [options]",
         };
@@ -102,8 +147,8 @@ final readonly class VfsCommandSpec
             'browse' => 'Text stdout plus command metadata in the vfs_exec envelope.',
             'read' => 'Text stdout plus count/truncation metadata where available.',
             'read-transform' => 'Text stdout.',
-            'write' => 'Text or JSON stdout describing the mutation.',
-            'destructive' => 'Text or JSON stdout describing the deletion.',
+            'write' => 'Text stdout describing the mutation (silent on success, like GNU, unless -v).',
+            'destructive' => 'Silent on success unless -v.',
             'external' => 'Structured unsupported error.',
             default => 'Text stdout.',
         };

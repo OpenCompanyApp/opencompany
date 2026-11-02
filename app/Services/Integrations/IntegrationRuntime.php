@@ -4,6 +4,9 @@ namespace App\Services\Integrations;
 
 use App\Domain\Authorization\Application\PolicyGrantService;
 use App\Agents\Tools\ToolRegistry;
+use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
+use App\Domain\Vfs\Events\VfsOperationContext;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsPendingApproval;
 use App\Models\ApprovalRequest;
 use App\Models\Channel;
 use App\Models\User;
@@ -12,6 +15,7 @@ use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Str;
 use Laravel\Ai\Tools\Request;
 use App\Agents\Tools\External\Tool as IntegrationTool;
+use App\Domain\CodeMode\Script\ScriptBridgeException;
 use App\Domain\CodeMode\Script\ScriptDispatchException;
 
 /**
@@ -40,9 +44,22 @@ class IntegrationRuntime
      * this program; approval later executes only that callback, never retries
      * the entire Ruby source.
      *
+     * VFS tools (ReturnsVfsEnvelope) report failures inside a JSON envelope
+     * rather than by throwing. That envelope is unwrapped here: `ok:false`
+     * becomes a ScriptBridgeException whose errorType is the VFS error code,
+     * and `approval_required` (an approval created by the VFS's own composed
+     * policy) becomes the same approval-pending disposition as a gated
+     * callback, so CodeBridge latches dispatch. Neither is receipted as a
+     * successful write.
+     *
+     * $receiptContext['effect'] === 'write' upgrades a callback the registry
+     * types as a read (vfs_exec running a mutating pipeline) to a durable
+     * write receipt. It can only upgrade, never downgrade a registered write.
+     *
      * @param  array<string, mixed>  $args
      *
      * @throws ScriptDispatchException for denied or approval-pending callbacks
+     * @throws ScriptBridgeException for a VFS envelope with ok:false (errorType = VFS error code)
      * @throws \RuntimeException when an allowed tool fails or returns an unsafe value
      */
     public function call(User $agent, string $toolSlug, array $args, ?string $account = null, ?array $receiptContext = null): mixed
@@ -68,10 +85,12 @@ class IntegrationRuntime
         $receipt = null;
         $receiptService = null;
         if (($receiptContext['required'] ?? false) === true
-            // Only an explicit read can skip durable write intent. A missing
-            // or custom effect type must fail closed rather than becoming an
-            // optimistic retryable callback.
-            && $this->registry->getToolTypeBySlug($toolSlug) !== 'read') {
+            // A host classification ('write') upgrades a registered read.
+            && (($receiptContext['effect'] ?? null) === 'write'
+                // Only an explicit read can skip durable write intent. A missing
+                // or custom effect type must fail closed rather than becoming an
+                // optimistic retryable callback.
+                || $this->registry->getToolTypeBySlug($toolSlug) !== 'read')) {
             // This durable intent must happen after authorization but before the
             // first provider-facing method; it is never an idempotency promise.
             $receiptService = $this->receipts ?? new ScriptCallbackReceiptService;
@@ -101,7 +120,10 @@ class IntegrationRuntime
 
                 $normalized = $this->normalize($result->data);
             } else {
-                $raw = $tool->handle(new Request($this->snakeToCamel($args)));
+                // VFS helpers record their audit events with surface `code`.
+                $raw = $tool instanceof ReturnsVfsEnvelope
+                    ? app(VfsOperationContext::class)->runAs('code', fn () => $tool->handle(new Request($this->snakeToCamel($args))))
+                    : $tool->handle(new Request($this->snakeToCamel($args)));
 
                 if (! is_string($raw)) {
                     $normalized = $this->normalize($raw);
@@ -122,11 +144,23 @@ class IntegrationRuntime
                 }
             }
 
+            if ($tool instanceof ReturnsVfsEnvelope) {
+                $this->assertVfsEnvelopeSucceeded($toolSlug, $normalized);
+            }
+
             if ($receipt !== null) {
                 $receiptService->succeeded($receipt, $normalized);
             }
 
             return $normalized;
+        } catch (ScriptDispatchException $exception) {
+            // Only assertVfsEnvelopeSucceeded raises this inside the try: the
+            // VFS policy stopped before mutating and recorded an approval.
+            if ($receipt !== null) {
+                $receiptService->approvalPending($receipt);
+            }
+
+            throw $exception;
         } catch (\Throwable $exception) {
             // A dispatched write with no confirmed receipt is ambiguous. Keep
             // the durable record, but never convert this into an auto-retry.
@@ -136,6 +170,83 @@ class IntegrationRuntime
 
             throw $exception;
         }
+    }
+
+    /**
+     * Map a VFS `ok:false` envelope to a typed bridge failure.
+     *
+     * The VFS reports chained `vfs_exec` failures under result.error and
+     * direct failures under error; both are honored. Codes are passed through
+     * as the bridge errorType (they are stable, lowercase identifiers); an
+     * unexpected shape falls back to `tool_error`. internal_error messages may
+     * contain raw exception text, so they are replaced with a generic one.
+     *
+     * @throws ScriptDispatchException approval-pending for a pending_approval envelope or approval_required
+     * @throws ScriptBridgeException for every other ok:false
+     */
+    private function assertVfsEnvelopeSucceeded(string $toolSlug, mixed $envelope): void
+    {
+        // Invariant: the VFS reports "waiting for a human" as the non-error
+        // pending_approval envelope (ok:true). It must still latch dispatch
+        // exactly like a gated callback; VfsPendingApproval::isPending is the
+        // single definition of that shape.
+        if (($approvalId = VfsPendingApproval::isPending($envelope)) !== null) {
+            throw ScriptDispatchException::approvalPending($approvalId);
+        }
+
+        if (! is_array($envelope) || ($envelope['ok'] ?? null) !== false) {
+            return;
+        }
+
+        $error = is_array($envelope['error'] ?? null)
+            ? $envelope['error']
+            : (is_array($envelope['result']['error'] ?? null) ? $envelope['result']['error'] : []);
+        $code = is_string($error['code'] ?? null) && preg_match('/^[a-z][a-z0-9_]{0,62}$/D', $error['code']) === 1
+            ? $error['code']
+            : 'tool_error';
+        $context = is_array($error['context'] ?? null) ? $error['context'] : [];
+
+        if ($code === 'approval_required' && is_string($context['approval_id'] ?? null) && $context['approval_id'] !== '') {
+            throw ScriptDispatchException::approvalPending($context['approval_id']);
+        }
+
+        $message = $code === 'internal_error'
+            ? 'The VFS operation failed with an internal error.'
+            : Str::limit((string) ($error['message'] ?? "{$toolSlug} failed."), 600);
+        // The guest only receives (type, message), so carry the repair hints
+        // (minimum_bytes, current_version, lines, ...) in the message.
+        $repair = $code === 'internal_error' ? [] : $this->vfsRepairContext($context);
+        $suffix = $repair === [] ? '' : ' '.Str::limit((string) json_encode($repair, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), 380);
+
+        throw new ScriptBridgeException(
+            $code,
+            "{$code}: {$message}{$suffix}",
+            ['tool' => $toolSlug, 'code' => $code],
+            retryable: false,
+        );
+    }
+
+    /**
+     * Keep only scalar (or list-of-scalar) VFS error context. VFS context is
+     * agent-facing already (direct tools return it verbatim); bulky values
+     * such as captured stdout or nested objects are dropped.
+     *
+     * @param  array<array-key, mixed>  $context
+     * @return array<string, mixed>
+     */
+    private function vfsRepairContext(array $context): array
+    {
+        $repair = [];
+        foreach ($context as $key => $value) {
+            if (! is_string($key) || $key === 'stdout') {
+                continue;
+            }
+            if (is_scalar($value) || (is_array($value) && array_is_list($value) && count(array_filter($value, 'is_scalar')) === count($value))) {
+                $repair[$key] = $value;
+            }
+        }
+
+        return $repair;
     }
 
     /**

@@ -280,14 +280,16 @@ class ToolRegistry
      * Checkpointed tool events expose the runtime tool class name rather than
      * the registry slug, so runtime timelines use this helper to keep labels
      * aligned with the catalog without persisting package-owned implementation
-     * details in the UI.
+     * details in the UI. Tools that declare name() (the VFS tools expose
+     * their slug, e.g. `vfs_exec`) report that name instead, so the registry
+     * slug matches too.
      *
      * @return array{icon: string, name: string}
      */
     public function getToolMetaByClassName(string $className): array
     {
-        foreach ($this->getEffectiveToolMap() as $meta) {
-            if (class_basename($meta['class']) === $className) {
+        foreach ($this->getEffectiveToolMap() as $slug => $meta) {
+            if (class_basename($meta['class']) === $className || $slug === $className) {
                 return [
                     'icon' => $meta['icon'] ?? 'ph:wrench',
                     'name' => $meta['name'] ?? Str::headline($className),
@@ -374,7 +376,10 @@ class ToolRegistry
 
             $tool = $this->instantiateTool($meta['class'], $agent, $slug);
 
-            if ($result->decision === 'approval_required') {
+            // `selfGoverned` tools (vfs_edit) route every mutation through
+            // VfsMutationPolicy, which already requests one approval for all
+            // gated permissions; a wrapper approval would duplicate it.
+            if ($result->decision === 'approval_required' && empty($meta['selfGoverned'])) {
                 $tool = new ApprovalWrappedTool($tool, $agent, $slug, $meta);
             } elseif (app(PolicyGrantService::class)->coversOnlyOnce($agent, $slug)) {
                 // A single-use grant is what lets this tool run: consume it on
@@ -442,7 +447,10 @@ class ToolRegistry
             $isIntegration = in_array($app, $this->getEffectiveIntegrationApps());
             $integrationEnabled = ! $isIntegration || in_array($app, $enabledIntegrations);
 
-            if (! empty($meta['scriptOnly'])) {
+            // Tools without a toggle of their own (script-only helpers and
+            // tools that borrow another slug's permission) are governed by
+            // the primitive the UI already lists.
+            if (! empty($meta['scriptOnly']) || ! empty($meta['permissionAs'])) {
                 continue;
             }
 
@@ -724,7 +732,11 @@ class ToolRegistry
         // In particular, a permission revoked after Code Mode rendered docs
         // must prevent provider construction and all external effects.
         $permission = $this->evaluateToolPermission($agent, $slug, $meta);
-        if ($permission->decision !== 'allow') {
+        // `selfGoverned` tools request their own (single, replayable) approval
+        // inside VfsMutationPolicy; a callback-level approval would duplicate
+        // it. Denials still stop here.
+        $selfGoverned = $permission->decision === 'approval_required' && ! empty($meta['selfGoverned']);
+        if ($permission->decision !== 'allow' && ! $selfGoverned) {
             return ['decision' => $permission->decision, 'reason' => $permission->reason];
         }
 
@@ -757,6 +769,7 @@ class ToolRegistry
             // Check which tools in this app the agent has access to
             $hasApproval = false;
             $hasAllowed = false;
+            $allowedNames = [];
 
             foreach ($group['tools'] as $slug) {
                 if (! isset($this->getEffectiveToolMap()[$slug])) {
@@ -768,6 +781,7 @@ class ToolRegistry
                 $result = $this->evaluateToolPermission($agent, $slug, $this->getEffectiveToolMap()[$slug]);
                 if ($result->decision !== 'deny') {
                     $hasAllowed = true;
+                    $allowedNames[] = str_starts_with($slug, $appName.'_') ? substr($slug, strlen($appName) + 1) : $slug;
                     if ($result->decision === 'approval_required') {
                         $hasApproval = true;
                     }
@@ -778,8 +792,12 @@ class ToolRegistry
                 continue;
             }
 
+            // The VFS line names the tools this agent actually has (a denied
+            // vfs_write must not still read "write"); other groups keep their
+            // static label.
+            $label = $appName === 'vfs' ? implode(', ', $allowedNames) : $group['label'];
             $approval = $hasApproval ? ' *' : '';
-            $lines[] = "{$appName}: {$group['label']} — {$group['description']}{$approval}";
+            $lines[] = "{$appName}: {$label} — {$group['description']}{$approval}";
         }
 
         // Section 2: Code Mode API (everything else, accessible via code_exec)
@@ -855,11 +873,13 @@ class ToolRegistry
      */
     private function evaluateToolPermission(User $agent, string $slug, array $meta): PermissionDecision
     {
-        // Invariant: script-only VFS helpers are conveniences over the
-        // primitives. Permission toggles live on the primitives humans see in
-        // the capabilities UI, never on hidden helper slugs.
-        if (! empty($meta['scriptOnly']) && str_starts_with($slug, 'vfs_')) {
-            $slug = ($meta['type'] ?? 'read') === 'write' ? 'vfs_write' : 'vfs_exec';
+        // Invariant: a tool that borrows another slug's permission
+        // (`permissionAs`, e.g. vfs_read -> vfs_exec, vfs_edit -> vfs_patch,
+        // script-only VFS writes -> vfs_write) is evaluated exactly as that
+        // slug. Permission toggles live on the primitives humans see in the
+        // capabilities UI, never on borrowed or hidden helper slugs.
+        if (is_string($meta['permissionAs'] ?? null) && $meta['permissionAs'] !== $slug) {
+            $slug = $meta['permissionAs'];
             $meta = $this->getEffectiveToolMap()[$slug] ?? $meta;
         }
 

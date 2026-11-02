@@ -3,81 +3,59 @@
 namespace App\Domain\Vfs\Core\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
-use App\Domain\Vfs\Core\VfsText;
+use App\Domain\Vfs\Core\VfsPrintf;
 
 /**
- * Output-only shell builtins and tiny line transforms for VFS pipelines.
+ * Output builtins: echo and printf.
+ *
+ * printf uses bash semantics via VfsPrintf: extra arguments re-use the format,
+ * missing ones print as empty/0, and it never fails on argument count (PHP's
+ * sprintf used to throw ArgumentCountError here).
  */
 trait ExecutesVfsOutputTransforms
 {
-    private function lineTransform(?string $stdin, callable $transform): array
-    {
-        $lines = VfsText::lines($stdin ?? '');
-
-        return ['stdout' => implode("\n", $transform($lines)), 'class' => 'read-transform'];
-    }
-
-    private function echo(array $tokens): array
+    /**
+     * @param  list<string>  $words
+     * @return array<string, mixed>
+     */
+    private function echo(array $words): array
     {
         $newline = true;
-        $interpretEscapes = false;
-        while (isset($tokens[0]) && in_array($tokens[0], ['-n', '-e', '-ne', '-en'], true)) {
-            $newline = $newline && ! str_contains($tokens[0], 'n');
-            $interpretEscapes = $interpretEscapes || str_contains($tokens[0], 'e');
-            array_shift($tokens);
+        $escapes = false;
+        // Only leading words made purely of n/e/E letters are options (bash).
+        while (isset($words[0]) && ! ($this->argLiteral[0] ?? false) && preg_match('/^-[neE]+$/', $words[0]) === 1) {
+            $flags = substr(array_shift($words), 1);
+            array_shift($this->argLiteral);
+            $newline = $newline && ! str_contains($flags, 'n');
+            if (str_contains($flags, 'e')) {
+                $escapes = true;
+            }
+            if (str_contains($flags, 'E')) {
+                $escapes = false;
+            }
         }
-        $stdout = implode(' ', $tokens);
-        if ($interpretEscapes) {
-            $stdout = stripcslashes($stdout);
+        $stdout = implode(' ', $words);
+        if ($escapes) {
+            // bash: `\c` ends the output, including the trailing newline.
+            $stopped = false;
+            $stdout = VfsPrintf::escapes($stdout, true, $stopped);
+            $newline = $newline && ! $stopped;
         }
 
         return ['stdout' => $stdout.($newline ? "\n" : ''), 'class' => 'read-transform'];
     }
 
-    private function printf(array $tokens): array
+    /**
+     * @param  list<string>  $words
+     * @return array<string, mixed>
+     */
+    private function printf(array $words): array
     {
-        $format = array_shift($tokens);
+        $format = array_shift($words);
         if ($format === null) {
-            return ['stdout' => '', 'class' => 'read-transform'];
+            throw VfsError::invalid('printf requires a format string.', ['hint' => 'printf "%s\n" value']);
         }
 
-        $format = stripcslashes($format);
-        try {
-            $arity = preg_match_all('/(?<!%)%(?:\d+\$)?[-+ 0#]*(?:\*|\d+)?(?:\.(?:\*|\d+))?[bcdeEfFgGosuxX]/', $format);
-            if ($tokens === [] || $arity < 1) {
-                $stdout = $format;
-            } else {
-                $stdout = '';
-                foreach (array_chunk($tokens, $arity) as $chunk) {
-                    $stdout .= sprintf($format, ...$chunk);
-                }
-            }
-        } catch (\ValueError) {
-            throw VfsError::invalid('printf format does not match provided arguments.');
-        }
-
-        return ['stdout' => $stdout, 'class' => 'read-transform'];
-    }
-
-    private function nl(array $tokens, ?string $stdin): array
-    {
-        $this->assertSupportedOptionsForCommand($tokens, 'nl');
-        $start = (int) ($this->optionValue($tokens, ['-v']) ?? 1);
-        $increment = max(1, (int) ($this->optionValue($tokens, ['-i']) ?? 1));
-        $width = max(1, (int) ($this->optionValue($tokens, ['-w']) ?? 6));
-        $separator = $this->optionValue($tokens, ['-s']) ?? "\t";
-        $lines = [];
-        $number = $start;
-        foreach (VfsText::lines($stdin ?? '') as $index => $line) {
-            $lines[] = str_pad((string) $number, $width, ' ', STR_PAD_LEFT).$separator.$line;
-            $number += $increment;
-        }
-
-        return ['stdout' => implode("\n", $lines), 'class' => 'read-transform'];
-    }
-
-    private function rev(?string $stdin): array
-    {
-        return $this->lineTransform($stdin, fn (array $lines): array => array_map('strrev', $lines));
+        return ['stdout' => VfsPrintf::shell($format, $words), 'class' => 'read-transform'];
     }
 }
