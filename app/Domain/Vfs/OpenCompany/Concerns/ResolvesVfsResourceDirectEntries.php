@@ -5,8 +5,6 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Models\ApprovalRequest;
-use App\Models\DataTable;
-use App\Models\DataTableRow;
 use App\Models\ListItem;
 use App\Models\Task;
 use App\Models\User;
@@ -105,73 +103,84 @@ trait ResolvesVfsResourceDirectEntries
     }
 
     /**
+     * Direct stat entry for /tables paths (friendly or by-id). Returns null
+     * when the path does not name an entry so stat can fall back; ambiguous
+     * friendly names still throw ambiguous_match.
+     *
      * @param  list<string>  $segments
      */
     private function directTableEntry(User $agent, array $segments, string $path): ?VfsEntry
     {
-        if (! isset($segments[1])) {
+        if (! isset($segments[1]) || ($segments[1] === 'by-id' && ! isset($segments[2]))) {
             return null;
         }
 
-        $table = DataTable::forWorkspace()->lazy(100)->first(fn (DataTable $candidate): bool => $this->slug($candidate->name) === $segments[1]);
-        if (! $table) {
-            return null;
-        }
+        try {
+            ['table' => $table, 'rest' => $rest, 'base' => $base] = $this->resolveTableSegments($segments, $path);
+        } catch (VfsError $e) {
+            if ($e->errorCode === 'not_found') {
+                return null;
+            }
 
-        if (! isset($segments[2])) {
+            throw $e;
+        }
+        $canonical = "/tables/by-id/{$table->id}";
+
+        if ($rest === []) {
             return new VfsEntry(
-                $this->slug($table->name),
+                $segments[1] === 'by-id' ? (string) $table->id : $this->tableToken($table),
                 $path,
                 'directory',
-                "/tables/{$this->slug($table->name)}",
+                $canonical,
                 'data_table',
                 $table->id,
                 capabilities: ['browse', 'read', 'search'],
-                metadata: ['name' => $table->name],
+                metadata: ['name' => $table->name, 'description' => $table->description],
             );
         }
 
-        if ($segments[2] === 'rows') {
-            if (! isset($segments[3])) {
-                return new VfsEntry('rows', $path, 'directory', "/tables/{$this->slug($table->name)}/rows", 'data_table', $table->id, capabilities: ['browse', 'read', 'search']);
-            }
+        $directories = [
+            'rows' => ['browse', 'read', 'search'],
+            'rows/by-id' => ['browse', 'read', 'search'],
+            'rows/.trash' => ['browse', 'read'],
+            'views' => ['browse', 'read'],
+        ];
+        $joined = implode('/', $rest);
+        if (isset($directories[$joined])) {
+            return new VfsEntry(basename($joined), $path, 'directory', "{$canonical}/{$joined}", 'data_table', $table->id, capabilities: $directories[$joined]);
+        }
 
-            if ($segments[3] === 'by-id' && ! isset($segments[4])) {
-                return new VfsEntry('by-id', $path, 'directory', "/tables/{$this->slug($table->name)}/rows/by-id", 'data_table', $table->id, capabilities: ['browse', 'read', 'search']);
-            }
-
-            if ($segments[3] === 'by-id' && isset($segments[4]) && ! isset($segments[5])) {
-                $rowId = Str::before($segments[4], '.json');
-                $row = DataTableRow::where('table_id', $table->id)->find($rowId);
-
-                return $row ? $this->tableRowEntry($agent, $table, $row) : null;
+        if (count($rest) === 1) {
+            foreach ($this->tableDirectoryEntries($table, $base) as $entry) {
+                if ($entry->name === $rest[0] && $entry->type === 'file') {
+                    return new VfsEntry($entry->name, $path, 'file', $entry->canonicalPath, $entry->backendType, $entry->backendId, capabilities: $entry->capabilities, metadata: $entry->metadata);
+                }
             }
 
             return null;
         }
 
-        if (isset($segments[3]) || ! in_array($segments[2], ['schema.json', 'rows.ndjson', 'views'], true)) {
-            return null;
+        if ($rest[0] === 'rows') {
+            if (($rest[1] ?? null) === '.trash' && count($rest) === 3) {
+                try {
+                    $row = $this->resolveTrashedTableRow($table, $rest[2], $path);
+                } catch (VfsError) {
+                    return null;
+                }
+
+                return new VfsEntry("{$row->id}.json", $path, 'file', "{$canonical}/rows/.trash/{$row->id}.json", 'data_table_row', $row->id, capabilities: ['read'], metadata: ['trashed' => true]);
+            }
+
+            try {
+                $row = $this->resolveTableRowFromRest($table, $rest, $path, $base);
+            } catch (VfsError) {
+                return null;
+            }
+
+            return $this->tableRowEntry($agent, $table, $row, $path);
         }
 
-        if ($segments[2] === 'views') {
-            return new VfsEntry('views', $path, 'directory', backendType: 'data_table', backendId: $table->id, capabilities: ['browse', 'read']);
-        }
-
-        return new VfsEntry(
-            $segments[2],
-            $path,
-            'file',
-            backendType: 'data_table',
-            backendId: $table->id,
-            capabilities: $segments[2] === 'rows.ndjson' ? ['read', 'search'] : ['read'],
-            metadata: $segments[2] === 'rows.ndjson'
-                ? [
-                    'paged_collection' => true,
-                    ...$this->readOnlyMetadata('rows.ndjson is a bulk export and cannot be patched safely.', 'vfs_patch', 'Use vfs_read with next_cursor to continue; patch individual rows under rows/by-id.'),
-                ]
-                : $this->readOnlyMetadata('Table schema is a generated snapshot.', 'table column tools', 'Use table column tools to change schema; use rows/by-id for row edits.'),
-        );
+        return null;
     }
 
     /**

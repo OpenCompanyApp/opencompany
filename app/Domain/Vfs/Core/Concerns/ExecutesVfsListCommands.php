@@ -144,7 +144,12 @@ trait ExecutesVfsListCommands
         $capabilities = implode(',', $entry->capabilities);
         $version = $entry->version ?? '-';
 
-        return sprintf('%s %-24s %-36s %s', $type, $capabilities, $version, $name);
+        $line = sprintf('%s %-24s %-36s %s', $type, $capabilities, $version, $name);
+        // Entries that carry a one-line description (root mounts, /me) show it
+        // after the name so `ls -l /` doubles as a mount map.
+        $description = $entry->metadata['description'] ?? null;
+
+        return is_string($description) && $description !== '' ? "{$line}  # {$description}" : $line;
     }
 
     private function sortLsEntries(array &$entries, array $flags): void

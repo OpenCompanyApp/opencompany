@@ -9,6 +9,7 @@ use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsPage;
 use App\Domain\Vfs\Core\VfsPageCursor;
 use App\Domain\Vfs\Core\VfsReadPage;
+use App\Domain\Vfs\Core\VfsText;
 use App\Domain\Vfs\OpenCompany\Concerns\AuthorizesVfsDocuments;
 use App\Domain\Vfs\OpenCompany\Concerns\BuildsVfsReadOnlyMetadata;
 use App\Domain\Vfs\OpenCompany\Concerns\BuildsVfsToolCatalogIndex;
@@ -19,6 +20,7 @@ use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsAutomations;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsCollaboration;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsDocuments;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsFiles;
+use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsMe;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsLists;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsTasks;
 use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsTools;
@@ -26,10 +28,13 @@ use App\Domain\Vfs\OpenCompany\Concerns\MountsVfsWorkspace;
 use App\Domain\Vfs\OpenCompany\Concerns\MutatesVfsContent;
 use App\Domain\Vfs\OpenCompany\Concerns\MutatesVfsOpenCompanyModels;
 use App\Domain\Vfs\OpenCompany\Concerns\PaginatesVfsMountQueries;
+use App\Domain\Vfs\OpenCompany\Concerns\RecordsVfsHistory;
+use App\Domain\Vfs\OpenCompany\Concerns\RemembersVfsIdempotency;
 use App\Domain\Vfs\OpenCompany\Concerns\ResolvesVfsDirectEntries;
 use App\Domain\Vfs\OpenCompany\Concerns\ResolvesVfsDocumentFileEntries;
 use App\Domain\Vfs\OpenCompany\Concerns\ResolvesVfsDocuments;
 use App\Domain\Vfs\OpenCompany\Concerns\ResolvesVfsEntries;
+use App\Domain\Vfs\OpenCompany\Concerns\ResolvesVfsFriendlyNames;
 use App\Domain\Vfs\OpenCompany\Concerns\ResolvesVfsPaths;
 use App\Domain\Vfs\OpenCompany\Concerns\ResolvesVfsResourceDirectEntries;
 use App\Domain\Vfs\OpenCompany\Concerns\RunsVfsFileMutations;
@@ -56,6 +61,12 @@ use App\Services\FileSystemService;
  * Read modes: read()/readPage() are display reads (budgeted, may end with the
  * visible truncation line). readContent() is the content read used by every
  * read-modify-write path; it never truncates. See VfsBudget.
+ *
+ * Path routing: every public entry point routes its path through routePath()
+ * (normalize, then rewrite `/me/…` onto the acting agent's backing paths), so
+ * aliases inherit the backing mount's checks. `<object>/.history/` views are
+ * dispatched before the mounts (RecordsVfsHistory); `<mount>/.trash/` views
+ * are served by their mounts. `/README.md` is the root orientation file.
  */
 class OpenCompanyVfs
 {
@@ -70,16 +81,20 @@ class OpenCompanyVfs
     use MountsVfsDocuments;
     use MountsVfsFiles;
     use MountsVfsLists;
+    use MountsVfsMe;
     use MountsVfsTasks;
     use MountsVfsTools;
     use MountsVfsWorkspace;
     use MutatesVfsContent;
     use MutatesVfsOpenCompanyModels;
     use PaginatesVfsMountQueries;
+    use RecordsVfsHistory;
+    use RemembersVfsIdempotency;
     use ResolvesVfsDirectEntries;
     use ResolvesVfsDocumentFileEntries;
     use ResolvesVfsDocuments;
     use ResolvesVfsEntries;
+    use ResolvesVfsFriendlyNames;
     use ResolvesVfsPaths;
     use ResolvesVfsResourceDirectEntries;
     use RunsVfsFileMutations;
@@ -118,20 +133,41 @@ class OpenCompanyVfs
     }
 
     /**
+     * Normalize a caller path and resolve the `/me` alias onto its backing
+     * path. Invariant: every public entry point uses this, never
+     * normalizePath() alone, so `/me/…` cannot skip a backing mount's checks.
+     */
+    private function routePath(User $agent, string $path): string
+    {
+        // Friendly-name memo is per operation: a mutation earlier in the same
+        // process may have renamed or added siblings.
+        $this->friendlyTokenCache = [];
+
+        return $this->rewriteMePath($agent, $this->normalizePath($path));
+    }
+
+    /**
      * @return list<VfsEntry>
      */
     public function list(User $agent, string $path, ?VfsBudget $budget = null): array
     {
         $this->assertBoundWorkspace($agent);
         $budget ??= new VfsBudget;
-        $path = $this->normalizePath($path);
+        $path = $this->routePath($agent, $path);
         $segments = $this->segments($path);
 
         if ($segments === []) {
             return array_slice($this->rootEntries(), 0, $budget->maxEntries);
         }
+        if ($this->isHistoryPath($segments)) {
+            return $this->listHistory($agent, $segments, $path, $budget);
+        }
+        if ($segments === ['README.md']) {
+            throw VfsError::notReadable($path);
+        }
 
         $entries = match ($segments[0]) {
+            'me' => $this->listMe($agent, $segments, $path, $budget),
             'docs' => $this->listDocs($agent, $segments, $path, $budget),
             'files' => $this->listFiles($agent, $segments, $path, $budget),
             'agents' => $this->listAgents($agent, $segments, $path, $budget),
@@ -163,9 +199,9 @@ class OpenCompanyVfs
     ): VfsPage {
         $this->assertBoundWorkspace($agent);
         $budget ??= new VfsBudget;
-        $path = $this->normalizePath($path);
+        $path = $this->routePath($agent, $path);
         $segments = $this->segments($path);
-        $adapter = match ($segments[0] ?? null) {
+        $adapter = $this->isHistoryPath($segments) ? 'compatibility-offset-v1' : match ($segments[0] ?? null) {
             'docs' => 'documents-keyset-v1',
             'files' => 'workspace-files-keyset-v1',
             'tasks' => 'tasks-paged-v1',
@@ -303,7 +339,7 @@ class OpenCompanyVfs
     ): VfsReadPage {
         $this->assertBoundWorkspace($agent);
         $budget ??= new VfsBudget;
-        $path = $this->normalizePath($path);
+        $path = $this->routePath($agent, $path);
         $segments = $this->segments($path);
         $adapter = $this->readPageAdapter($segments);
         $payload = VfsPageCursor::decode($cursor, $path, $adapter, $this->paginationScope($agent));
@@ -352,7 +388,7 @@ class OpenCompanyVfs
         if (($segments[0] ?? null) === 'channels' && in_array('messages', $segments, true) && preg_match('/^\d{4}-\d{2}-\d{2}\.md$/', end($segments) ?: '') === 1) {
             return 'channel-transcript-keyset-v1';
         }
-        if (($segments[0] ?? null) === 'tables' && ($segments[2] ?? null) === 'rows.ndjson' && ! isset($segments[3])) {
+        if (! $this->isHistoryPath($segments) && $this->isTableRowsExportPath($segments)) {
             return 'table-rows-export-keyset-v1';
         }
         if ($segments === ['workspace', 'members.json']) {
@@ -379,14 +415,23 @@ class OpenCompanyVfs
     {
         $this->assertBoundWorkspace($agent);
         $budget ??= new VfsBudget;
-        $path = $this->normalizePath($path);
+        $path = $this->routePath($agent, $path);
         $segments = $this->segments($path);
 
         if ($segments === []) {
             return $this->entriesToText($this->rootEntries());
         }
+        if ($segments === ['README.md']) {
+            $budget->recordCanonicalPath('/README.md');
+
+            return VfsText::fit($this->rootReadme(), $budget, $path);
+        }
+        if ($this->isHistoryPath($segments)) {
+            return $this->readHistory($agent, $segments, $path, $budget);
+        }
 
         return match ($segments[0]) {
+            'me' => $this->readMe($agent, $segments, $path, $budget),
             'docs' => $this->readDocs($agent, $segments, $path, $budget),
             'files' => $this->readFiles($agent, $segments, $path, $budget),
             'agents' => $this->readAgents($agent, $segments, $path, $budget),
@@ -427,7 +472,10 @@ class OpenCompanyVfs
      * Content read that also returns the version token computed from the same
      * bytes (null for generated paths without a version).
      *
-     * @return array{content: string, version: string|null}
+     * `canonical_path` is the by-id path of the object served, when the
+     * mount knows it (Stream C1 addition; additive to the Phase 1 shape).
+     *
+     * @return array{content: string, version: string|null, canonical_path: string|null}
      *
      * @throws VfsError
      */
@@ -436,6 +484,6 @@ class OpenCompanyVfs
         $budget = VfsBudget::forContent((int) config('vfs.max_content_bytes', 20 * 1024 * 1024));
         $content = $this->read($agent, $path, $budget);
 
-        return ['content' => $content, 'version' => $budget->lastReadVersion()];
+        return ['content' => $content, 'version' => $budget->lastReadVersion(), 'canonical_path' => $budget->lastCanonicalPath()];
     }
 }

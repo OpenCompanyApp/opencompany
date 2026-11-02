@@ -174,7 +174,7 @@ trait EvaluatesVfsMutationPolicy
      */
     private function agentDocumentPatchTools(User $viewer, User $target, Document $doc, string $path, array $remaining): ?array
     {
-        if ($doc->is_folder || ! isset($remaining[1])) {
+        if ($doc->is_folder || (! isset($remaining[1]) && $remaining !== ['todo.md'])) {
             return null;
         }
 
@@ -184,6 +184,12 @@ trait EvaluatesVfsMutationPolicy
             }
 
             return ['vfs_patch', 'update_agent_identity_file'];
+        }
+
+        // Agent working state: notes/ and todo.md have exactly one writer,
+        // the agent itself. Managers and reports may read, never write.
+        if ($remaining[0] === 'notes' || $remaining === ['todo.md']) {
+            return $viewer->id === $target->id ? ['vfs_patch'] : null;
         }
 
         if ($remaining[0] === 'memory') {

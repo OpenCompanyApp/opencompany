@@ -336,7 +336,7 @@ class FileSystemService
         if ($file->is_folder) {
             // Delete metadata and storage recursively so folders cannot leave
             // unreachable physical files behind.
-            foreach ($file->children as $child) {
+            foreach ($file->children()->withTrashed()->get() as $child) {
                 $this->deleteFile($child);
             }
         } else {
@@ -345,7 +345,10 @@ class FileSystemService
             }
         }
 
-        return $file->delete();
+        // The bytes are gone, so this is a purge, not a trash move: a soft
+        // deleted row without bytes could never be restored. Trash (soft
+        // delete, bytes kept) is the VFS `rm` path.
+        return (bool) $file->forceDelete();
     }
 
     /**

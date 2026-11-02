@@ -4,26 +4,63 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
 use App\Models\User;
+use App\Models\WorkspaceFile;
+use Illuminate\Support\Facades\DB;
 
 /**
- * Public VFS file mutation operations exposed by the OpenCompany adapter.
+ * Public structural VFS operations: mkdir, touch, rm, cp, mv, truncate.
  *
- * These stay separate from the private file mutation helpers so the facade can
- * remain a small router while permission-sensitive file command behavior has a
- * clear owner.
+ * Routing: these operations started as /files-only helpers and now dispatch
+ * per mount so a VFS-only agent can manage records with the same verbs:
+ *
+ *   rm     /files (trash), /docs (trash), /tables/…/rows (trash),
+ *          /lists items (trash), /agents/{self}/notes and todo.md (trash)
+ *   mv     /files (move/rename, restore from /files/.trash/), /docs
+ *          (move/rename, restore from /docs/.trash/), trashed rows and list
+ *          items (restore)
+ *   mkdir  /files, /docs
+ *
+ * Delete means trash: nothing here hard-deletes. Purge is a retention concern
+ * outside the VFS.
+ *
+ * Governance: the vfs_write primitive for these verbs is enforced by the
+ * calling surface (VfsCommandExecutor composes vfs_exec + vfs_write; script
+ * tools vfs_rm/vfs_mv/vfs_mkdir are evaluated as vfs_write by ToolRegistry).
+ * Record operations additionally compose their domain tool here
+ * (delete_document, delete_file, delete_table_row, …) via the mutation
+ * policy, so an rm is never less governed than the equivalent domain tool.
+ * Every public method accepts the optional `idempotency_key` through
+ * $toolParameters.
  */
 trait RunsVfsFileMutations
 {
     /**
+     * @param  array<string, mixed>|null  $toolParameters
      * @return array<string, mixed>
      */
-    public function makeDirectory(User $agent, string $path): array
+    public function makeDirectory(User $agent, string $path, ?array $toolParameters = null): array
     {
         $this->assertBoundWorkspace($agent);
-        $path = $this->normalizePath($path);
+        $path = $this->routePath($agent, $path);
+        $toolParameters ??= ['path' => $path];
+
+        return $this->withIdempotency($agent, $toolParameters, 'mkdir', $path, function () use ($agent, $path, $toolParameters): array {
+            if (($this->segments($path)[0] ?? null) === 'docs') {
+                return $this->makeDocumentFolderPath($agent, $path, $toolParameters);
+            }
+
+            return $this->makeFilesDirectory($agent, $path);
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function makeFilesDirectory(User $agent, string $path): array
+    {
         $relative = $this->filesRelativePath($agent, $path);
         if ($relative === '') {
-            throw VfsError::invalid('mkdir requires a path under /files.');
+            throw VfsError::invalid('mkdir requires a path under /files or /docs.');
         }
 
         $existing = $this->files->resolveVirtualPath('/'.$relative, $agent->workspace_id);
@@ -58,7 +95,7 @@ trait RunsVfsFileMutations
     public function touch(User $agent, string $path): array
     {
         $this->assertBoundWorkspace($agent);
-        $path = $this->normalizePath($path);
+        $path = $this->routePath($agent, $path);
         $relative = $this->filesRelativePath($agent, $path);
         $file = $this->files->resolveVirtualPath('/'.$relative, $agent->workspace_id);
 
@@ -79,20 +116,87 @@ trait RunsVfsFileMutations
     }
 
     /**
+     * Move one object to the trash (never a hard delete).
+     *
+     * @param  array<string, mixed>|null  $toolParameters
      * @return array<string, mixed>
      */
-    public function remove(User $agent, string $path): array
+    public function remove(User $agent, string $path, ?array $toolParameters = null): array
     {
         $this->assertBoundWorkspace($agent);
-        $path = $this->normalizePath($path);
+        $path = $this->routePath($agent, $path);
+        $toolParameters ??= ['path' => $path];
+        $segments = $this->segments($path);
+
+        if (in_array('.trash', $segments, true) || in_array('.history', $segments, true)) {
+            throw VfsError::invalid('Trash and history entries cannot be removed through the VFS (purging is not a VFS operation).', ['path' => $path]);
+        }
+
+        return $this->withIdempotency($agent, $toolParameters, 'rm', $path, fn (): array => match ($segments[0] ?? null) {
+            'files' => $this->trashWorkspaceFilePath($agent, $path, $toolParameters),
+            'docs' => $this->trashDocumentPath($agent, $segments, $path, $toolParameters),
+            'tables' => $this->trashTableRowPath($agent, $segments, $path, $toolParameters),
+            'lists' => $this->trashListItemPath($agent, $segments, $path, $toolParameters),
+            'agents' => $this->trashAgentAreaPath($agent, $segments, $path),
+            default => throw VfsError::notWritable($path),
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $toolParameters
+     * @return array<string, mixed>
+     */
+    private function trashWorkspaceFilePath(User $agent, string $path, array $toolParameters): array
+    {
         $file = $this->resolveFileOnlyPath($agent, $path);
         if (! $this->permissions->canAccessFilePath($agent, $file)) {
             throw VfsError::permissionDenied($path, 'file folder scope');
         }
 
-        $this->files->deleteFile($file);
+        $this->mutationPolicy->assertAllowedOrRequestApproval(
+            agent: $agent,
+            directToolSlug: 'vfs_rm',
+            operation: 'delete',
+            subject: $path,
+            requiredTools: ['delete_file'],
+            parameters: $toolParameters,
+            channelId: $this->channelIdFrom($toolParameters),
+            hint: 'Moving a file to the trash requires delete_file.',
+            preview: ['kind' => $file->is_folder ? 'folder' : 'workspace_file', 'action_class' => 'delete', 'name' => $file->name, 'id' => $file->id],
+        );
 
-        return ['status' => 'deleted', 'path' => $path];
+        $count = DB::transaction(function () use ($agent, $file, $path): int {
+            $locked = WorkspaceFile::forWorkspace()->whereKey($file->id)->lockForUpdate()->first() ?? throw VfsError::notFound($path);
+            $ids = [$locked->id];
+            $frontier = [$locked->id];
+            for ($depth = 0; $frontier !== [] && $depth < 50; $depth++) {
+                $children = WorkspaceFile::forWorkspace()->whereIn('parent_id', $frontier)->pluck('id')->map(fn ($id): string => (string) $id)->all();
+                array_push($ids, ...$children);
+                $frontier = $children;
+            }
+
+            // Free the (workspace, parent, name) slot for new files while
+            // keeping the original name and place for restore. Children keep
+            // their names: their parent row is what moved out of the way.
+            $metadata = is_array($locked->metadata) ? $locked->metadata : [];
+            $metadata['trash'] = ['original_name' => $locked->name, 'original_parent_id' => $locked->parent_id];
+            $stamp = now();
+            WorkspaceFile::withTrashed()->whereKey($locked->id)->toBase()->update([
+                'name' => $locked->name.'.trashed-'.$this->idSuffix($locked->id),
+                'metadata' => json_encode($metadata, JSON_UNESCAPED_SLASHES),
+            ]);
+            WorkspaceFile::withTrashed()->whereKey($ids)->toBase()->update(['deleted_at' => $stamp, 'deleted_by' => $agent->id]);
+
+            return count($ids);
+        });
+
+        return [
+            'status' => 'trashed',
+            'path' => $path,
+            'canonical_path' => "/files/.trash/{$file->id}",
+            'trashed' => $count,
+            'restore_hint' => "mv /files/.trash/{$file->id} <destination> restores it.",
+        ];
     }
 
     /**
@@ -101,8 +205,11 @@ trait RunsVfsFileMutations
     public function copy(User $agent, string $source, string $destination): array
     {
         $this->assertBoundWorkspace($agent);
-        $source = $this->normalizePath($source);
-        $destination = $this->normalizePath($destination);
+        $source = $this->routePath($agent, $source);
+        $destination = $this->routePath($agent, $destination);
+        if (($this->segments($source)[0] ?? null) !== 'files' || ($this->segments($destination)[0] ?? null) !== 'files') {
+            throw VfsError::unsupported('cp copies workspace files under /files. For records, read the source and vfs_write a new one.', ['source' => $source, 'destination' => $destination]);
+        }
         $file = $this->resolveFileOnlyPath($agent, $source);
         if ($file->is_folder) {
             throw VfsError::unsupported('cp currently supports files, not folders.', ['path' => $source]);
@@ -126,13 +233,39 @@ trait RunsVfsFileMutations
     }
 
     /**
+     * Move/rename, or restore from a mount's `.trash/` view.
+     *
+     * @param  array<string, mixed>|null  $toolParameters
      * @return array<string, mixed>
      */
-    public function move(User $agent, string $source, string $destination): array
+    public function move(User $agent, string $source, string $destination, ?array $toolParameters = null): array
     {
         $this->assertBoundWorkspace($agent);
-        $source = $this->normalizePath($source);
-        $destination = $this->normalizePath($destination);
+        $source = $this->routePath($agent, $source);
+        $destination = $this->routePath($agent, $destination);
+        $toolParameters ??= ['source' => $source, 'destination' => $destination];
+        $segments = $this->segments($source);
+        $root = $segments[0] ?? null;
+
+        if ($root !== ($this->segments($destination)[0] ?? null)) {
+            throw VfsError::unsupported('mv works within one mount; read the source and vfs_write it elsewhere instead.', ['source' => $source, 'destination' => $destination]);
+        }
+
+        return $this->withIdempotency($agent, $toolParameters, 'mv', "{$source} -> {$destination}", fn (): array => match (true) {
+            $root === 'files' && ($segments[1] ?? null) === '.trash' => $this->restoreWorkspaceFilePath($agent, $source, $destination, $toolParameters),
+            $root === 'files' => $this->moveWorkspaceFilePath($agent, $source, $destination),
+            $root === 'docs' => $this->moveDocumentPath($agent, $source, $destination, $toolParameters),
+            $root === 'tables' => $this->restoreTableRowPath($agent, $source, $destination, $toolParameters),
+            $root === 'lists' => $this->restoreListItemPath($agent, $source, $destination, $toolParameters),
+            default => throw VfsError::notWritable($source),
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function moveWorkspaceFilePath(User $agent, string $source, string $destination): array
+    {
         $file = $this->resolveFileOnlyPath($agent, $source);
         if (! $this->permissions->canAccessFilePath($agent, $file)) {
             throw VfsError::permissionDenied($source, 'file folder scope');
@@ -157,6 +290,105 @@ trait RunsVfsFileMutations
             'path' => '/files'.$moved->getVirtualPath(),
             'canonical_path' => "/files/by-id/{$moved->id}",
         ];
+    }
+
+    /**
+     * Restore a trashed file or folder (and the subtree trashed with it) to
+     * the destination, using the cp/mv destination rules (an existing folder
+     * means "into it, keep the original name").
+     *
+     * @param  array<string, mixed>  $toolParameters
+     * @return array<string, mixed>
+     */
+    private function restoreWorkspaceFilePath(User $agent, string $source, string $destination, array $toolParameters): array
+    {
+        $file = $this->resolveTrashedWorkspaceFile($agent, $source);
+        $originalName = (string) ($file->metadata['trash']['original_name'] ?? $file->name);
+        $probe = (clone $file)->forceFill(['name' => $originalName]);
+        [$parentId, $name, $existing] = $this->resolveDestinationFolder($agent, $probe, $destination);
+        if ($existing) {
+            throw VfsError::invalid("Path already exists: {$destination}", [
+                'path' => $destination,
+                'hint' => 'Restore into another folder or under a new name.',
+            ]);
+        }
+
+        $this->mutationPolicy->assertAllowedOrRequestApproval(
+            agent: $agent,
+            directToolSlug: 'vfs_mv',
+            operation: 'restore',
+            subject: $source,
+            requiredTools: ['delete_file'],
+            parameters: $toolParameters,
+            channelId: $this->channelIdFrom($toolParameters),
+            hint: 'Restoring a trashed file requires delete_file.',
+            preview: ['kind' => 'workspace_file', 'action_class' => 'reversible_edit', 'name' => $originalName, 'to' => $name],
+        );
+
+        $restored = DB::transaction(function () use ($file, $parentId, $name, $source): WorkspaceFile {
+            $locked = WorkspaceFile::onlyTrashed()->where('workspace_id', $file->workspace_id)->whereKey($file->id)->lockForUpdate()->first()
+                ?? throw VfsError::notFound($source);
+            $stamp = $locked->deleted_at;
+            $ids = [$locked->id];
+            $frontier = [$locked->id];
+            for ($depth = 0; $frontier !== [] && $depth < 50; $depth++) {
+                $children = WorkspaceFile::onlyTrashed()->whereIn('parent_id', $frontier)->where('deleted_at', $stamp)->pluck('id')->map(fn ($id): string => (string) $id)->all();
+                array_push($ids, ...$children);
+                $frontier = $children;
+            }
+
+            $metadata = is_array($locked->metadata) ? $locked->metadata : [];
+            unset($metadata['trash']);
+            WorkspaceFile::withTrashed()->whereKey($ids)->toBase()->update(['deleted_at' => null, 'deleted_by' => null]);
+            $fresh = WorkspaceFile::forWorkspace()->findOrFail($locked->id);
+            $fresh->forceFill(['parent_id' => $parentId, 'name' => $name, 'metadata' => $metadata === [] ? null : $metadata])->save();
+
+            return $fresh->fresh() ?? $fresh;
+        });
+
+        return [
+            'status' => 'restored',
+            'path' => '/files'.$restored->getVirtualPath(),
+            'canonical_path' => "/files/by-id/{$restored->id}",
+        ];
+    }
+
+    private function resolveTrashedWorkspaceFile(User $agent, string $path): WorkspaceFile
+    {
+        $segments = $this->segments($path);
+        $token = $segments[2] ?? throw VfsError::invalid('Name a trash entry: /files/.trash/<id>.', ['path' => $path]);
+        if (isset($segments[3])) {
+            throw VfsError::unsupported('Restore the trashed folder itself; its contents come back with it.', ['path' => $path]);
+        }
+
+        $query = WorkspaceFile::onlyTrashed()->where('workspace_id', $agent->workspace_id);
+        $file = preg_match(self::ID_SUFFIX_PATTERN, $token, $m) === 1
+            ? $query->where('id', 'like', '%'.$m[2])->first()
+            : $query->whereKey($token)->first();
+        if ($file === null || ! $this->canAccessTrashedFile($agent, $file)) {
+            throw new VfsError('not_found', "Path not found: {$path}", ['path' => $path, 'hint' => 'ls /files/.trash to see trashed files.']);
+        }
+
+        return $file;
+    }
+
+    /**
+     * Read access for a trashed file: the folder-scope rule applied at its
+     * original location (its parent, which stays live for a batch root).
+     */
+    private function canAccessTrashedFile(User $agent, WorkspaceFile $file): bool
+    {
+        if ($this->permissions->getAllowedFileFolderIds($agent) === null) {
+            return true;
+        }
+
+        $originalParent = $file->metadata['trash']['original_parent_id'] ?? $file->parent_id;
+        if ($originalParent === null) {
+            return false;
+        }
+        $parent = WorkspaceFile::forWorkspace()->find($originalParent);
+
+        return $parent !== null && $this->permissions->canAccessFilePath($agent, $parent);
     }
 
     /**

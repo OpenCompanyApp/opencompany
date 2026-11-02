@@ -88,7 +88,9 @@ RUBY);
     // A failed VFS write is never receipted as succeeded.
     public function test_failed_vfs_write_is_not_receipted_as_succeeded(): void
     {
-        $result = $this->runRuby('app.vfs.write(path: "/docs/not-writable", content: "x", mode: "create")');
+        // /docs became writable in Phase 2 (C1); /workspace stays read-only,
+        // so it still exercises a failed write.
+        $result = $this->runRuby('app.vfs.write(path: "/workspace/not-writable", content: "x", mode: "create")');
 
         $this->assertSame('not_writable', $result->error['type']);
         $this->assertSame(0, $result->effects['writesSucceeded']);

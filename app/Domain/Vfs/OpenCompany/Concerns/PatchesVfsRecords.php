@@ -8,7 +8,6 @@ use App\Models\DataTable;
 use App\Models\DataTableColumn;
 use App\Models\DataTableRow;
 use App\Models\ListItem;
-use App\Models\ListStatus;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\Memory\DocumentIndexingService;
@@ -93,31 +92,19 @@ trait PatchesVfsRecords
      */
     private function patchListItem(User $agent, array $segments, string $path, string $patch, ?string $version, array $toolParameters): array
     {
-        if (($segments[1] ?? null) !== 'by-id' || ! isset($segments[2]) || isset($segments[4])) {
-            throw VfsError::notWritable($path);
-        }
-
-        $item = ListItem::forWorkspace()->find($segments[2]) ?? throw VfsError::notFound($path);
-        if (isset($segments[3])) {
-            $item = $this->resolveListChild($item, $segments[3], $path);
-        }
-        if ($item->creator_id !== $agent->id && $item->assignee_id !== $agent->id) {
-            throw VfsError::permissionDenied($path, 'list item is not owned by or assigned to this agent');
-        }
+        $item = $this->resolveListItemSegments($segments, $path);
+        $this->assertListItemWritable($agent, $item, $path);
         $this->assertVersion($version, $this->listItemVersion($item), $path);
 
-        $fields = $this->structuredPatchFields($patch, ['title', 'description', 'status', 'priority']);
+        $fields = $this->normalizeListItemFields(
+            $this->structuredPatchFields($patch, ['title', 'description', 'status', 'priority', 'assignee', 'due_date']),
+            $item,
+            $path,
+        );
 
-        if (isset($fields['status'])) {
-            $status = (string) $fields['status'];
-            $newStatus = ListStatus::forWorkspace()->where('slug', $status)->first();
-            if ($newStatus) {
-                $fields['completed_at'] = $newStatus->is_done ? ($item->completed_at ?? now()) : null;
-            }
-        }
-
-        $this->assertMutationToolsAllowed($agent, $path, ['vfs_patch'], $toolParameters, isset($toolParameters['channelId']) && is_string($toolParameters['channelId']) ? $toolParameters['channelId'] : null, [
+        $this->assertMutationToolsAllowed($agent, $path, ['vfs_patch', 'update_list_item'], $toolParameters, isset($toolParameters['channelId']) && is_string($toolParameters['channelId']) ? $toolParameters['channelId'] : null, [
             'kind' => 'list_item',
+            'action_class' => 'reversible_edit',
             'list_item_id' => $item->id,
             'fields' => array_keys($fields),
         ]);
@@ -146,18 +133,12 @@ trait PatchesVfsRecords
      */
     private function patchTableRow(User $agent, array $segments, string $path, string $patch, ?string $version, array $toolParameters): array
     {
-        if (! isset($segments[1]) || ($segments[2] ?? null) !== 'rows' || ($segments[3] ?? null) !== 'by-id' || ! isset($segments[4]) || isset($segments[5])) {
+        ['table' => $table, 'rest' => $rest, 'base' => $base] = $this->resolveTableSegments($segments, $path);
+        $table->loadMissing('columns');
+        if (($rest[0] ?? null) !== 'rows' || in_array($rest, [['rows'], ['rows', 'by-id'], ['rows', '.trash']], true) || ($rest[1] ?? null) === '.trash') {
             throw VfsError::notWritable($path);
         }
-
-        $table = DataTable::forWorkspace()
-            ->with('columns')
-            ->get()
-            ->first(fn (DataTable $candidate): bool => $this->slug($candidate->name) === $segments[1])
-            ?? throw VfsError::notFound($path);
-
-        $rowId = Str::before($segments[4], '.json');
-        $row = DataTableRow::where('table_id', $table->id)->find($rowId) ?? throw VfsError::notFound($path);
+        $row = $this->resolveTableRowFromRest($table, $rest, $path, $base);
         $this->assertVersion($version, $this->tableRowVersion($row), $path);
 
         $decoded = json_decode($patch, true);
@@ -169,18 +150,20 @@ trait PatchesVfsRecords
         }
 
         $resolved = $this->resolveTableRowPatchData($table, $decoded['data']);
+        $this->validateTableRowValues($table, $resolved);
         $resolvedBase = is_array($decoded['base'] ?? null) ? $this->resolveTableRowPatchData($table, $decoded['base']) : [];
         // Unlocked precheck so a row that already diverged does not create an approval.
         $this->assertTableRowBase($table, $row, $resolvedBase, $path, $version);
 
         $this->assertMutationToolsAllowed($agent, $path, ['vfs_patch', 'update_table_row'], $toolParameters, $this->channelIdFrom($toolParameters), [
             'kind' => 'table_row',
+            'action_class' => 'reversible_edit',
             'table' => $table->name,
             'row_id' => $row->id,
             'fields' => array_keys($resolved),
         ]);
 
-        $fresh = DB::transaction(function () use ($table, $row, $resolved, $resolvedBase, $version, $path): DataTableRow {
+        $fresh = DB::transaction(function () use ($agent, $table, $row, $resolved, $resolvedBase, $version, $path): DataTableRow {
             // Invariant: merge the supplied columns into the row as it is
             // under the lock, never into the copy loaded before policy ran.
             // That is what keeps concurrent edits to other columns intact.
@@ -189,15 +172,23 @@ trait PatchesVfsRecords
             $this->assertVersion($version, $this->tableRowVersion($locked), $path);
             $this->assertTableRowBase($table, $locked, $resolvedBase, $path, $version);
 
-            $locked->update(['data' => array_merge($locked->data ?? [], $resolved)]);
+            $previous = $locked->data ?? [];
+            $before = $this->tableRowVersion($locked);
+            $merged = array_merge($previous, $resolved);
+            if ($merged == $previous) {
+                return $locked;
+            }
+            $locked->update(['data' => $merged]);
+            $fresh = $locked->fresh() ?? $locked;
+            $this->snapshotTableRowVersion($table, $fresh, $previous, $agent, $before, $this->tableRowVersion($fresh), 'VFS patch');
 
-            return $locked->fresh() ?? $locked;
+            return $fresh;
         });
 
         return [
             'status' => 'updated',
             'path' => $path,
-            'canonical_path' => "/tables/{$this->slug($table->name)}/rows/by-id/{$fresh->id}.json",
+            'canonical_path' => $this->tableRowCanonicalPath($table, $fresh),
             'version' => $this->tableRowVersion($fresh),
             'fields' => array_keys($resolved),
         ];
@@ -260,11 +251,6 @@ trait PatchesVfsRecords
         return $this->version($task->updated_at?->toIso8601String(), (string) $task->status);
     }
 
-    private function listItemVersion(ListItem $item): string
-    {
-        return $this->version($item->updated_at?->toIso8601String(), (string) ($item->status ?? ''));
-    }
-
     /**
      * @param  list<string>  $segments
      * @param  array<string, mixed>  $toolParameters
@@ -276,7 +262,8 @@ trait PatchesVfsRecords
         $this->assertCanAccessAgentDocs($agent, $target, $path);
         $remaining = $this->agentRemainingSegments(array_slice($segments, 1));
 
-        if ($remaining === [] || ! in_array($remaining[0], ['identity', 'memory'], true) || ! isset($remaining[1])) {
+        $isAgentArea = ($remaining[0] ?? null) === 'notes' && isset($remaining[1]) || $remaining === ['todo.md'];
+        if (! $isAgentArea && ($remaining === [] || ! in_array($remaining[0], ['identity', 'memory'], true) || ! isset($remaining[1]))) {
             throw VfsError::notWritable($path);
         }
 
@@ -308,9 +295,11 @@ trait PatchesVfsRecords
             $path,
             $textPatch,
             $version,
-            $remaining[0] === 'identity'
-                ? 'VFS identity patch snapshot before update'
-                : 'VFS memory patch snapshot before update',
+            match ($remaining[0]) {
+                'identity' => 'VFS identity patch snapshot before update',
+                'memory' => 'VFS memory patch snapshot before update',
+                default => 'VFS patch',
+            },
         );
 
         $indexing = ['ok' => true];
@@ -328,7 +317,7 @@ trait PatchesVfsRecords
         return [
             'status' => 'updated',
             'path' => $path,
-            'canonical_path' => "/docs/by-id/{$doc->id}",
+            'canonical_path' => $isAgentArea ? "/agents/by-id/{$target->id}/".implode('/', $remaining) : "/docs/by-id/{$doc->id}",
             'version' => $this->version($fresh->updated_at?->toIso8601String(), $fresh->content ?? ''),
             'indexing' => $indexing,
             ...$this->textPatchResultFields($applied),

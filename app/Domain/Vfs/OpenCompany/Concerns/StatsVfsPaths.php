@@ -17,7 +17,7 @@ trait StatsVfsPaths
     public function stat(User $agent, string $path): array
     {
         $this->assertBoundWorkspace($agent);
-        $path = $this->normalizePath($path);
+        $path = $this->routePath($agent, $path);
 
         $entry = $this->directEntryForPath($agent, $path);
         if ($entry !== null) {
@@ -51,9 +51,36 @@ trait StatsVfsPaths
 
         $entry = $this->entryForPath($agent, $path);
         if ($entry === null) {
-            throw VfsError::notFound($path);
+            throw $this->explainNotFound($agent, $path);
         }
 
         return $entry->jsonSerialize();
+    }
+
+    /**
+     * Re-run friendly resolution for a path stat could not find, so the
+     * error carries the same did_you_mean/by_id suggestions a read would.
+     */
+    private function explainNotFound(User $agent, string $path): VfsError
+    {
+        $segments = $this->segments($path);
+
+        try {
+            if (($segments[0] ?? null) === 'docs' && isset($segments[1]) && ! in_array($segments[1], ['by-id', '.trash'], true)) {
+                $this->resolveDocumentPath(array_slice($segments, 1), $path);
+            } elseif (($segments[0] ?? null) === 'tables' && isset($segments[1])) {
+                ['base' => $base] = $this->resolveTableSegments($segments, $path);
+
+                return $this->tableNotFound($path, $base);
+            } elseif (($segments[0] ?? null) === 'agents' && isset($segments[1]) && $segments[1] !== 'by-id') {
+                $this->resolveAgent($agent, array_slice($segments, 1), $path);
+            }
+        } catch (VfsError $e) {
+            if ($e->errorCode === 'not_found') {
+                return $e;
+            }
+        }
+
+        return VfsError::notFound($path);
     }
 }

@@ -108,7 +108,9 @@ class ManageTableRowsTest extends TestCase
         $result = $tool->handle($request);
 
         $this->assertStringContainsString('Row deleted', $result);
-        $this->assertDatabaseMissing('data_table_rows', [
+        // Governance model: delete means trash. Rows are soft-deleted
+        // (restorable) since the VFS records phase.
+        $this->assertSoftDeleted('data_table_rows', [
             'id' => $row->id,
         ]);
     }

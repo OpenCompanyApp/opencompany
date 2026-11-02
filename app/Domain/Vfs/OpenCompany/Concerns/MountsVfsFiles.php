@@ -11,6 +11,12 @@ use App\Models\WorkspaceFile;
 
 /**
  * Workspace file mount operations for OpenCompanyVfs.
+ *
+ * Structure note for future sub-mounts: `/files` resolution goes through
+ * resolveWorkspaceFilePath(); external storage will plug in as
+ * `/files/drive/<connection>/…` ahead of that resolver rather than by teaching
+ * WorkspaceFile about remote objects. `/files/.trash/` is the trash view
+ * (restore with mv); `<file>/.history/` is the version view (RecordsVfsHistory).
  */
 trait MountsVfsFiles
 {
@@ -39,6 +45,10 @@ trait MountsVfsFiles
     private function pageFiles(User $agent, array $segments, string $path, VfsBudget $budget, array $state): array
     {
         $prefix = null;
+
+        if (($segments[1] ?? null) === '.trash') {
+            return $this->paginateVfsStaticEntries($this->listFileTrash($agent, $segments, $path, $budget), $budget->maxEntries, $state);
+        }
 
         if (count($segments) === 1) {
             $prefix = new VfsEntry('by-id', '/files/by-id', 'directory', capabilities: ['browse']);
@@ -89,6 +99,18 @@ trait MountsVfsFiles
             return $this->entriesToText($this->listFiles($agent, $segments, $path, $budget));
         }
 
+        if (($segments[1] ?? null) === '.trash') {
+            if (! isset($segments[2])) {
+                return $this->entriesToText($this->listFileTrash($agent, $segments, $path, $budget));
+            }
+            $trashed = $this->resolveTrashedWorkspaceFile($agent, $path);
+            if ($trashed->is_folder || ! $this->isTextFile($trashed)) {
+                throw VfsError::notReadable($path);
+            }
+
+            return VfsText::fit((string) $this->files->readFileContents($trashed), $budget, $path);
+        }
+
         $file = $this->resolveWorkspaceFilePath($agent, $path)['file'] ?? throw VfsError::notFound($path);
         if (! $this->permissions->canAccessFilePath($agent, $file)) {
             throw VfsError::permissionDenied($path, 'file folder scope');
@@ -109,6 +131,7 @@ trait MountsVfsFiles
         // vfs_read can report a version that matches the returned content.
         $content = (string) $this->files->readFileContents($file);
         $budget->recordReadVersion($this->version($file->updated_at?->toIso8601String(), $content));
+        $budget->recordCanonicalPath("/files/by-id/{$file->id}");
 
         return VfsText::fit($content, $budget, $path);
     }
@@ -169,6 +192,52 @@ trait MountsVfsFiles
             capabilities: $this->mutationCapabilities($baseCapabilities, $decisions),
             metadata: $metadata,
         );
+    }
+
+    /**
+     * Trashed files the agent may still see; batch roots only (a trashed
+     * folder lists once and restores with its contents).
+     *
+     * @param  list<string>  $segments
+     * @return list<VfsEntry>
+     */
+    private function listFileTrash(User $agent, array $segments, string $path, VfsBudget $budget): array
+    {
+        if (isset($segments[2])) {
+            throw VfsError::notReadable($path);
+        }
+
+        return WorkspaceFile::onlyTrashed()
+            ->where('workspace_id', $agent->workspace_id)
+            ->orderByDesc('deleted_at')
+            ->orderBy('id')
+            ->limit(max(1, $budget->maxFiles))
+            ->get()
+            ->filter(fn (WorkspaceFile $file): bool => is_array($file->metadata['trash'] ?? null) && $this->canAccessTrashedFile($agent, $file))
+            ->take($budget->maxEntries)
+            ->map(function (WorkspaceFile $file): VfsEntry {
+                $original = (string) ($file->metadata['trash']['original_name'] ?? $file->name);
+
+                return new VfsEntry(
+                    name: $original.'--'.$this->idSuffix($file->id),
+                    path: "/files/.trash/{$file->id}",
+                    type: $file->is_folder ? 'directory' : 'file',
+                    canonicalPath: "/files/.trash/{$file->id}",
+                    backendType: 'workspace_file',
+                    backendId: $file->id,
+                    capabilities: ['read'],
+                    metadata: [
+                        'original_name' => $original,
+                        'original_parent' => ($parent = $file->metadata['trash']['original_parent_id'] ?? null) ? "/files/by-id/{$parent}" : '/files',
+                        'trashed' => true,
+                        'deleted_at' => $file->deleted_at?->toIso8601String(),
+                        'deleted_by' => $file->getAttribute('deleted_by'),
+                        'restore_hint' => "mv /files/.trash/{$file->id} <destination> restores it.",
+                    ],
+                );
+            })
+            ->values()
+            ->all();
     }
 
     private function isTextFile(WorkspaceFile $file): bool

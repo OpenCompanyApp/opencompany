@@ -64,9 +64,19 @@ trait ResolvesVfsEntries
         return Str::slug($value) ?: rawurlencode($value);
     }
 
+    /**
+     * Version token of a workspace file: sha256(updated_at | sha256(bytes))
+     * for text files (size instead of bytes for binary files and folders).
+     * A content_hash cached by the VFS write path stands in for sha256(bytes),
+     * so listing a folder does not read every file; files written elsewhere
+     * have no hash and fall back to reading their bytes once.
+     */
     private function fileVersion(WorkspaceFile $file): string
     {
         $seed = (string) $file->size;
+        if (! $file->is_folder && $this->isTextFile($file) && is_string($file->content_hash) && $file->content_hash !== '') {
+            return hash('sha256', ($file->updated_at?->toIso8601String() ?? '').'|'.$file->content_hash);
+        }
         if (! $file->is_folder && $this->isTextFile($file)) {
             try {
                 $seed = (string) $this->files->readFileContents($file);

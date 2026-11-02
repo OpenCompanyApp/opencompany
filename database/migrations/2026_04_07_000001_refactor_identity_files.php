@@ -26,7 +26,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $agentsFolder = Document::where('title', 'agents')
+        // Document is soft-deleting since 2026_11_02_100001, which adds the
+        // column this historical migration runs before: queries bypass the
+        // trash scope (withTrashed) so they never reference deleted_at.
+        $agentsFolder = Document::withTrashed()->where('title', 'agents')
             ->whereNull('parent_id')
             ->where('is_folder', true)
             ->first();
@@ -35,7 +38,7 @@ return new class extends Migration
             return;
         }
 
-        $agentFolders = Document::where('parent_id', $agentsFolder->id)
+        $agentFolders = Document::withTrashed()->where('parent_id', $agentsFolder->id)
             ->where('is_folder', true)
             ->get();
 
@@ -46,7 +49,7 @@ return new class extends Migration
 
     private function migrateAgentFolder(Document $agentFolder): void
     {
-        $identityFolder = Document::where('parent_id', $agentFolder->id)
+        $identityFolder = Document::withTrashed()->where('parent_id', $agentFolder->id)
             ->where('title', 'identity')
             ->where('is_folder', true)
             ->first();
@@ -55,7 +58,7 @@ return new class extends Migration
             return;
         }
 
-        $files = Document::where('parent_id', $identityFolder->id)
+        $files = Document::withTrashed()->where('parent_id', $identityFolder->id)
             ->where('is_folder', false)
             ->get()
             ->keyBy('title');
@@ -167,7 +170,7 @@ return new class extends Migration
 
     private function ensureMemoryStructure(Document $agentFolder, $files): ?Document
     {
-        $memoryFolder = Document::where('parent_id', $agentFolder->id)
+        $memoryFolder = Document::withTrashed()->where('parent_id', $agentFolder->id)
             ->where('title', 'memory')
             ->where('is_folder', true)
             ->first();
@@ -188,7 +191,7 @@ return new class extends Migration
 
         // Create sub-folders
         foreach (['topics', 'logs', 'peers'] as $subName) {
-            $existing = Document::where('parent_id', $memoryFolder->id)
+            $existing = Document::withTrashed()->where('parent_id', $memoryFolder->id)
                 ->where('title', $subName)
                 ->where('is_folder', true)
                 ->first();
@@ -208,13 +211,13 @@ return new class extends Migration
 
             // Ensure peers has users/ and agents/ sub-folders
             if ($subName === 'peers') {
-                $peersFolder = Document::where('parent_id', $memoryFolder->id)
+                $peersFolder = Document::withTrashed()->where('parent_id', $memoryFolder->id)
                     ->where('title', 'peers')
                     ->where('is_folder', true)
                     ->first();
 
                 foreach (['users', 'agents'] as $peerType) {
-                    Document::firstOrCreate(
+                    Document::withTrashed()->firstOrCreate(
                         [
                             'parent_id' => $peersFolder->id,
                             'title' => $peerType,
@@ -234,7 +237,7 @@ return new class extends Migration
 
         // Move/create MEMORY.md in memory/ folder
         $oldMemory = $files->get('MEMORY.md');
-        $newMemoryExists = Document::where('parent_id', $memoryFolder->id)
+        $newMemoryExists = Document::withTrashed()->where('parent_id', $memoryFolder->id)
             ->where('title', 'MEMORY.md')
             ->where('is_folder', false)
             ->exists();
@@ -259,7 +262,7 @@ return new class extends Migration
 
     private function moveLogsToSubfolder(Document $memoryFolder): void
     {
-        $logsFolder = Document::where('parent_id', $memoryFolder->id)
+        $logsFolder = Document::withTrashed()->where('parent_id', $memoryFolder->id)
             ->where('title', 'logs')
             ->where('is_folder', true)
             ->first();
@@ -269,7 +272,7 @@ return new class extends Migration
         }
 
         // Find all date-named .md files directly in memory/ (not in sub-folders)
-        $logs = Document::where('parent_id', $memoryFolder->id)
+        $logs = Document::withTrashed()->where('parent_id', $memoryFolder->id)
             ->where('is_folder', false)
             ->where('title', 'LIKE', '____-__-__%.md')
             ->get();

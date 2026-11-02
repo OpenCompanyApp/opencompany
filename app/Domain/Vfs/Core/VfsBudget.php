@@ -50,6 +50,9 @@ class VfsBudget
     /** Version token of the most recent single object served through this budget. */
     private ?string $lastReadVersion = null;
 
+    /** Canonical (by-id) path of the most recent single object served through this budget. */
+    private ?string $lastCanonicalPath = null;
+
     public function __construct(
         int $maxEntries = 100,
         int $maxDepth = 3,
@@ -108,6 +111,20 @@ class VfsBudget
     public function lastReadVersion(): ?string
     {
         return $this->lastReadVersion;
+    }
+
+    /**
+     * Mounts record the canonical path of the object they served, so read
+     * callers can report it without a second stat (Stream C1 addition).
+     */
+    public function recordCanonicalPath(?string $canonicalPath): void
+    {
+        $this->lastCanonicalPath = $canonicalPath;
+    }
+
+    public function lastCanonicalPath(): ?string
+    {
+        return $this->lastCanonicalPath;
     }
 
     private function positive(int $value, int $default, int $min, int $max): int

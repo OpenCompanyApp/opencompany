@@ -24,11 +24,22 @@ use App\Models\User;
 trait MutatesVfsContent
 {
     /**
-     * Create or overwrite raw content at a writable path (/files only).
+     * Create or overwrite content at a writable path.
+     *
+     * Writable roots: /files (raw bytes), /docs (documents), /tables rows
+     * (`rows/new.json` creates, `rows/by-id/{id}.json` overwrites), /lists
+     * items (front-matter markdown; `new.md` inside a project creates) and the
+     * acting agent's own notes/ and todo.md (also via /me). `.trash/` and
+     * `.history/` views are read-only.
      *
      * A supplied $version is enforced atomically (row lock + recompute);
-     * stale writes fail with `conflict`. Versions stay optional for in-app
-     * callers in this phase.
+     * stale writes fail with `conflict`. Overwriting an existing record
+     * (document, row, list item, note) REQUIRES the version from a read
+     * (missing → invalid_request "read it first"); /files keeps versions
+     * optional for in-app callers such as shell redirects.
+     *
+     * `$toolParameters['idempotency_key']` (optional) makes a retried call
+     * return the first call's result (RemembersVfsIdempotency).
      *
      * @param  array<string, mixed>|null  $toolParameters
      * @param  bool  $permissionAlreadyChecked  Internal command-engine handoff only. Set this after VfsCommandExecutor has composed vfs_exec with vfs_write; never derive it from agent or tool input.
@@ -52,11 +63,14 @@ trait MutatesVfsContent
             ]);
         }
 
-        $path = $this->normalizePath($path);
+        $path = $this->routePath($agent, $path);
         $segments = $this->segments($path);
 
-        if ($segments === []) {
-            throw VfsError::notWritable($path);
+        if ($segments === [] || $this->isHistoryPath($segments)) {
+            throw new VfsError('not_writable', "Path is not writable through VFS: {$path}", [
+                'path' => $path,
+                ...($this->isHistoryPath($segments) ? ['hint' => 'History is read-only. To restore, write the old content to the object path with its current version.'] : []),
+            ]);
         }
 
         $toolParameters ??= array_filter([
@@ -69,10 +83,19 @@ trait MutatesVfsContent
         // Shell mutations have already passed the command engine's composed
         // vfs_exec + vfs_write policy. Every other caller is checked here so
         // direct service, replay, and background usage cannot bypass vfs_write.
-        return match ($segments[0]) {
-            'files' => $this->writeWorkspaceFile($agent, $segments, $path, $content, $mode, $version, $toolParameters, ! $permissionAlreadyChecked),
+        // Record writes always compose vfs_write with their domain tool: a
+        // gated vfs_write after a shell approval then yields one more
+        // approval for the backing write, never a silent bypass.
+        return $this->withIdempotency($agent, $toolParameters, 'write', $path, fn (): array => match ($segments[0]) {
+            'files' => ($segments[1] ?? null) === '.trash'
+                ? throw new VfsError('not_writable', "Path is not writable through VFS: {$path}", ['path' => $path, 'hint' => 'Trash is read-only. Restore with mv.'])
+                : $this->writeWorkspaceFile($agent, $segments, $path, $content, $mode, $version, $toolParameters, ! $permissionAlreadyChecked),
+            'docs' => $this->writeDocumentPath($agent, $segments, $path, $content, $mode, $version, $toolParameters),
+            'tables' => $this->writeTablePath($agent, $segments, $path, $content, $mode, $version, $toolParameters),
+            'lists' => $this->writeListPath($agent, $segments, $path, $content, $mode, $version, $toolParameters),
+            'agents' => $this->writeAgentAreaPath($agent, $segments, $path, $content, $mode, $version, $toolParameters),
             default => throw VfsError::notWritable($path),
-        };
+        });
     }
 
     /**
@@ -91,7 +114,7 @@ trait MutatesVfsContent
     {
         $this->assertBoundWorkspace($agent);
 
-        $path = $this->normalizePath($path);
+        $path = $this->routePath($agent, $path);
         $segments = $this->segments($path);
         $toolParameters ??= array_filter([
             'path' => $path,
@@ -99,10 +122,20 @@ trait MutatesVfsContent
             'version' => $version,
         ], fn (mixed $value): bool => $value !== null);
 
-        if ($segments === []) {
+        if ($segments === [] || $this->isHistoryPath($segments) || in_array('.trash', $segments, true)) {
             throw VfsError::notWritable($path);
         }
 
+        return $this->withIdempotency($agent, $toolParameters, 'patch', $path, fn (): array => $this->patchRouted($agent, $segments, $path, $patch, $version, $toolParameters));
+    }
+
+    /**
+     * @param  list<string>  $segments
+     * @param  array<string, mixed>  $toolParameters
+     * @return array<string, mixed>
+     */
+    private function patchRouted(User $agent, array $segments, string $path, string $patch, ?string $version, array $toolParameters): array
+    {
         $root = $segments[0];
 
         if ($root === 'tasks') {
