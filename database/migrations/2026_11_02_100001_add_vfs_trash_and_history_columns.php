@@ -42,9 +42,14 @@ return new class extends Migration
             });
         }
 
-        Schema::table('workspace_files', function (Blueprint $table): void {
-            $table->string('content_hash', 64)->nullable();
-        });
+        // The archive-friendly baseline migration (2026_11_02_000007) already
+        // adds workspace_files.content_hash with the same meaning
+        // (sha256 of the bytes); the VFS reuses it.
+        if (! Schema::hasColumn('workspace_files', 'content_hash')) {
+            Schema::table('workspace_files', function (Blueprint $table): void {
+                $table->string('content_hash', 64)->nullable();
+            });
+        }
 
         Schema::table('document_versions', function (Blueprint $table): void {
             $table->string('run_id')->nullable();
@@ -63,9 +68,6 @@ return new class extends Migration
             $table->dropColumn(['run_id', 'before_version', 'after_version']);
         });
 
-        Schema::table('workspace_files', function (Blueprint $table): void {
-            $table->dropColumn('content_hash');
-        });
 
         // Only workspace_files' trash columns and deleted_by are owned here;
         // the baseline owns deleted_at on the Trashable tables.
