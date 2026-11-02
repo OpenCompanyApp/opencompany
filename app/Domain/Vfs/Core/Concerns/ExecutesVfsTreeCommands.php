@@ -120,7 +120,8 @@ trait ExecutesVfsTreeCommands
             $last = $index === count($entries) - 1;
             $lines[] = $prefix.($last ? '`-- ' : '|-- ').$entry->name.($entry->type === 'directory' ? '/' : '');
             $returned++;
-            if ($entry->type === 'directory') {
+            // Alias mounts (/me) are shown but never descended (VfsEntry::isAlias()).
+            if ($entry->type === 'directory' && ! $entry->isAlias()) {
                 $this->appendTree($agent, $entry->canonicalPath ?? $entry->path, $budget, $lines, $depth + 1, $prefix.($last ? '    ' : '|   '), $returned, $truncated, $skipped, $directoriesOnly, $showHidden, $ignore, $pattern);
             }
         }

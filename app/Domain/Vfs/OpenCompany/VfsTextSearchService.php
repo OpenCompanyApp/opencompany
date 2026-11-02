@@ -93,7 +93,8 @@ class VfsTextSearchService
             return [$this->fileCandidates($agent, $pattern, $budget, $this->descendantFolderIds(WorkspaceFile::class, $backendId, $budget->maxDepth)), true];
         }
         if ($this->under($path, '/tables') && $path !== '/tables' && $backendType === 'data_table' && is_string($backendId)) {
-            return [$this->rowCandidates($pattern, $budget, $backendId), false];
+            // Canonical by-id row paths are inside the table by construction.
+            return [$this->rowCandidates($pattern, $budget, $backendId), true];
         }
         if ($this->under($path, '/channels') && $path !== '/channels' && $backendType === 'channel' && is_string($backendId) && $visibleChannels !== null) {
             return [$this->channelCandidates($pattern, $budget, $visibleChannels, $backendId), true];

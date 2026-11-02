@@ -108,7 +108,7 @@ class VfsFind implements ReturnsVfsEnvelope, Tool
 
                 $path = $paths[$state['root_index']];
                 $state['root_index']++;
-                $state['stack'][] = $this->findFrame($path, basename($path) === '' ? '/' : basename($path), 0);
+                $state['stack'][] = [...$this->findFrame($path, basename($path) === '' ? '/' : basename($path), 0), 'display' => $path];
             }
 
             $frameIndex = array_key_last($state['stack']);
@@ -186,12 +186,27 @@ class VfsFind implements ReturnsVfsEnvelope, Tool
                 }
 
                 $entry = $page->entries[0];
-                $state['stack'][] = $this->findFrame(
+                // Alias mounts (/me) duplicate canonical objects (VfsEntry::isAlias()).
+                if ($entry->isAlias()) {
+                    unset($frame);
+
+                    continue;
+                }
+                // Items report the friendly path under the requested root
+                // (parent display path + disambiguated entry name) and keep
+                // the by-id path in canonical_path; traversal and the
+                // visited set use the canonical path (docs/tools/vfs.md
+                // "Paths in search and find output").
+                $display = rtrim((string) ($frame['display'] ?? $frame['item']['path'] ?? $frame['path']), '/').'/'.$entry->name;
+                $payload = $this->entryPayload($entry);
+                $payload['canonical_path'] ??= $entry->canonicalPath ?? $entry->path;
+                $payload['path'] = $display;
+                $state['stack'][] = [...$this->findFrame(
                     $entry->canonicalPath ?? $entry->path,
                     $entry->name,
                     ((int) $frame['depth']) + 1,
-                    $this->entryPayload($entry),
-                );
+                    $payload,
+                ), 'display' => $display];
                 unset($frame);
             } catch (\Throwable) {
                 $skipped++;

@@ -23,6 +23,22 @@ class VfsEntry implements \JsonSerializable
         public readonly array $metadata = [],
     ) {}
 
+    /**
+     * True for an alias mount entry (`/me`, metadata `alias: true`), whose
+     * contents are also reachable under their canonical mount.
+     *
+     * Contract for every recursive walker (find, grep -r / rg, du, diff -r,
+     * vfs_rg/search, Code Mode find): never descend into an alias entry met
+     * while walking, so walks from `/` do not visit objects twice. Walks that
+     * START at an alias path (`find /me`) are unaffected: only the root `/`
+     * listing marks aliases. Display walkers (tree, ls -R) still print the
+     * alias name but do not descend into it.
+     */
+    public function isAlias(): bool
+    {
+        return ($this->metadata['alias'] ?? false) === true;
+    }
+
     public function jsonSerialize(): array
     {
         return array_filter([

@@ -10,15 +10,15 @@ Five tools are model-visible and stable across runs for the same permissions:
 
 | Tool | Use it for |
 |---|---|
-| `vfs_exec` | Command lines: navigate, search, inspect, `/files` mutations. |
+| `vfs_exec` | Command lines: navigate, search, inspect, and mutations (`mkdir`, `cp`, `mv`, `rm`, `>`). |
 | `vfs_read` | One text file with line numbers, `offset`/`limit` paging and its `version`; `cursor` for paged collection files. |
 | `vfs_edit` | Exact-text edits of a text file: several edits, all or nothing, `dry_run` diff. |
-| `vfs_write` | Whole-content `create`, `overwrite` (needs `version` when the file exists) or `append`. |
+| `vfs_write` | Whole-content `create`, `overwrite` (needs `version` when it exists) or `append`: files, documents, table rows (`rows/new.json`), list items (`new.md`), your notes. |
 | `vfs_patch` | Structured records: task/list fields, table rows with `base`; also one text search/replace. |
 
 `vfs_stat`, `vfs_ls`, `vfs_find`, `vfs_rg`, `vfs_exists`, `vfs_mkdir`, `vfs_cp`, `vfs_mv` and `vfs_rm` are Code Mode helpers only (`app.vfs.*`). The former `vfs_search` (= `vfs_rg` with `regex: false`, now `app.vfs.grep`) and `vfs_count` (= a final `vfs_ls` page, which carries `total_count`) were removed.
 
-Permissions: three capability toggles govern every VFS tool. `vfs_exec` covers all reads (`vfs_exec`, `vfs_read` and the read helpers), `vfs_patch` covers `vfs_edit` and `vfs_patch`, and `vfs_write` covers `vfs_write` and file mutations (including shell `mkdir`, `cp`, `mv`, `rm`, `>`). Tools that borrow a permission (`permissionAs` in the provider meta) have no toggle of their own and are hidden from the capabilities list. Domain-backed writes also compose the domain permission: table rows need `update_table_row`, agent identity files need `update_agent_identity_file`, and `/docs` writes need an allowed document-folder scope. Agent memory files under `/agents` follow relationship rules: agents patch their own identity and memory, managers patch direct reports' identity files and `memory/MEMORY.md`. Read visibility alone never implies write capability.
+Permissions: three capability toggles govern every VFS tool. `vfs_exec` covers all reads (`vfs_exec`, `vfs_read` and the read helpers), `vfs_patch` covers `vfs_edit` and `vfs_patch`, and `vfs_write` covers `vfs_write` and mutations (including shell `mkdir`, `cp`, `mv`, `rm`, `>`). Tools that borrow a permission (`permissionAs` in the provider meta) have no toggle of their own and are hidden from the capabilities list. Record writes also compose the domain permission (the per-path rows in the generated reference below): documents `create_document` / `update_document` / `delete_document`, table rows `add_table_row` / `update_table_row` / `delete_table_row`, list items `create_list_item` / `update_list_item` / `delete_list_item`, file trash `delete_file`, agent identity files `update_agent_identity_file`; `/docs` writes also need an allowed document-folder scope. Agent memory files under `/agents` follow relationship rules: agents patch their own identity and memory, managers patch direct reports' identity files and `memory/MEMORY.md`. Read visibility alone never implies write capability.
 
 Approvals: if any composed permission requires approval, the VFS creates one normal approval request covering every gated permission of the operation (for example `vfs_patch` + `update_table_row`, or `vfs_exec` + `vfs_write`) and stores the call for approved replay; an identical retry while pending returns the same approval id. Denied permissions block immediately, and approved replay revalidates permissions before mutating. `vfs_edit` is never wrapped in `ApprovalWrappedTool`: its write goes through `OpenCompanyVfs::patch()`, whose policy requests the approval (stored as the equivalent `vfs_patch` call), and its `dry_run` needs no approval at all.
 
@@ -68,9 +68,10 @@ Paged collection files (`/tables/{table}/rows.ndjson`, `/channels/{channel}/mess
 - Discover support with `help`, `help <command>`, `man <command>`, `<command> --help`, `which <command>`, `type <command>`, `command -v <command>`, `/tools/vfs/commands.json`, `/tools/vfs/commands/<command>.json` (or `/tools/vfs/commands/<command>/<command>.json`).
 - `grep` is literal and `rg` is regex, in the shell and in Code Mode (`app.vfs.grep` defaults `regex: false`).
 - Unquoted path globs expand `*`, `?` and character classes. Quoted globs stay literal. `$VAR`, command substitution, process substitution and host programs are unsupported.
-- Redirection: `<` reads bounded stdin from a VFS path; `>`, `>>`, `1>`, `1>>` write stdout to `/files`; `/dev/null` discards; `2>/dev/null` suppresses stderr; `2>&1` merges stderr into stdout.
+- Redirection: `<` reads bounded stdin from a VFS path; `>`, `>>`, `1>`, `1>>` write stdout to any writable path (the same targets as `vfs_write`); `/dev/null` discards; `2>/dev/null` suppresses stderr; `2>&1` merges stderr into stdout.
 - `jq` is a safe subset; binary-adjacent inspection uses bounded `xxd`, `strings`, `iconv`, `gzip`/`gunzip`/`zcat`/`zgrep`; `tar`, `zip`, `unzip` extract only under `/files` and require `vfs_write`.
-- `cp`, `mv`, `rm`, `mkdir`, `touch`, `mktemp`, `tee`, `truncate`, `split`, `csplit` and non-symlink `ln` mutate `/files` only and compose `vfs_exec` + `vfs_write`. The shell `patch` command is rejected; use `vfs_edit` or `vfs_patch`.
+- Mutating commands compose `vfs_exec` + `vfs_write` for the whole line (one approval covers the line). `rm` trashes files, documents, table rows, list items and your notes; `mv` moves/renames files and documents within one mount and restores from `<mount>/.trash/`; `mkdir` creates `/files` and `/docs` folders; `cp`, `touch`, `mktemp`, `tee`, `truncate`, `split`, `csplit` and non-symlink `ln` work on `/files`. Record operations also compose their domain tool. The shell `patch` command is rejected; use `vfs_edit` or `vfs_patch`.
+- Recursive walks (`find`, `grep -r`, `rg`, `du`, `diff -r`, `vfs_rg`, `app.vfs.find`) starting at `/` skip the `/me` alias (its objects are walked under `/agents` and `/files`); `tree` and `ls -R` show `me/` without descending. Walks that start at `/me` work normally.
 
 Command semantics are owned by `VfsCommandSpecRegistry` and documented per command in `/tools/vfs/commands*`.
 
@@ -78,7 +79,7 @@ Command semantics are owned by `VfsCommandSpecRegistry` and documented per comma
 
 `vfs_exec` accepts `maxEntries` (alias `limit`), `maxDepth`, `maxBytes`, `maxFiles`, `maxMatches` and `maxLineLength`; helpers use `limit` for page size. Integers are validated strictly (`invalid_request` names the field). When output is cut, `truncated` is true and the result says how to continue: `next_cursor` (pass it back as `cursor`), `next_offset` for `vfs_read`, or narrow the path. A truncated listing is not a complete count; the final `vfs_ls` page carries `total_count` and `count_is_exact: true`.
 
-`vfs_exec` accepts `cursor` and forwards it to the command executor once the executor's cursor parameter exists (Phase 2 shell stream); until then a `cursor` fails with `unsupported` rather than silently returning the first page again.
+`vfs_exec` accepts `cursor` and forwards it to the command executor, which hands it to the first pageable command of the line (a listing or a paged collection file).
 
 Listing mounts (`/docs`, `/files`, `/tasks`, `/lists`, `/agents`, `/channels`, `/tables`, `/approvals`, `/automations`) use mount-owned keyset pages: authorization happens before an entry consumes the visible `limit`, so a sparse page can be empty with `truncated: true` and a `next_cursor`; continue until it is null. The effective backend scan ceiling is `max(limit, maxFiles)`. Cursors are encrypted and bound to the normalized path, mount adapter, workspace and acting agent. Inserts and deletes before the cursor do not duplicate or skip rows; changes to an active sort field can move a row across the cursor boundary.
 
@@ -88,7 +89,28 @@ Direct (model-facing) VFS results larger than `config('vfs.tool_result_max_bytes
 
 ## Governance metadata
 
-Each operation declares an `effect` (`read`, `write`, or `per_command` for `vfs_exec`, which Code Mode classifies per pipeline) and a governance `actionClass` (`read`, `reversible_edit`, `delete`, `structural`, `governance`; see `docs/architecture/governance-model.md`). `VfsOperationSpecRegistry::actionClassFor($toolSlug, $path, $command)` resolves the per-call class: agent identity and memory paths are `governance`, `rm` is `delete` (deletes move to trash, never purge), other writes are `reversible_edit`. Enforcement is still today's tool permissions and approvals; the class is metadata for the future policy engine.
+Each operation declares an `effect` (`read`, `write`, or `per_command` for `vfs_exec`, which Code Mode classifies per pipeline) and a governance `actionClass` (`read`, `reversible_edit`, `delete`, `structural`, `governance`; see `docs/architecture/governance-model.md`). `VfsOperationSpecRegistry::actionClassFor($toolSlug, $path, $command)` resolves the per-call class: agent identity and memory paths are `governance`, `rm` is `delete` (deletes move to trash, never purge), other writes are `reversible_edit`.
+
+Every policy evaluation carries a class. Callers declare one (a shell line passes the strictest `VfsCommandSpec::actionClass()` of its commands; record operations pass `delete` for trash, `reversible_edit` for create/overwrite/move/restore and doc-folder `mkdir`, `governance` for agent identity and memory edits), and `VfsMutationPolicy` keeps the strictest of the declared class and the per-path classifier (`VfsActionClass::strictest`), so a declared class is a floor and never a downgrade. Enforcement is still today's tool permissions and approvals; the class is carried on the decision, the approval context and the audit event for the future policy engine.
+
+## Paths in search and find output
+
+One rule for `find`, `grep -r` / `rg` (shell), `vfs_rg` / `app.vfs.rg` / `app.vfs.grep` and `app.vfs.find`: output paths are readable friendly paths, the path under the requested root (`/docs/policies/travel/per-diem`, `/tables/leads/rows/by-id/<row>.json`). Friendly names are already unambiguous: two siblings with the same slug are listed as `name--1a2b3c4d`. Index hits are mapped to the same friendly path (documents, files, table rows and schemas); objects without one friendly path (tasks, list items, channel days, documents under system folders) keep their by-id path. Structured data always carries the stable by-id path too: `canonical_path` on every `vfs_rg` match, `result.canonical_paths` (display path => by-id path) on shell `grep -r` / `rg`, and `canonical_path` on find items. Visiting and de-duplication use the canonical path, so an object reachable by slug and by id is reported once. Table row index candidates are `/tables/by-id/<table>/rows/by-id/<row>.json` internally (table slugs may collide) and are displayed with the table's disambiguated friendly token.
+
+`rows.ndjson` ends every record with a newline (an empty page is empty), so `wc -l` equals the record count and concatenated cursor pages stay valid NDJSON. Row JSON (`rows/by-id/*.json`, `rows.ndjson`, history views) keeps non-ASCII text unescaped (`Café`, not `Caf\u00e9`), so a text search for it matches.
+
+## Mounts
+
+The VFS is a set of mounts resolved by longest path prefix (`app/Domain/Vfs/OpenCompany/Mounts/`):
+
+- `VfsMount` is the contract: `prefix()`, `description()` (its `ls /` line and README mount-map line), `isAlias()`, `list`, `read`, `entry` (direct stat), cursor adapters (`pageAdapter`/`page`, `readPageAdapter`/`readPage`), `write`, `patch`, `remove` (trash), `move` (within the mount and restore), `makeDirectory`, `searchCandidates`, plus `governsMutations()` and `mutationTools()`. `AbstractVfsMount` gives read-only defaults that throw the same `not_writable` errors the facade always used.
+- `VfsMountRegistry` resolves whole-segment prefixes, longest first, so nested mounts such as `/files/drive` are possible; duplicate prefixes are rejected. Top-level mounts are listed in registration order. Nested mounts are routed by the registry but must be surfaced in their parent's listing by the parent mount.
+- Built-in mounts (`/me`, `/agents`, `/docs`, `/files`, `/tables`, `/lists`, `/tasks`, `/channels`, `/tools`, `/automations`, `/approvals`, `/workspace`) are declared in `RegistersVfsBuiltinMounts` as `BuiltinVfsMount` adapters over the existing mount traits; behaviour and cursor adapter names are unchanged.
+- Additional mounts register on the container singleton: `app(VfsMountRegistry::class)->register($mount)`.
+
+Governance runs around the mount, never inside it, so a registered mount needs no governance code of its own: `OpenCompanyVfs` asserts the workspace binding, normalizes and rewrites `/me`, serves `.history/` and `/README.md`, applies idempotency and, for mounts whose `governsMutations()` is false, composes `mutationTools()` through `VfsMutationPolicy` before the mount runs (denial, one approval, replay). `AuditedOpenCompanyVfs` audits and emits events for every public operation. Built-in record mounts return `governsMutations() = true` because their record paths call the policy at a precise point (after eligibility and preflight, before the locked write); a mount that claims it must do the same. `VfsMountGovernanceTest` proves a test mount is listed, routed, workspace-checked, policy-gated and audited.
+
+Planned mounts plug in here: `/files/drive/<connection>` (external storage, nested under `/files`), `/connections/<name>` (read-only MCP resources), `/skills` (progressive disclosure) and `/apps/<app>` (see `docs/architecture/vfs-agent-friendliness-audit-2026-11.md` §5.6).
 
 ## Code Mode
 
@@ -134,7 +156,7 @@ Generated from `app/Domain/Vfs/Spec/VfsOperationSpecRegistry.php`; edit the spec
 
 ### `vfs_exec`
 
-Run a unix-like command in the OpenCompany virtual filesystem (not a host shell). Navigate and inspect with ls, tree, find, cat, head, tail, grep (literal), rg (regex), wc, stat, jq, diff and more; pipes, ;, &&, ||, globs and > or >> into /files work. /files mutations (mkdir, touch, tee, cp, mv, rm) also need vfs_write. Returns {ok, exit_code, stdout, cwd}; when truncated is true, hint says how to continue (pass next_cursor as cursor, raise a budget, or narrow the path). Start with `cat /README.md` or `help`. Use vfs_read and vfs_edit for file content.
+Run a unix-like command in the OpenCompany virtual filesystem (not a host shell). Navigate and inspect with ls, tree, find, cat, head, tail, grep (literal), rg (regex), wc, stat, jq, diff and more; pipes, ;, &&, ||, globs and > or >> into writable files work. Mutations (mkdir, touch, tee, cp, mv, rm, >) also need vfs_write; rm moves to the trash. Returns {ok, exit_code, stdout, cwd}; when truncated is true, hint says how to continue (pass next_cursor as cursor, raise a budget, or narrow the path). Start with `cat /README.md` or `help`. Use vfs_read and vfs_edit for file content.
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
@@ -152,11 +174,12 @@ Run a unix-like command in the OpenCompany virtual filesystem (not a host shell)
 
 Result: `ok` (false when the command line failed (error holds the reason)), `exit_code` (status of the last command (0 success)), `stdout` (command output, once), `cwd` (working directory after the command), `truncated` (present and true when output was cut), `hint` (with truncated: how to continue), `next_cursor` (pass back as cursor to continue), `error` ({code, message, context} when ok is false), `data` (responseFormat=structured only: parsed result), `offloaded_path` (set when the full output was saved to a file (see offloading)).
 
-Permissions: read commands: `vfs_exec`; /files mutations (mkdir, touch, tee, cp, mv, rm, >, >>): `vfs_exec` + `vfs_write`.
+Permissions: read commands: `vfs_exec`; mutations (mkdir, touch, tee, cp, mv, rm, >, >>): `vfs_exec` + `vfs_write`.
 
 Errors: `not_found`, `not_readable`, `not_writable`, `permission_denied`, `unsupported`, `approval_required`, `invalid_request`, `conflict`, `internal_error`.
 
 - grep is literal and rg is regex, in the shell and in Code Mode.
+- Record mutations (documents, rows, list items) also compose the same domain tool as vfs_write, vfs_rm and vfs_mv.
 - No $VAR, command substitution, process substitution or host programs.
 - A command that cannot run fails the whole line with error; a later group after ; or || still runs and exit_code reflects the last command.
 
@@ -206,6 +229,7 @@ Edit a text file (docs, /files, agent identity and memory) by exact string repla
 | `edits` | array | yes |  | Edits applied in order to the result of the previous edit. Items: old_text, new_text, replace_all?. |
 | `version` | string | no |  | version from vfs_read; enables conflict detection. |
 | `dry_run` | boolean | no | `false` | Return the unified diff without writing or requesting approval. |
+| `idempotency_key` | string | no |  | Optional key; a retry with the same key returns the first result instead of applying twice. |
 
 Result: `status` (updated, unchanged or dry_run), `path` (normalized path), `canonical_path` (stable path), `version` (new version (current version for dry_run)), `edits_applied` (number of edits), `replacements` (total replacements across edits), `stale_base` (true when applied against content newer than your version), `diff` (dry_run only: unified diff).
 
@@ -224,7 +248,7 @@ Errors: `not_found`, `not_readable`, `not_writable`, `permission_denied`, `unsup
 
 ### `vfs_write`
 
-Create, overwrite or append whole text content where the path allows writes (stat lists the write capability; today /files). mode: create (default, fails if the file exists), overwrite (requires version from vfs_read when the file exists), or append (adds to the end, creating the file if missing). For changes inside an existing file use vfs_edit.
+Create, overwrite or append whole content where the path allows writes (stat lists the write capability): /files, documents (/docs/<folder>/<Title>.md), table rows (rows/new.json creates, rows/by-id/<id>.json overwrites, {"data":{...}}), list items (front-matter markdown; new.md in a project creates) and your /me/notes and /me/todo.md. mode: create (default, fails if it exists), overwrite (requires version from vfs_read when it exists), or append (adds to the end, creating the file if missing). For changes inside an existing file use vfs_edit; for record fields use vfs_patch.
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
@@ -232,20 +256,24 @@ Create, overwrite or append whole text content where the path allows writes (sta
 | `content` | string | yes |  | Text to write. |
 | `mode` | string (create\|overwrite\|append) | no | `create` | create, overwrite or append. |
 | `version` | string | no |  | version from vfs_read; required to overwrite an existing file, optional for append. |
+| `idempotency_key` | string | no |  | Optional key; a retry with the same key returns the first result instead of applying twice. |
 
 Result: `status` (created or updated), `path` (normalized path), `canonical_path` (stable path), `version` (new version), `bytes` (size after the write).
 
-Permissions: /files: `vfs_write`.
+Permissions: /files: `vfs_write`; /docs (create): `vfs_write` + `create_document`; /docs (overwrite): `vfs_write` + `update_document`; /tables/{table}/rows/new.json: `vfs_write` + `add_table_row`; /tables/{table}/rows/by-id/*: `vfs_write` + `update_table_row`; /lists/projects/{project}/new.md: `vfs_write` + `create_list_item`; /lists items: `vfs_write` + `update_list_item`; /me/notes/*, /me/todo.md: `vfs_write`.
 
 Errors: `not_found`, `not_writable`, `permission_denied`, `approval_required`, `invalid_request`, `conflict`, `internal_error`.
 
 - append is version-checked against the content it read, so concurrent appends never lose data (one fails with conflict).
-- An idempotency_key argument is forwarded to the write path unchanged.
+- Overwriting a document, row, list item or note requires the version from a read; /files keeps it optional.
+- Every overwrite stores the previous content as a version under <path>/.history/.
 
 ```json
 {"path": "/files/reports/q3.md", "content": "# Q3\n"}
 {"path": "/files/reports/q3.md", "mode": "overwrite", "version": "<version>", "content": "# Q3 (final)\n"}
 {"path": "/files/logs/run.log", "mode": "append", "content": "done\n"}
+{"path": "/docs/reports/Weekly.md", "content": "# Weekly\n"}
+{"path": "/tables/customers/rows/new.json", "content": "{\"data\":{\"Name\":\"Acme\"}}"}
 ```
 
 ### `vfs_patch`
@@ -257,10 +285,11 @@ Patch structured records. Task and list item fields: flat JSON, e.g. {"status":"
 | `path` | string | yes |  | Record path, preferably canonical (by-id). |
 | `patch` | string | yes |  | JSON patch as a string: field map, {"data":...,"base":...} for rows, or {"search","replace"} for text. |
 | `version` | string | no |  | version from vfs_read; stale versions fail with conflict for records. |
+| `idempotency_key` | string | no |  | Optional key; a retry with the same key returns the first result instead of applying twice. |
 
 Result: `status` (updated), `path` (normalized path), `canonical_path` (stable path), `version` (new version), `stale_base` (text patches only: applied against newer content).
 
-Permissions: /tasks, /lists, /docs, /files: `vfs_patch`; /tables/{table}/rows/by-id/*: `vfs_patch` + `update_table_row`; /agents/{agent}/identity/*: `vfs_patch` + `update_agent_identity_file`.
+Permissions: /tasks, /docs, /files, /me/notes: `vfs_patch`; /lists items: `vfs_patch` + `update_list_item`; /tables/{table}/rows/by-id/*: `vfs_patch` + `update_table_row`; /agents/{agent}/identity/*: `vfs_patch` + `update_agent_identity_file`.
 
 Errors: `not_found`, `not_writable`, `permission_denied`, `unsupported`, `approval_required`, `invalid_request`, `conflict`, `ambiguous_match`, `internal_error`.
 
@@ -361,15 +390,16 @@ Errors: `not_found`, `not_readable`, `permission_denied`, `invalid_request`, `in
 
 ### `vfs_mkdir`
 
-Code Mode helper. Create a writable directory (idempotent).
+Code Mode helper. Create a folder under /files or /docs, with missing parents (idempotent).
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `path` | string | yes |  | Directory path under /files. |
+| `path` | string | yes |  | Folder path under /files or /docs. |
+| `idempotency_key` | string | no |  | Optional retry key; a repeat returns the first result. |
 
 Result: `status` (operation result), `path` (affected path).
 
-Permissions: /files: `vfs_write`.
+Permissions: /files: `vfs_write`; /docs: `vfs_write` + `create_document`.
 
 Errors: `not_found`, `not_writable`, `permission_denied`, `approval_required`, `invalid_request`, `internal_error`.
 
@@ -390,30 +420,32 @@ Errors: `not_found`, `not_writable`, `permission_denied`, `approval_required`, `
 
 ### `vfs_mv`
 
-Code Mode helper. Move or rename a writable file.
+Code Mode helper. Move or rename a file or document within its mount; restore a trashed object from <mount>/.trash/.
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `source` | string | yes |  | Source path. Aliases: src. |
 | `destination` | string | yes |  | Destination path or directory. Aliases: dst, dest. |
+| `idempotency_key` | string | no |  | Optional retry key; a repeat returns the first result. |
 
 Result: `status` (operation result), `path` (affected path).
 
-Permissions: /files: `vfs_write`.
+Permissions: /files: `vfs_write`; /docs (move, rename): `vfs_write` + `update_document`; /files/.trash/* (restore): `vfs_write` + `delete_file`; /docs/.trash/* (restore): `vfs_write` + `delete_document`; /tables/{table}/rows/.trash/* (restore): `vfs_write` + `delete_table_row`; /lists/.trash/* (restore): `vfs_write` + `delete_list_item`.
 
 Errors: `not_found`, `not_writable`, `permission_denied`, `approval_required`, `invalid_request`, `internal_error`.
 
 ### `vfs_rm`
 
-Code Mode helper. Delete a writable file.
+Code Mode helper. Move a file, document, table row, list item or your note to the trash (never a hard delete; restore with mv).
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `path` | string | yes |  | File path. |
+| `path` | string | yes |  | Path of the object to trash. |
+| `idempotency_key` | string | no |  | Optional retry key; a repeat returns the first result. |
 
 Result: `status` (operation result), `path` (affected path).
 
-Permissions: /files: `vfs_write`.
+Permissions: /files: `vfs_write` + `delete_file`; /docs: `vfs_write` + `delete_document`; /tables/{table}/rows/by-id/*: `vfs_write` + `delete_table_row`; /lists items: `vfs_write` + `delete_list_item`; /me/notes/*, /me/todo.md: `vfs_write`.
 
 Errors: `not_found`, `not_writable`, `permission_denied`, `approval_required`, `invalid_request`, `internal_error`.
 

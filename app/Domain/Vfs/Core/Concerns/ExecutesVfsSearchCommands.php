@@ -5,7 +5,6 @@ namespace App\Domain\Vfs\Core\Concerns;
 use App\Domain\Vfs\Core\VfsArgs;
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsError;
-use App\Domain\Vfs\Core\VfsText;
 use App\Models\User;
 
 /**
@@ -127,10 +126,12 @@ trait ExecutesVfsSearchCommands
                     $files = $this->mergeIndexedCandidates($agent, $files, $patterns, $regex, $args, $walkable, $budget, $filter);
                 }
                 foreach ($files as $file) {
-                    // Stable canonical paths in search output (the facade
-                    // search contract, e.g. /docs/by-id/<id>).
-                    $label = $walk['canonical'][$file] ?? $file;
-                    $sources[] = ['label' => $label, 'path' => $file];
+                    // Readable friendly paths in output, like find and the
+                    // facade search (docs/tools/vfs.md "Paths in search and
+                    // find output"); names are already disambiguated, and
+                    // structured data (responseFormat=structured) keeps the
+                    // canonical path next to it.
+                    $sources[] = ['label' => $file, 'path' => $file, 'canonical_path' => $walk['canonical'][$file] ?? null];
                 }
             } else {
                 foreach ($roots as $root) {
@@ -146,6 +147,8 @@ trait ExecutesVfsSearchCommands
         $shownLines = 0;
         $displayTruncated = false;
         $failedOperands = 0;
+        /** @var array<string, string> $canonicalPaths */
+        $canonicalPaths = [];
         foreach ($sources as $source) {
             if (array_key_exists('content', $source)) {
                 $content = $source['content'];
@@ -170,6 +173,9 @@ trait ExecutesVfsSearchCommands
             }
             $result = $this->grepContent($content, $matcher, $options, $withFilename ? $source['label'] : null);
             $matchedAny = $matchedAny || $result['matched'];
+            if ($result['matched'] && isset($source['canonical_path'], $source['label'])) {
+                $canonicalPaths[(string) $source['label']] = (string) $source['canonical_path'];
+            }
             if ($options['quiet']) {
                 if ($matchedAny) {
                     break;
@@ -223,6 +229,9 @@ trait ExecutesVfsSearchCommands
             'exit_code' => $status,
             'count' => $shownLines,
             'truncated' => $displayTruncated || $walkTruncated,
+            // Structured callers get the stable by-id path of every matching
+            // walked file (result.canonical_paths: display path => by-id).
+            ...($canonicalPaths !== [] ? ['canonical_paths' => $canonicalPaths] : []),
         ];
     }
 

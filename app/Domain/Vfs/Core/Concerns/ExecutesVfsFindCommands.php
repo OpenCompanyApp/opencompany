@@ -201,6 +201,10 @@ trait ExecutesVfsFindCommands
         }
         $prefix = rtrim($candidate['path'], '/').'/';
         foreach ($entries as $entry) {
+            // Alias mounts (/me) duplicate canonical objects: skip (VfsEntry::isAlias()).
+            if ($entry->isAlias()) {
+                continue;
+            }
             // Display paths under the start path (so -path and output read
             // naturally); each object is visited once even when a mount
             // exposes it twice (slug and by-id).

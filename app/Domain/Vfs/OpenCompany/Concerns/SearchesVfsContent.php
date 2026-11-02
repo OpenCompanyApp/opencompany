@@ -5,7 +5,10 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsText;
+use App\Models\DataTable;
+use App\Models\Document;
 use App\Models\User;
+use App\Models\WorkspaceFile;
 use Illuminate\Support\Str;
 
 /**
@@ -21,7 +24,17 @@ use Illuminate\Support\Str;
  * candidate the agent cannot read is only counted as `skipped`.
  *
  * Result contract: {matches, count, scanned, max_files, skipped, truncated,
- * truncated_reason (null|max_matches|max_files), backend}. `truncated` is
+ * truncated_reason (null|max_matches|max_files), backend}.
+ *
+ * Path contract (shared with shell grep -r / rg and find, see docs/tools/vfs.md
+ * "Paths in search and find output"): a match's `path` is the readable
+ * friendly path (the walked path under the requested root; index candidates
+ * are mapped to their friendly path where one exists). Friendly names are
+ * already unambiguous (`name--1a2b3c4d` suffixes), and objects with no
+ * single friendly path (tasks, list items, channel days, docs under system
+ * folders) keep their by-id path. `canonical_path` (by-id) is always
+ * present for structured callers; visiting and dedupe use it, never the
+ * display path. `truncated` is
  * true only when more output is known to exist: one more match was seen past
  * maxMatches, or unscanned files remained when maxFiles ran out.
  *
@@ -41,7 +54,7 @@ trait SearchesVfsContent
 
     /**
      * @param  list<string>  $paths
-     * @return list<array{path: string, line?: int, snippet: string, match?: string, backend: string}>
+     * @return list<array{path: string, canonical_path?: string, line?: int, snippet: string, match?: string, backend: string}>
      */
     public function search(User $agent, string $pattern, array $paths, ?VfsBudget $budget = null, bool $regex = false, bool $caseInsensitive = false): array
     {
@@ -52,7 +65,7 @@ trait SearchesVfsContent
 
     /**
      * @param  list<string>  $paths
-     * @return array{matches: list<array{path: string, line?: int, snippet: string, match?: string, backend: string}>, count: int, scanned: int, max_files: int, skipped: int, truncated: bool, truncated_reason: string|null, backend: string}
+     * @return array{matches: list<array{path: string, canonical_path?: string, line?: int, snippet: string, match?: string, backend: string}>, count: int, scanned: int, max_files: int, skipped: int, truncated: bool, truncated_reason: string|null, backend: string}
      */
     public function searchWithMetadata(User $agent, string $pattern, array $paths, ?VfsBudget $budget = null, bool $regex = false, bool $caseInsensitive = false): array
     {
@@ -74,6 +87,7 @@ trait SearchesVfsContent
             $this->searchScopes($agent, $normalizedPaths),
             $this->allowedChannels($agent),
         );
+        array_push($candidatePaths, ...$this->mountSearchCandidates($agent, $pattern, $normalizedPaths, $budget, $regex));
         $backend = $candidatePaths !== [] ? 'source_index+live' : 'live';
 
         $matches = [];
@@ -88,13 +102,27 @@ trait SearchesVfsContent
         }
 
         try {
-            foreach ($this->searchTargets($agent, $candidatePaths, $normalizedPaths, $budget) as $filePath) {
+            foreach ($this->searchTargets($agent, $candidatePaths, $normalizedPaths, $budget) as $displayPath => $filePath) {
                 try {
                     $stat = $this->stat($agent, $filePath);
                 } catch (VfsError) {
-                    $skipped++;
+                    // Some listings report a canonical path that is not
+                    // readable on its own (agent-area documents live in a
+                    // system folder, so /docs/by-id/{id} hides them). The
+                    // walked display path is the one that resolved: use it.
+                    if (! is_string($displayPath) || $displayPath === $filePath) {
+                        $skipped++;
 
-                    continue;
+                        continue;
+                    }
+                    try {
+                        $stat = $this->stat($agent, $displayPath);
+                        $filePath = $displayPath;
+                    } catch (VfsError) {
+                        $skipped++;
+
+                        continue;
+                    }
                 }
 
                 $fileKey = (string) ($stat['canonical_path'] ?? $filePath);
@@ -102,6 +130,9 @@ trait SearchesVfsContent
                     continue;
                 }
                 $seenFiles[$fileKey] = true;
+                // Candidates carry no display path (int key); map them only
+                // after stat proved the agent may see the object.
+                $displayPath = is_string($displayPath) ? $displayPath : $this->searchDisplayPath($filePath);
 
                 // Invariant: the file budget is checked before reading, and
                 // only when another readable file actually exists, so
@@ -136,7 +167,8 @@ trait SearchesVfsContent
                         }
 
                         $matches[] = [
-                            'path' => $filePath,
+                            'path' => $displayPath,
+                            'canonical_path' => $fileKey,
                             'line' => $lineNumber + 1,
                             'snippet' => Str::limit($line, $budget->maxLineLength, '...'),
                             'match' => $matchedText,
@@ -166,9 +198,13 @@ trait SearchesVfsContent
     /**
      * Candidates first, then the live walk of each requested root.
      *
+     * Yields display path => path to stat/read. Candidates yield an int key
+     * (no display path yet, see searchDisplayPath()); walked files yield
+     * their friendly path under the requested root => their canonical path.
+     *
      * @param  list<string>  $candidatePaths
      * @param  list<string>  $requestedPaths
-     * @return \Generator<int, string>
+     * @return \Generator<int|string, string>
      */
     private function searchTargets(User $agent, array $candidatePaths, array $requestedPaths, VfsBudget $budget): \Generator
     {
@@ -177,10 +213,62 @@ trait SearchesVfsContent
         }
 
         foreach ($requestedPaths as $path) {
-            foreach ($this->walkReadableFiles($agent, $path, $budget) as $filePath) {
-                yield $filePath;
+            yield from $this->walkReadableFiles($agent, $path, $budget);
+        }
+    }
+
+    /**
+     * Friendly path of an index candidate (by-id), or the candidate itself
+     * when the object has no single friendly path. Only called after stat
+     * authorized the candidate. Workspace-scoped lookups; never widens access.
+     */
+    private function searchDisplayPath(string $candidate): string
+    {
+        if (preg_match('#^/docs/by-id/([^/]+)$#', $candidate, $m) === 1) {
+            $doc = Document::forWorkspace()->find($m[1]);
+
+            return $doc instanceof Document ? $this->documentFriendlyPath($doc) : $candidate;
+        }
+        if (preg_match('#^/files/by-id/([^/]+)$#', $candidate, $m) === 1) {
+            $file = WorkspaceFile::forWorkspace()->find($m[1]);
+
+            return $file instanceof WorkspaceFile ? '/files'.$file->getVirtualPath() : $candidate;
+        }
+        if (preg_match('#^/tables/by-id/([^/]+)/(rows/by-id/[^/]+\.json|schema\.json)$#', $candidate, $m) === 1) {
+            $table = DataTable::forWorkspace()->find($m[1]);
+
+            return $table instanceof DataTable ? '/tables/'.$this->tableToken($table).'/'.$m[2] : $candidate;
+        }
+
+        return $candidate;
+    }
+
+    /**
+     * Candidates from registered mounts (VfsMount::searchCandidates) that
+     * overlap a requested path; built-in mounts return none because
+     * VfsTextSearchService indexes them. Alias mounts are skipped for `/`.
+     * Candidates are only hints: each is stat'ed and read through its mount,
+     * so permissions are re-checked like any other target.
+     *
+     * @param  list<string>  $paths
+     * @return list<string>
+     */
+    private function mountSearchCandidates(User $agent, string $pattern, array $paths, VfsBudget $budget, bool $regex): array
+    {
+        $candidates = [];
+        foreach ($this->mounts()->all() as $mount) {
+            $prefix = $mount->prefix();
+            foreach ($paths as $path) {
+                $overlaps = $path === '/'
+                    ? ! $mount->isAlias()
+                    : ($path === $prefix || str_starts_with($path, $prefix.'/') || str_starts_with($prefix, rtrim($path, '/').'/'));
+                if ($overlaps) {
+                    array_push($candidates, ...$mount->searchCandidates($agent, $pattern, $path === '/' || str_starts_with($prefix, rtrim($path, '/').'/') ? $prefix : $path, $budget, $regex));
+                }
             }
         }
+
+        return array_values(array_unique($candidates));
     }
 
     /**

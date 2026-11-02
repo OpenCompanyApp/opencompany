@@ -160,7 +160,7 @@ trait FindsVfsSourceTextCandidates
             ->orderBy('id')
             ->limit($budget->maxFiles)
             ->get(['id', 'name'])
-            ->map(fn (DataTable $table): string => '/tables/'.str($table->name)->slug().'/schema.json')
+            ->map(fn (DataTable $table): string => "/tables/by-id/{$table->id}/schema.json")
             ->values()
             ->all();
     }
@@ -171,9 +171,9 @@ trait FindsVfsSourceTextCandidates
      * table mount. Laravel's JSON cast escapes non-ASCII (\uXXXX) and the
      * JSON column keeps that text, so the escaped needle is matched too.
      *
-     * Integration note: rows are addressed by the table's friendly slug path
-     * today; switch to `/tables/by-id/{tableId}/rows/by-id/{rowId}.json` once
-     * Stream C1's table by-id paths are merged (slugs may collide).
+     * Candidates are canonical `/tables/by-id/{tableId}/rows/by-id/{rowId}.json`
+     * paths (table slugs may collide); the search facade maps them to the
+     * friendly, disambiguated table token for display (searchDisplayPath).
      *
      * @return list<string>
      */
@@ -202,18 +202,8 @@ trait FindsVfsSourceTextCandidates
             ->limit($budget->maxFiles)
             ->get(['id', 'table_id']);
 
-        if ($rows->isEmpty()) {
-            return [];
-        }
-
-        $slugs = DataTable::forWorkspace()
-            ->whereIn('id', $rows->pluck('table_id')->unique()->all())
-            ->get(['id', 'name'])
-            ->mapWithKeys(fn (DataTable $table): array => [$table->id => (string) str($table->name)->slug()]);
-
         return $rows
-            ->filter(fn (DataTableRow $row): bool => isset($slugs[$row->table_id]))
-            ->map(fn (DataTableRow $row): string => "/tables/{$slugs[$row->table_id]}/rows/by-id/{$row->id}.json")
+            ->map(fn (DataTableRow $row): string => "/tables/by-id/{$row->table_id}/rows/by-id/{$row->id}.json")
             ->values()
             ->all();
     }

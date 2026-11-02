@@ -188,8 +188,9 @@ class VfsShellFlagsTest extends TestCase
     // grep / rg flags in single-file and recursive mode.
     public function test_grep_and_rg_flags(): void
     {
-        $a = $this->vfs->stat($this->agent, '/files/rg/a.md')['canonical_path'];
-        $b = $this->vfs->stat($this->agent, '/files/rg/b.txt')['canonical_path'];
+        // Recursive search prints readable friendly paths (Phase 3 decision).
+        $a = '/files/rg/a.md';
+        $b = '/files/rg/b.txt';
         foreach ([
             ['grep -L zzz /files/x/s1.txt /files/x/s2.txt', "/files/x/s1.txt\n/files/x/s2.txt\n"],
             ['grep -x b /files/x/s1.txt', "b\n"],
