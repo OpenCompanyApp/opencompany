@@ -13,6 +13,7 @@ use App\Domain\Vfs\Events\VfsOperationContext;
 use App\Domain\Vfs\OpenCompany\Approvals\VfsApprovalRequestFactory;
 use App\Domain\Vfs\OpenCompany\Approvals\VfsApprovedExecutionContext;
 use App\Domain\Vfs\OpenCompany\Approvals\VfsDirectToolOperation;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsPendingApproval;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Jobs\AgentRespondJob;
 use App\Models\AgentPermission;
@@ -278,9 +279,24 @@ class ApprovalExecutionService
                 ? UntrustedContent::wrap($result, 'approved_tool_result', $toolSlug)
                 : $result;
             $toolSucceeded = ! (is_array($decodedResult) && ($decodedResult['ok'] ?? true) === false);
+            // Invariant: `ok:true, status:pending_approval` is "waiting for a
+            // human", not success. The replay hit a newly gated permission (or
+            // a second gated backing tool) and created another approval
+            // without writing anything. Recording it as succeeded announced a
+            // side effect that never happened and released a parked agent.
+            // VfsPendingApproval::isPending is the single shape test (also
+            // used by IntegrationRuntime::assertVfsEnvelopeSucceeded); vfs_exec
+            // may nest it under `result`.
+            $pendingApprovalId = $this->pendingApprovalIn($decodedResult, $approval->id);
 
             if ($isScriptCallback) {
-                $this->recordScriptCallbackDisposition($approval->id, $context, 'succeeded');
+                $this->recordScriptCallbackDisposition($approval->id, $context, $pendingApprovalId !== null ? 'approval_pending' : 'succeeded');
+            }
+
+            if ($pendingApprovalId !== null) {
+                $this->finishPendingReplay($approval, $agent, $agentIsWaiting, $pendingApprovalId, $vfsMeta !== null, $displayResult);
+
+                return;
             }
 
             if ($vfsMeta !== null) {
@@ -436,17 +452,70 @@ class ApprovalExecutionService
     }
 
     /**
-     * Persist the disposition of a VFS approval replay, post the outcome to
-     * the originating conversation and resume a parked agent there.
-     *
-     * Disposition (tool_execution_context.execution): {disposition:
-     * succeeded|failed|conflict|denied|unavailable|unknown, error_code,
-     * recorded_at}. Without a conversation the outcome is still persisted and
-     * a parked agent is released (it can read /approvals/{id}.json).
+     * The id of a NEW pending approval reported by a replayed tool result, or
+     * null. The approval being executed never counts as "another" one.
      */
-    private function finishVfsReplay(ApprovalRequest $approval, User $agent, bool $agentIsWaiting, string $disposition, ?string $errorCode, string $message): void
+    private function pendingApprovalIn(mixed $decodedResult, string $approvalId): ?string
     {
-        DB::transaction(function () use ($approval, $disposition, $errorCode): void {
+        if (! is_array($decodedResult)) {
+            return null;
+        }
+
+        $pending = VfsPendingApproval::isPending($decodedResult)
+            ?? VfsPendingApproval::isPending($decodedResult['result'] ?? null);
+
+        return $pending !== null && $pending !== $approvalId ? $pending : null;
+    }
+
+    /**
+     * Finish a replay whose tool returned another pending approval.
+     *
+     * Contract: disposition `approval_pending` with the new approval id is
+     * persisted (VFS approvals: tool_execution_context.execution); the
+     * conversation gets a "needs another approval" note, never "executed";
+     * and the wait state is kept: an agent parked on this approval is moved
+     * onto the new one and is NOT resumed. It resumes when the new approval
+     * is resolved, exactly as if it had requested that approval itself.
+     */
+    private function finishPendingReplay(ApprovalRequest $approval, User $agent, bool $agentIsWaiting, string $pendingApprovalId, bool $isVfs, string $displayResult): void
+    {
+        $message = "**Approved action needs another approval ({$pendingApprovalId}); nothing was changed yet:** ".$displayResult;
+
+        if ($isVfs) {
+            $this->recordVfsDisposition($approval, 'approval_pending', null, $pendingApprovalId);
+        }
+
+        // Keep (or transfer) the wait onto the new approval. The approval
+        // factory already does this for must_wait agents; an agent parked via
+        // wait_for_approval is moved here.
+        $agent->refresh();
+        if ($agentIsWaiting && $agent->awaiting_approval_id !== $pendingApprovalId) {
+            $agent->update(['awaiting_approval_id' => $pendingApprovalId]);
+        }
+
+        $channelId = $approval->channel_id ?? ($approval->tool_execution_context['parameters']['channelId'] ?? null);
+        $channel = is_string($channelId) ? $this->approvalChannel($agent, $channelId) : null;
+        if ($channel === null) {
+            return;
+        }
+
+        Message::create([
+            'id' => Str::uuid()->toString(),
+            'content' => $message,
+            'channel_id' => $channel->id,
+            'author_id' => $agent->id,
+            'timestamp' => now(),
+        ]);
+        $channel->update(['last_message_at' => now()]);
+    }
+
+    /**
+     * Persist tool_execution_context.execution for a VFS approval replay
+     * under a row lock (concurrent resolutions must not drop each other).
+     */
+    private function recordVfsDisposition(ApprovalRequest $approval, string $disposition, ?string $errorCode, ?string $pendingApprovalId = null): void
+    {
+        DB::transaction(function () use ($approval, $disposition, $errorCode, $pendingApprovalId): void {
             $locked = ApprovalRequest::query()->lockForUpdate()->find($approval->id);
             if ($locked === null) {
                 return;
@@ -455,11 +524,28 @@ class ApprovalExecutionService
             $context['execution'] = [
                 'disposition' => $disposition,
                 'error_code' => $errorCode,
+                ...($pendingApprovalId !== null ? ['pending_approval_id' => $pendingApprovalId] : []),
                 'recorded_at' => now()->toIso8601String(),
             ];
             $locked->tool_execution_context = $context;
             $locked->save();
         });
+    }
+
+    /**
+     * Persist the disposition of a VFS approval replay, post the outcome to
+     * the originating conversation and resume a parked agent there.
+     *
+     * Disposition (tool_execution_context.execution): {disposition:
+     * succeeded|failed|conflict|denied|unavailable|unknown|approval_pending,
+     * error_code, recorded_at[, pending_approval_id]}. Without a conversation
+     * the outcome is still persisted and a parked agent is released (it can
+     * read /approvals/{id}.json). approval_pending never comes through here;
+     * see finishPendingReplay(), which keeps the agent parked.
+     */
+    private function finishVfsReplay(ApprovalRequest $approval, User $agent, bool $agentIsWaiting, string $disposition, ?string $errorCode, string $message): void
+    {
+        $this->recordVfsDisposition($approval, $disposition, $errorCode);
 
         $channelId = $approval->channel_id ?? ($approval->tool_execution_context['parameters']['channelId'] ?? null);
         $channel = is_string($channelId) ? $this->approvalChannel($agent, $channelId) : null;
@@ -730,8 +816,8 @@ class ApprovalExecutionService
      *   policy re-evaluates denial before consulting approvals.
      *
      * Invariant: subject normalization must match the policy exactly
-     * (VfsDirectToolOperation uses VfsPath::normalize for paths and
-     * VfsPath::commandSubject for commands).
+     * (VfsDirectToolOperation uses OpenCompanyVfs::policySubject for paths,
+     * which also rewrites `/me/…`, and VfsPath::commandSubject for commands).
      *
      * @param  array<string, mixed>  $parameters  The parameters exactly as passed to the tool request
      * @param  array<string, mixed>  $context
@@ -748,7 +834,7 @@ class ApprovalExecutionService
         }
 
         $approvals = $this->vfsApprovals ?? app(VfsApprovalRequestFactory::class);
-        $operation = VfsDirectToolOperation::fromToolCall($toolSlug, $parameters);
+        $operation = VfsDirectToolOperation::fromToolCall($agent, $toolSlug, $parameters);
         if ($operation === null) {
             return null;
         }

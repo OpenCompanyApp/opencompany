@@ -4,11 +4,9 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 
 use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
-use App\Models\ApprovalRequest;
 use App\Models\ListItem;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 /**
@@ -193,10 +191,9 @@ trait ResolvesVfsResourceDirectEntries
         }
 
         $id = Str::before($segments[1], '.json');
-        $approval = ApprovalRequest::query()
+        // Same scope as the approvals mount (MountsVfsApprovals::agentApprovalsQuery).
+        $approval = $this->agentApprovalsQuery($agent)
             ->where('id', $id)
-            ->whereHas('requester', fn (Builder $query) => $query->where('workspace_id', $agent->workspace_id))
-            ->where('requester_id', $agent->id)
             ->first();
 
         return $approval

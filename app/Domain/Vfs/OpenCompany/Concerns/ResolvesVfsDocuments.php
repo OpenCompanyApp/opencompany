@@ -4,7 +4,9 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
 use App\Models\Document;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Resolves document VFS aliases into workspace-scoped Document models.
@@ -28,8 +30,9 @@ trait ResolvesVfsDocuments
 
     /**
      * @param  list<string>  $segments
+     * @param  User  $viewer  the acting agent; errors only ever name documents it may read
      */
-    private function documentFromByIdSegments(array $segments, string $path): Document
+    private function documentFromByIdSegments(User $viewer, array $segments, string $path): Document
     {
         $doc = $this->findDocument($segments[2], $path);
         if (! isset($segments[3])) {
@@ -39,29 +42,41 @@ trait ResolvesVfsDocuments
             throw VfsError::notFound($path);
         }
 
-        return $this->resolveDocumentPathFromParent($doc->id, array_slice($segments, 3), $path, "/docs/by-id/{$doc->id}", ! $doc->is_system);
+        return $this->resolveDocumentPathFromParent($doc->id, array_slice($segments, 3), $path, "/docs/by-id/{$doc->id}", ! $doc->is_system, $viewer);
     }
 
     /**
      * @param  list<string>  $parts
+     * @param  User  $viewer  the acting agent; errors only ever name documents it may read
      */
-    private function resolveDocumentPath(array $parts, string $path): Document
+    private function resolveDocumentPath(User $viewer, array $parts, string $path): Document
     {
-        return $this->resolveDocumentPathFromParent(null, $parts, $path, '/docs', true);
+        return $this->resolveDocumentPathFromParent(null, $parts, $path, '/docs', true, $viewer);
     }
 
     /**
      * Walk friendly segments from a parent folder (null = workspace root).
      *
+     * Visibility: with a $viewer, not_found suggestions and ambiguity lists at
+     * every segment (including intermediate folders) contain only documents
+     * the viewer may read (AuthorizesVfsDocuments::canAccessDocument over the
+     * full chain), so children of a hidden folder are never suggested either.
+     * The returned document itself is NOT authorized here; callers still
+     * apply their read/write checks to it.
+     *
      * @param  list<string>  $parts
      * @param  bool  $excludeSystem  true for /docs paths; false inside agent trees
+     * @param  User|null  $viewer  null only for agent trees, whose access is decided by the /agents mount
      *
      * @throws VfsError not_found (with did_you_mean) or ambiguous_match
      */
-    private function resolveDocumentPathFromParent(?string $parentId, array $parts, string $path, string $basePath = '/docs', bool $excludeSystem = false): Document
+    private function resolveDocumentPathFromParent(?string $parentId, array $parts, string $path, string $basePath = '/docs', bool $excludeSystem = false, ?User $viewer = null): Document
     {
         $doc = null;
         $parentPath = $basePath;
+        $visible = $viewer === null
+            ? null
+            : fn (Model $candidate): bool => $candidate instanceof Document && $this->canAccessDocument($viewer, $candidate);
 
         foreach ($parts as $part) {
             $doc = $this->resolveFriendlySegment(
@@ -70,8 +85,9 @@ trait ResolvesVfsDocuments
                 $part,
                 $parentPath,
                 $path,
-                fn (\Illuminate\Database\Eloquent\Model $candidate): string => "/docs/by-id/{$candidate->getKey()}",
+                fn (Model $candidate): string => "/docs/by-id/{$candidate->getKey()}",
                 allowMarkdownSuffix: true,
+                visible: $visible,
             );
             if (! $doc instanceof Document) {
                 throw VfsError::notFound($path);

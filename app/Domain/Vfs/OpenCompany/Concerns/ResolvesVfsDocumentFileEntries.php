@@ -18,8 +18,8 @@ trait ResolvesVfsDocumentFileEntries
     {
         try {
             $doc = (($segments[1] ?? null) === 'by-id' && isset($segments[2]))
-                ? $this->documentFromByIdSegments($segments, $path)
-                : $this->resolveDocumentPath(array_slice($segments, 1), $path);
+                ? $this->documentFromByIdSegments($agent, $segments, $path)
+                : $this->resolveDocumentPath($agent, array_slice($segments, 1), $path);
         } catch (VfsError $e) {
             if ($e->errorCode === 'not_found') {
                 return null;

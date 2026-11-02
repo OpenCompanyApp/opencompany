@@ -67,7 +67,7 @@ trait StatsVfsPaths
 
         try {
             if (($segments[0] ?? null) === 'docs' && isset($segments[1]) && ! in_array($segments[1], ['by-id', '.trash'], true)) {
-                $this->resolveDocumentPath(array_slice($segments, 1), $path);
+                $this->resolveDocumentPath($agent, array_slice($segments, 1), $path);
             } elseif (($segments[0] ?? null) === 'tables' && isset($segments[1])) {
                 ['base' => $base] = $this->resolveTableSegments($segments, $path);
 

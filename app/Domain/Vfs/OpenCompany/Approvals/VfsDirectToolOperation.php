@@ -3,7 +3,9 @@
 namespace App\Domain\Vfs\OpenCompany\Approvals;
 
 use App\Domain\Vfs\Core\VfsPath;
+use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
+use App\Models\User;
 
 /**
  * Describe what one direct VFS primitive call (vfs_patch, vfs_write,
@@ -16,8 +18,10 @@ use App\Domain\Vfs\OpenCompany\Policy\VfsActionClass;
  * subject and required tools the VFS mutation paths pass to
  * VfsMutationPolicy, otherwise an approved replay would ask again.
  *
- * Invariant: subjects use VfsPath::normalize / VfsPath::commandSubject, the
- * same normalization the policy uses. Keep requiredTools in sync with
+ * Invariant: subjects use OpenCompanyVfs::policySubject (normalize, then the
+ * `/me` alias rewrite) / VfsPath::commandSubject, exactly the subject the
+ * policy sees. The original parameters (with `/me/…`) are kept untouched for
+ * replay and its parameter hash. Keep requiredTools in sync with
  * ExecutesVfsMutationCommands, MutatesVfsFiles, PatchesVfsRecords and
  * EvaluatesVfsMutationPolicy when a mount composes a new backing tool.
  */
@@ -38,9 +42,10 @@ final class VfsDirectToolOperation
     ) {}
 
     /**
+     * @param  User  $agent  the requesting agent; `/me` resolves to its backing paths
      * @param  array<string, mixed>  $parameters  Tool parameters exactly as the tool receives them
      */
-    public static function fromToolCall(string $toolSlug, array $parameters): ?self
+    public static function fromToolCall(User $agent, string $toolSlug, array $parameters): ?self
     {
         if (! str_starts_with($toolSlug, 'vfs_')) {
             return null;
@@ -58,7 +63,7 @@ final class VfsDirectToolOperation
         };
         $subject = $toolSlug === 'vfs_exec'
             ? VfsPath::commandSubject((string) ($parameters['command'] ?? ''))
-            : VfsPath::normalize((string) ($parameters['path'] ?? $parameters['source'] ?? ''));
+            : app(OpenCompanyVfs::class)->policySubject($agent, (string) ($parameters['path'] ?? $parameters['source'] ?? ''));
         $requiredTools = self::requiredTools($toolSlug, $subject, (string) ($parameters['mode'] ?? 'create'));
 
         return new self(

@@ -83,8 +83,8 @@ trait MutatesVfsDocuments
     private function resolvePatchableDocument(User $agent, array $segments, string $path): Document
     {
         $doc = (isset($segments[1], $segments[2]) && $segments[1] === 'by-id')
-            ? $this->documentFromByIdSegments($segments, $path)
-            : $this->resolveDocumentPath(array_slice($segments, 1), $path);
+            ? $this->documentFromByIdSegments($agent, $segments, $path)
+            : $this->resolveDocumentPath($agent, array_slice($segments, 1), $path);
 
         if ($doc->is_folder) {
             throw VfsError::notWritable($path);

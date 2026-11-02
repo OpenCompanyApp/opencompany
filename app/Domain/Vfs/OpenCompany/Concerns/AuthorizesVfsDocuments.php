@@ -139,6 +139,73 @@ trait AuthorizesVfsDocuments
     }
 
     /**
+     * Which members of a subtree $agent may NOT write, for recursive
+     * operations (trash, move, restore of a folder).
+     *
+     * Contract: the caller already authorized $root itself with
+     * documentWriteDenial(), so the root's ancestors carry no deny and the
+     * folder allow covering $root covers every descendant. What remains is
+     * per-descendant: an explicit folder deny on a descendant (hidden),
+     * sharing rows that exclude the agent (hidden) or give it only the viewer
+     * role (read-only), and system documents (hidden from /docs). A block is
+     * inherited by everything below it, exactly as documentWriteDenial would
+     * judge each descendant on its own. One query per rule instead of one
+     * chain walk per descendant, so large folders stay cheap.
+     *
+     * $descendantIds must be parent-before-child (BFS) order and may include
+     * trashed rows (restore of a trashed batch).
+     *
+     * @param  list<string>  $descendantIds
+     * @return array{count: int, first_readable: string|null} number of blocked descendants, and the canonical path of the first one the agent can still read (null when every blocked descendant is hidden, so error messages never name a hidden document)
+     */
+    private function documentSubtreeWriteBlocks(User $agent, Document $root, array $descendantIds): array
+    {
+        if ($descendantIds === []) {
+            return ['count' => 0, 'first_readable' => null];
+        }
+
+        $members = Document::withTrashed()
+            ->whereKey($descendantIds)
+            ->get(['id', 'parent_id', 'is_system', 'author_id'])
+            ->keyBy('id');
+        $denied = array_flip($this->permissions->getDeniedFolderIds($agent));
+        $sharing = DocumentPermission::query()
+            ->whereIn('document_id', $descendantIds)
+            ->get(['document_id', 'user_id', 'role'])
+            ->groupBy('document_id');
+
+        // Block level per id: 0 none, 1 read-only, 2 hidden. Higher wins.
+        $level = [(string) $root->id => 0];
+        $count = 0;
+        $firstReadable = null;
+        foreach ($descendantIds as $id) {
+            $member = $members->get($id);
+            if ($member === null) {
+                continue;
+            }
+
+            $own = 0;
+            if ($member->is_system || isset($denied[$id])) {
+                $own = 2;
+            } elseif (($rows = $sharing->get($id)) !== null && $rows->isNotEmpty() && $member->author_id !== $agent->id) {
+                $mine = $rows->firstWhere('user_id', $agent->id);
+                $own = $mine === null ? 2 : ($mine->role === 'editor' ? 0 : 1);
+            }
+
+            $effective = max($own, $level[(string) $member->parent_id] ?? 0);
+            $level[$id] = $effective;
+            if ($effective > 0) {
+                $count++;
+                if ($effective === 1 && $firstReadable === null) {
+                    $firstReadable = "/docs/by-id/{$id}";
+                }
+            }
+        }
+
+        return ['count' => $count, 'first_readable' => $firstReadable];
+    }
+
+    /**
      * First document in $chain whose DocumentPermission rows exclude $agent
      * (for $role `editor`: rows exist and the agent is neither an editor nor
      * the author). Null when no restricting row applies.
@@ -160,7 +227,9 @@ trait AuthorizesVfsDocuments
             return null;
         }
 
-        $nodes = Document::query()->whereIn('id', $rows->keys()->all())->get(['id', 'title', 'author_id'])->keyBy('id');
+        // withTrashed: a trashed ancestor's sharing rows still restrict its
+        // trashed subtree (trash reads use the same chain).
+        $nodes = Document::withTrashed()->whereIn('id', $rows->keys()->all())->get(['id', 'title', 'author_id'])->keyBy('id');
         foreach ($chain as $documentId) {
             $nodeRows = $rows->get($documentId);
             if ($nodeRows === null || $nodeRows->isEmpty()) {
@@ -185,6 +254,13 @@ trait AuthorizesVfsDocuments
      * The document id followed by its ancestor ids, nearest first (bounded
      * depth; the parent walk stays inside the document's own tree).
      *
+     * Invariant: the walk includes trashed ancestors. A trashed document
+     * keeps its parent_id, and its readability must be judged by the same
+     * deny/allow/sharing rows as when it was live (trash reads, listings and
+     * restores all go through documentReadDenial / documentWriteDenial). A
+     * live document under a trashed parent is likewise still governed by
+     * that parent's rows; walking only live rows would silently drop them.
+     *
      * @return list<string>
      */
     private function documentChain(Document $doc): array
@@ -195,7 +271,7 @@ trait AuthorizesVfsDocuments
 
         while ($parentId && $depth-- > 0 && ! in_array($parentId, $chain, true)) {
             $chain[] = (string) $parentId;
-            $parentId = Document::query()->where('id', $parentId)->value('parent_id');
+            $parentId = Document::withTrashed()->where('id', $parentId)->value('parent_id');
         }
 
         return $chain;

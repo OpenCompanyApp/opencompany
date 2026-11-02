@@ -157,6 +157,21 @@ class OpenCompanyVfs
     }
 
     /**
+     * The subject the mutation paths hand to VfsMutationPolicy for $path:
+     * normalized, with `/me/…` rewritten onto its backing path.
+     *
+     * Approval wrappers and replay (VfsDirectToolOperation) build their
+     * subject from tool parameters before the facade runs; they must use
+     * this, or an approved `/me/…` call is compared against the backing
+     * subject on replay, rejected, and asks for a second approval. Pure path
+     * mapping: no authorization, no audit.
+     */
+    public function policySubject(User $agent, string $path): string
+    {
+        return $this->rewriteMePath($agent, $this->normalizePath($path));
+    }
+
+    /**
      * @return list<VfsEntry>
      */
     public function list(User $agent, string $path, ?VfsBudget $budget = null): array

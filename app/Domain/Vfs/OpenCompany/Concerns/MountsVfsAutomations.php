@@ -16,8 +16,8 @@ use Illuminate\Support\Str;
  * this mount gets minimal care. Listing metadata (name, active) stays visible
  * to every agent. The body fields that carry instructions, code or external
  * data (AUTOMATION_PRIVATE_FIELDS) are only served to agents allowed the
- * automation read tool (`get_automation`), so the VFS never shows more than
- * the domain tool would.
+ * automation read tool (`get_automation`) without approval, so the VFS never
+ * shows more than the domain tool would without a human.
  */
 trait MountsVfsAutomations
 {
@@ -77,7 +77,12 @@ trait MountsVfsAutomations
         $automation = $this->resolveAutomationToken(Str::before($segments[1], '.json'), $path);
         $payload = $automation->toArray();
 
-        if (! $this->permissions->resolveToolPermission($agent, 'get_automation', 'read')['allowed']) {
+        // Invariant: approval-gated means "not without a human". Serving the
+        // body when get_automation is allowed only with approval used to
+        // bypass that gate; redact and point at the gated tool instead (a
+        // read never auto-creates an approval request).
+        $decision = $this->permissions->resolveToolPermission($agent, 'get_automation', 'read');
+        if (! $decision['allowed'] || $decision['requires_approval']) {
             $hidden = [];
             foreach (self::$automationPrivateFields as $field) {
                 if (array_key_exists($field, $payload)) {
@@ -86,7 +91,9 @@ trait MountsVfsAutomations
                 }
             }
             $payload['redacted_fields'] = $hidden;
-            $payload['redaction_reason'] = 'Automation instructions, code and results require the get_automation tool permission.';
+            $payload['redaction_reason'] = $decision['allowed']
+                ? 'Automation instructions, code and results need human approval for this agent: call the get_automation tool, which asks for approval, instead of reading this file.'
+                : 'Automation instructions, code and results require the get_automation tool permission.';
         }
 
         return json_encode($payload, JSON_PRETTY_PRINT);

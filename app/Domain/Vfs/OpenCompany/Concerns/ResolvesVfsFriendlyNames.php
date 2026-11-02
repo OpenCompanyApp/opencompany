@@ -5,6 +5,7 @@ namespace App\Domain\Vfs\OpenCompany\Concerns;
 use App\Domain\Vfs\Core\VfsError;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 /**
  * Stable, guessable friendly names for slug-addressed VFS mounts.
@@ -30,9 +31,18 @@ use Illuminate\Database\Eloquent\Model;
  * when the slug cannot be expressed as a LIKE pattern (transliterated or
  * percent-encoded titles). Scans select only id + label.
  *
- * This trait never authorizes. Callers pass sibling queries that are already
- * workspace scoped (forWorkspace() or an explicit workspace_id predicate) and
- * apply their own read/write checks to the returned model.
+ * This trait never authorizes the returned model. Callers pass sibling
+ * queries that are already workspace scoped (forWorkspace() or an explicit
+ * workspace_id predicate) and apply their own read/write checks to the
+ * returned model.
+ *
+ * Invariant (confidentiality of errors): every name or id this trait puts
+ * into an error (`did_you_mean`, `by_id`, ambiguity `matches`) must be
+ * visible to the caller. Mounts with per-object visibility (documents: folder
+ * denies, sharing rows) pass a `$visible` predicate; candidates failing it
+ * are never suggested or listed, and an ambiguity among only hidden
+ * candidates reads as not found. Without it, a typo such as
+ * `/docs/secret-acquisitio` returned a denied folder's name and by-id path.
  */
 trait ResolvesVfsFriendlyNames
 {
@@ -106,6 +116,7 @@ trait ResolvesVfsFriendlyNames
      * @param  Builder<covariant Model>  $siblings  workspace-scoped sibling query
      * @param  string  $parentPath  display path of the parent, used to build suggestions
      * @param  (callable(Model): string)|null  $byIdPath  canonical path builder for suggestions
+     * @param  (callable(Model): bool)|null  $visible  whether the caller may see a candidate; null = every sibling is visible
      *
      * @throws VfsError not_found (with did_you_mean) or ambiguous_match
      */
@@ -117,19 +128,21 @@ trait ResolvesVfsFriendlyNames
         string $path,
         ?callable $byIdPath = null,
         bool $allowMarkdownSuffix = false,
+        ?callable $visible = null,
     ): Model {
-        $match = $this->matchFriendlySegment($siblings, $labelColumn, $token, $parentPath, $path);
+        $match = $this->matchFriendlySegment($siblings, $labelColumn, $token, $parentPath, $path, $visible);
         if ($match === null && $allowMarkdownSuffix && str_ends_with(strtolower($token), '.md') && strlen($token) > 3) {
-            $match = $this->matchFriendlySegment($siblings, $labelColumn, substr($token, 0, -3), $parentPath, $path);
+            $match = $this->matchFriendlySegment($siblings, $labelColumn, substr($token, 0, -3), $parentPath, $path, $visible);
         }
 
-        return $match ?? throw $this->friendlyNotFound($siblings, $labelColumn, $token, $parentPath, $path, $byIdPath);
+        return $match ?? throw $this->friendlyNotFound($siblings, $labelColumn, $token, $parentPath, $path, $byIdPath, $visible);
     }
 
     /**
      * @param  Builder<covariant Model>  $siblings
+     * @param  (callable(Model): bool)|null  $visible
      */
-    private function matchFriendlySegment(Builder $siblings, string $labelColumn, string $token, string $parentPath, string $path): ?Model
+    private function matchFriendlySegment(Builder $siblings, string $labelColumn, string $token, string $parentPath, string $path, ?callable $visible = null): ?Model
     {
         if ($token === '') {
             return null;
@@ -165,6 +178,14 @@ trait ResolvesVfsFriendlyNames
         if ($matches->count() === 1) {
             return $matches->first();
         }
+        if ($matches->count() > 1 && $visible !== null) {
+            // Only visible candidates may be listed (or even counted). One
+            // visible candidate resolves; none reads as not found.
+            $matches = $matches->filter(fn (Model $candidate): bool => (bool) $visible($candidate))->values();
+            if ($matches->count() === 1) {
+                return $matches->first();
+            }
+        }
         if ($matches->count() > 1) {
             $paths = $matches
                 ->map(fn (Model $candidate): string => rtrim($parentPath, '/').'/'.$this->slug((string) $candidate->getAttribute($labelColumn)).'--'.$this->idSuffix((string) $candidate->getKey()))
@@ -188,9 +209,9 @@ trait ResolvesVfsFriendlyNames
      * otherwise scans sibling labels.
      *
      * @param  Builder<covariant Model>  $siblings
-     * @return \Illuminate\Support\Collection<int, Model>
+     * @return Collection<int, Model>
      */
-    private function slugCandidates(Builder $siblings, string $labelColumn, string $token): \Illuminate\Support\Collection
+    private function slugCandidates(Builder $siblings, string $labelColumn, string $token): Collection
     {
         if (preg_match('/^[a-z0-9]+(-[a-z0-9]+)*$/', $token) === 1) {
             $pattern = '%'.str_replace('-', '%', $token).'%';
@@ -220,8 +241,9 @@ trait ResolvesVfsFriendlyNames
      *
      * @param  Builder<covariant Model>  $siblings
      * @param  (callable(Model): string)|null  $byIdPath
+     * @param  (callable(Model): bool)|null  $visible  suggestions are limited to visible siblings
      */
-    private function friendlyNotFound(Builder $siblings, string $labelColumn, string $token, string $parentPath, string $path, ?callable $byIdPath): VfsError
+    private function friendlyNotFound(Builder $siblings, string $labelColumn, string $token, string $parentPath, string $path, ?callable $byIdPath, ?callable $visible = null): VfsError
     {
         $rows = $this->friendlySiblingRows($siblings, $labelColumn, 500);
         $tokens = $this->friendlyTokens($siblings, $labelColumn);
@@ -238,7 +260,15 @@ trait ResolvesVfsFriendlyNames
         }
         usort($scored, fn (array $a, array $b): int => $a['distance'] <=> $b['distance']);
         $limit = max(3, intdiv(strlen($needle), 2));
-        $suggestions = array_slice(array_values(array_filter($scored, fn (array $s): bool => $s['distance'] <= $limit)), 0, 3);
+        $close = array_values(array_filter($scored, fn (array $s): bool => $s['distance'] <= $limit));
+        if ($visible !== null && $close !== []) {
+            // Authorize before suggesting: check the closest candidates (a
+            // bounded number of them) and keep only the visible ones.
+            $close = array_slice($close, 0, 25);
+            $models = (clone $siblings)->whereKey(array_column($close, 'id'))->get()->keyBy(fn (Model $model): string => (string) $model->getKey());
+            $close = array_values(array_filter($close, fn (array $s): bool => ($model = $models->get($s['id'])) !== null && (bool) $visible($model)));
+        }
+        $suggestions = array_slice($close, 0, 3);
 
         $didYouMean = array_map(fn (array $s): string => $s['path'], $suggestions);
         $context = ['path' => $path];

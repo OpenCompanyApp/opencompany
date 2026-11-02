@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\Log;
  * Table-backed VfsEventSink (`vfs_operation_events`).
  *
  * Cost model:
- * - Writes, denials, approval requests and failures: one INSERT each, at
- *   record() time.
- * - Reads: aggregated to one row per (actor, run — or the agent-minute when
+ * - Writes, denials (including read-path denials), approval requests and
+ *   failures: one INSERT each, at record() time.
+ * - Allowed reads: aggregated to one row per (actor, run — or the agent-minute when
  *   there is no run —, operation, path). The aggregation key is the row's
  *   idempotency_key (unique index), duplicates are dropped in memory first and
  *   with INSERT OR IGNORE semantics at flush, and buffered reads are written
@@ -34,7 +34,11 @@ class DatabaseVfsEventSink implements VfsEventSink
     public function record(VfsEvent $event): void
     {
         try {
-            if ($event->effect === 'read') {
+            // Invariant: only allowed reads aggregate. A denial is an
+            // authorization decision and always gets its own row, even on the
+            // read path (read denials carry no idempotency key, and the read
+            // buffer used to drop keyless events, so no denial was stored).
+            if ($event->effect === 'read' && $event->decision !== 'denied') {
                 $this->bufferRead($event);
 
                 return;

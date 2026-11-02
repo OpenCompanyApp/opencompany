@@ -72,7 +72,7 @@ class ApprovalWrappedTool implements Tool
                 }
             }
 
-            if (! $isBudget && ($operation = VfsDirectToolOperation::fromToolCall($this->toolSlug, $request->toArray())) !== null) {
+            if (! $isBudget && ($operation = VfsDirectToolOperation::fromToolCall($this->agent, $this->toolSlug, $request->toArray())) !== null) {
                 return $this->requestVfsApproval($request, $operation);
             }
 
