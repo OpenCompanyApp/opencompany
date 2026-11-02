@@ -292,16 +292,16 @@ trait MutatesVfsDocumentRecords
 
     /**
      * Names that would break the naming contract are refused: empty, hidden
-     * (`.trash`, `.history` are reserved views), path separators, or a
-     * trailing `--{8 hex}` that reads as a collision suffix.
+     * (`.trash`, `.history` are reserved views) or containing a path
+     * separator. (A `--x` tail is harmless: slugs collapse `--`.)
      */
     private function assertValidRecordName(string $name, string $path): string
     {
         $name = trim($name);
-        if ($name === '' || str_starts_with($name, '.') || str_contains($name, '/') || preg_match('/--[0-9a-f]{8}$/i', $name) === 1) {
+        if ($name === '' || str_starts_with($name, '.') || str_contains($name, '/')) {
             throw VfsError::invalid("Invalid name for {$path}.", [
                 'path' => $path,
-                'hint' => 'Names must be non-empty, must not start with "." and must not end with --{8 hex characters} (reserved for collision suffixes).',
+                'hint' => 'Names must be non-empty and must not start with "." (reserved for .trash and .history views).',
             ]);
         }
 
@@ -675,12 +675,12 @@ trait MutatesVfsDocumentRecords
     {
         $doc = null;
         foreach (array_slice($segments, 2) as $token) {
-            $id = preg_match('/--([0-9a-f]{8})$/i', $token, $m) === 1 ? null : $token;
+            $id = preg_match(self::ID_SUFFIX_PATTERN, $token, $m) === 1 ? null : $token;
             $query = Document::onlyTrashed()->where('workspace_id', $agent->workspace_id)->where('is_system', false);
             $query = $doc !== null ? $query->where('parent_id', $doc->id) : $query;
             $doc = $id !== null
                 ? $query->whereKey($id)->first()
-                : $query->where('id', 'like', strtolower($m[1]).'%')->first();
+                : $query->where('id', 'like', '%'.$m[2])->first();
             if ($doc === null) {
                 throw new VfsError('not_found', "Path not found: {$path}", ['path' => $path, 'hint' => 'ls /docs/.trash to see trashed documents.']);
             }
@@ -695,7 +695,7 @@ trait MutatesVfsDocumentRecords
     private function trashedDocumentEntry(Document $doc, string $path): VfsEntry
     {
         return new VfsEntry(
-            name: $this->slug((string) $doc->title).'--'.substr($doc->id, 0, 8),
+            name: $this->slug((string) $doc->title).'--'.$this->idSuffix($doc->id),
             path: $path,
             type: $doc->is_folder ? 'directory' : 'file',
             canonicalPath: "/docs/.trash/{$doc->id}",

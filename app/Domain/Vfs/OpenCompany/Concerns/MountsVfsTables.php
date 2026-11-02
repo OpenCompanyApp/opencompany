@@ -320,7 +320,7 @@ trait MountsVfsTables
 
     private function tableViewToken(DataTableView $view): string
     {
-        return $this->slug($view->name).'--'.substr($view->id, 0, 8);
+        return $this->slug($view->name).'--'.$this->idSuffix($view->id);
     }
 
     /**

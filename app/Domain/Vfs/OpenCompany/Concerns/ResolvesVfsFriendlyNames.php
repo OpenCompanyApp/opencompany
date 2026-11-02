@@ -13,9 +13,11 @@ use Illuminate\Database\Eloquent\Model;
  * /tables and /agents:
  *
  * - A record's friendly token is slug(label). When two or more siblings share
- *   a slug, EVERY colliding sibling is listed as `{slug}--{id8}` (first eight
- *   characters of its id), so a friendly path never silently picks "the first
- *   match". The canonical by-id path is always unambiguous.
+ *   a slug, EVERY colliding sibling is listed as `{slug}--{id8}` (the LAST
+ *   eight id characters: ordered UUIDv7 ids share their leading timestamp
+ *   characters, the tail is random), so a friendly path never silently picks
+ *   "the first match". Slugs never contain `--`, so the suffix cannot be
+ *   confused with a name. The canonical by-id path is always unambiguous.
  * - Resolving a bare slug that several siblings share fails with
  *   `ambiguous_match` listing the suffixed paths, instead of guessing.
  * - `{slug}--{id8}` resolves by id prefix, the exact label resolves when it
@@ -41,6 +43,15 @@ trait ResolvesVfsFriendlyNames
      * @var array<string, array<string, string>>
      */
     private array $friendlyTokenCache = [];
+
+    /** `{name}--{id8}`: group 1 = name part, group 2 = id suffix (shorter only for short non-UUID ids). */
+    private const ID_SUFFIX_PATTERN = '/^(.*)--([0-9A-Za-z]{1,8})$/';
+
+    /** The collision/trash suffix for an id: its last eight characters. */
+    private function idSuffix(string $id): string
+    {
+        return substr($id, -8);
+    }
 
     /**
      * Friendly token for one record among its siblings: slug, or slug--id8
@@ -76,7 +87,7 @@ trait ResolvesVfsFriendlyNames
         $tokens = [];
         foreach ($rows as $row) {
             $tokens[$row['id']] = $counts[$row['slug']] > 1
-                ? $row['slug'].'--'.substr($row['id'], 0, 8)
+                ? $row['slug'].'--'.$this->idSuffix($row['id'])
                 : $row['slug'];
         }
 
@@ -124,11 +135,12 @@ trait ResolvesVfsFriendlyNames
             return null;
         }
 
-        // 1. Deterministic collision suffix: {slug}--{id8}. The id prefix is
-        //    an indexed primary-key range; the slug part must still agree.
-        if (preg_match('/^(.*)--([0-9a-f]{8})$/i', $token, $m) === 1) {
+        // 1. Deterministic collision suffix: {slug}--{id8}. Scoped to the
+        //    sibling set (parent predicate), so the id LIKE stays cheap; the
+        //    slug part must still agree.
+        if (preg_match(self::ID_SUFFIX_PATTERN, $token, $m) === 1) {
             $byPrefix = (clone $siblings)
-                ->where($siblings->getModel()->getQualifiedKeyName(), 'like', strtolower($m[2]).'%')
+                ->where($siblings->getModel()->getQualifiedKeyName(), 'like', '%'.$m[2])
                 ->limit(5)
                 ->get()
                 ->filter(fn (Model $candidate): bool => $this->slug((string) $candidate->getAttribute($labelColumn)) === $m[1]);
@@ -155,7 +167,7 @@ trait ResolvesVfsFriendlyNames
         }
         if ($matches->count() > 1) {
             $paths = $matches
-                ->map(fn (Model $candidate): string => rtrim($parentPath, '/').'/'.$this->slug((string) $candidate->getAttribute($labelColumn)).'--'.substr((string) $candidate->getKey(), 0, 8))
+                ->map(fn (Model $candidate): string => rtrim($parentPath, '/').'/'.$this->slug((string) $candidate->getAttribute($labelColumn)).'--'.$this->idSuffix((string) $candidate->getKey()))
                 ->values()
                 ->all();
 

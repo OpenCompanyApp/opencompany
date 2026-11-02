@@ -88,7 +88,7 @@ approvals and history as the app.
 ## Paths
 
 - Friendly names are slugs of titles (`/docs/reports/weekly-report`); `.md` is accepted on documents.
-- Two siblings with the same slug are listed as `name--1a2b3c4d` (first 8 characters of the id);
+- Two siblings with the same slug are listed as `name--1a2b3c4d` (last 8 characters of the id);
   the bare name then fails with `ambiguous_match` listing both.
 - Every object has a stable canonical path: `/docs/by-id/{id}`, `/files/by-id/{id}`,
   `/tables/by-id/{id}/rows/by-id/{row}.json`, `/lists/by-id/{id}`, `/agents/by-id/{id}`.

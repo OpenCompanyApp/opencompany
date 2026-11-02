@@ -105,6 +105,13 @@ trait MountsVfsDocuments
         if ($segments[1] === '.trash') {
             return $this->readDocumentTrash($agent, $segments, $path, $budget);
         }
+        if ($segments === ['docs', 'by-id']) {
+            if ($budget->isContentRead()) {
+                throw VfsError::notReadable($path);
+            }
+
+            return $this->entriesToText($this->listDocs($agent, $segments, $path, $budget));
+        }
 
         $doc = (isset($segments[2]) && $segments[1] === 'by-id')
             ? $this->documentFromByIdSegments($segments, $path)

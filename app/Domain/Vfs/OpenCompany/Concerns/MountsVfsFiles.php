@@ -219,7 +219,7 @@ trait MountsVfsFiles
                 $original = (string) ($file->metadata['trash']['original_name'] ?? $file->name);
 
                 return new VfsEntry(
-                    name: $original.'--'.substr($file->id, 0, 8),
+                    name: $original.'--'.$this->idSuffix($file->id),
                     path: "/files/.trash/{$file->id}",
                     type: $file->is_folder ? 'directory' : 'file',
                     canonicalPath: "/files/.trash/{$file->id}",

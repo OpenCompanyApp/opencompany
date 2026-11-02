@@ -182,7 +182,7 @@ trait RunsVfsFileMutations
             $metadata['trash'] = ['original_name' => $locked->name, 'original_parent_id' => $locked->parent_id];
             $stamp = now();
             WorkspaceFile::withTrashed()->whereKey($locked->id)->toBase()->update([
-                'name' => $locked->name.'.trashed-'.substr($locked->id, 0, 8),
+                'name' => $locked->name.'.trashed-'.$this->idSuffix($locked->id),
                 'metadata' => json_encode($metadata, JSON_UNESCAPED_SLASHES),
             ]);
             WorkspaceFile::withTrashed()->whereKey($ids)->toBase()->update(['deleted_at' => $stamp, 'deleted_by' => $agent->id]);
@@ -362,8 +362,8 @@ trait RunsVfsFileMutations
         }
 
         $query = WorkspaceFile::onlyTrashed()->where('workspace_id', $agent->workspace_id);
-        $file = preg_match('/--([0-9a-f]{8})$/i', $token, $m) === 1
-            ? $query->where('id', 'like', strtolower($m[1]).'%')->first()
+        $file = preg_match(self::ID_SUFFIX_PATTERN, $token, $m) === 1
+            ? $query->where('id', 'like', '%'.$m[2])->first()
             : $query->whereKey($token)->first();
         if ($file === null || ! $this->canAccessTrashedFile($agent, $file)) {
             throw new VfsError('not_found', "Path not found: {$path}", ['path' => $path, 'hint' => 'ls /files/.trash to see trashed files.']);
