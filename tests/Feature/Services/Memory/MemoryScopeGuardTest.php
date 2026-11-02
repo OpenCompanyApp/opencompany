@@ -34,14 +34,6 @@ class MemoryScopeGuardTest extends TestCase
         $this->assertTrue($this->guard->canUseMemoryTools($this->agent, $channel->id));
     }
 
-    public function test_dm_only_allows_in_agent_channel(): void
-    {
-        config(['memory.scope.default' => 'dm_only']);
-        $channel = Channel::factory()->create(['type' => 'agent']);
-
-        $this->assertTrue($this->guard->canUseMemoryTools($this->agent, $channel->id));
-    }
-
     public function test_dm_only_denies_in_public_channel(): void
     {
         config(['memory.scope.default' => 'dm_only']);
@@ -62,7 +54,7 @@ class MemoryScopeGuardTest extends TestCase
     {
         config(['memory.scope.default' => 'all']);
 
-        foreach (['dm', 'agent', 'public', 'external'] as $type) {
+        foreach (['dm', 'private', 'public', 'external'] as $type) {
             $channel = Channel::factory()->create(['type' => $type]);
             $this->assertTrue(
                 $this->guard->canUseMemoryTools($this->agent, $channel->id),
@@ -75,7 +67,7 @@ class MemoryScopeGuardTest extends TestCase
     {
         config(['memory.scope.default' => 'none']);
 
-        foreach (['dm', 'agent', 'public', 'external'] as $type) {
+        foreach (['dm', 'private', 'public', 'external'] as $type) {
             $channel = Channel::factory()->create(['type' => $type]);
             $this->assertFalse(
                 $this->guard->canUseMemoryTools($this->agent, $channel->id),

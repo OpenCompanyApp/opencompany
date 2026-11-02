@@ -48,7 +48,8 @@ class MemoryScopeGuard
             return false;
         }
 
-        return in_array($channel->type, ['dm', 'agent', 'external']);
+        // Only the channel types the schema allows (public, private, dm, external).
+        return in_array($channel->type, ['dm', 'external'], true);
     }
 
     /**

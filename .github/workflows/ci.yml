@@ -81,7 +81,9 @@ jobs:
           # No .env in CI: phpunit.xml owns test settings. The empty testing
           # env file only keeps Dotenv's optional-file probe quiet.
           cp scripts/testing/mruby.env.testing .env.testing
-          php -r "file_put_contents('.env', 'APP_KEY=base64:'.base64_encode(random_bytes(32)).PHP_EOL);"
+          # APP_ENV=testing makes Laravel load .env.testing instead of .env, so the
+          # throwaway key must live in .env.testing or every encrypting test fails.
+          php -r "file_put_contents('.env.testing', 'APP_KEY=base64:'.base64_encode(random_bytes(32)).PHP_EOL, FILE_APPEND);"
 
       # A single process exceeds 1 GiB across the whole suite; paratest
       # isolates suites per process. The SQLite schema baseline
@@ -119,7 +121,9 @@ jobs:
       - name: Prepare the test environment
         run: |
           cp scripts/testing/mruby.env.testing .env.testing
-          php -r "file_put_contents('.env', 'APP_KEY=base64:'.base64_encode(random_bytes(32)).PHP_EOL);"
+          # APP_ENV=testing makes Laravel load .env.testing instead of .env, so the
+          # throwaway key must live in .env.testing or every encrypting test fails.
+          php -r "file_put_contents('.env.testing', 'APP_KEY=base64:'.base64_encode(random_bytes(32)).PHP_EOL, FILE_APPEND);"
 
       # Loads database/schema/pgsql-schema.sql with the runner's psql.
       # Known pre-existing failures (2026-11-02): enum check constraints and
