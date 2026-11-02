@@ -375,11 +375,42 @@ OpenCompany avoids Notion's "everything is a page" sprawl by being structured by
   - **Scope and lifecycle.** Apps live at workspace level and can show scoped views inside Spaces,
     for example Deals in the Sales Space. Uninstalling archives the data. Upgrades migrate the
     schema.
-  - **First-party order:**
-    1. Mail, built on the Gmail and Outlook connections. It doubles as the agent inbox (Phase 2).
-    2. Calendar (Phase 3).
-    3. CRM (Phase 4).
-    4. Helpdesk, Recruiting and Invoices later.
+  - **App catalog and order** (locked 2026-11-02).
+    - **Rule:** build an app only where AI teammates add a lot of value (repetitive, text-heavy or
+      inbound-driven work) and where the core primitives can express it.
+    - **Each app ships an agent pack,** for example a "Sales teammate" or a "Support teammate". The
+      agent pack is the product; the app is where its work lives.
+    - **No app is needed for:** tasks and projects (Issues), databases (Tables), wiki (Docs), forms
+      and surveys (Forms), dashboards, reports, portals and internal tools (Artifacts), or automation
+      (Routines).
+
+    | # | App | Scope | When |
+    |---|---|---|---|
+    | 1 | **Mail** | Shared and personal inboxes, threads, drafts; doubles as the agent inbox | Phase 2 |
+    | 2 | **Calendar & Scheduling** | Calendars, booking links, meeting prep | Phase 3 |
+    | 3 | **CRM** | Companies, contacts, deals, pipeline, activity, enrichment, follow-ups | Phase 4 |
+    | 4 | **Helpdesk** | Tickets from mail, forms and a chat widget; SLAs, macros; agent triage and drafted answers | Next after CRM |
+    | 5 | **Requests & Approvals** | Purchase, time-off, access and expense requests, with policy-routed approvals and audit | Next |
+    | 6 | **Knowledge Base** | Internal wiki plus a public help center published from Docs; stale-page sweeps | Next |
+    | 7 | **Quotes & Invoices** | Quotes, invoices, payment links, reminders; **syncs with accounting, does not replace it** | Later |
+    | 8 | **Recruiting** | Job posts (public forms), candidates, pipeline, interviews | Later |
+    | 9 | **Meetings** | Notes, transcripts, decisions; action items become Issues, CRM updates and follow-ups | Later (needs recording connectors) |
+    | 10 | **Content & Social** | Content calendar, drafts, publishing behind approvals | Later |
+    | 11 | **Client Portal** | A per-client space with shared files, status and requests (artifacts plus sharing) | Later |
+    | 12 | **Assets & Vendors** | Equipment and software register, subscriptions, contracts, renewals | Later |
+    | 13 | **Goals / OKRs** | Goals linked to Issues and metrics, check-ins | Later |
+    | 14 | **People basics** | Directory, onboarding and offboarding checklists, time off | Later |
+
+    - **Connect, never build:**
+      - accounting and bookkeeping (Exact, Moneybird, Xero, QuickBooks);
+      - payroll, banking and payments (behind connections and the hard-deny floor);
+      - e-signature and video calls;
+      - code hosting and CI (GitHub, Bowerbird);
+      - e-commerce, full ERP and BI warehouses.
+    - **Beachhead (recommended, owner to confirm):** small service businesses and agencies of 5–50
+      people. Their bundle is Mail, Calendar, CRM, Helpdesk, Quotes & Invoices and Client Portal.
+      The alternative is research and content operations (the earlier pilot idea), which would pull
+      Knowledge Base, Meetings and Content & Social forward.
   - **Third-party apps** come only as signed, declarative manifests, reviewed before install. Their
     custom views are interactive artifacts.
 - **Artifacts** (locked 2026-11-02; full design in [Artifacts and Forms](planning/artifacts-and-forms.md)).
