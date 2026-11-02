@@ -6,7 +6,9 @@ The VFS is a permission-aware unix-like filesystem over OpenCompany workspace da
 
 VFS is an interface over existing OpenCompany permissions, not a second permission system. `/docs` patching requires an explicit allowed document-folder scope. Table row patching requires both `vfs_patch` and the normal `update_table_row` tool permission. Agent identity patching requires `vfs_patch` plus the normal `update_agent_identity_file` permission. Agent memory files under `/agents` use relationship-aware rules: agents can patch their own identity and memory files, managers can patch direct report identity files and direct report `memory/MEMORY.md`, and broader memory folders stay self-owned. Read visibility alone does not imply patch capability.
 
-If any composed permission requires approval, VFS creates a normal approval request and stores the original VFS operation for approved replay. Denied permissions still block immediately, and approved replay revalidates permissions before mutating.
+If any composed permission requires approval, VFS creates a normal approval request and stores the original VFS operation for approved replay. One approval covers every approval-gated permission the operation needs (for example `vfs_patch` + `update_table_row`, or `vfs_exec` + `vfs_write`), and retrying an identical call while it is pending returns the same approval id. Denied permissions still block immediately, and approved replay revalidates permissions before mutating.
+
+Every entry point requires the bound workspace to be the acting agent's workspace; otherwise it fails with `permission_denied` (`context.reason: workspace_binding_mismatch`).
 
 ## Commands
 
@@ -22,8 +24,9 @@ If any composed permission requires approval, VFS creates a normal approval requ
 ## Patching
 
 - Use `vfs_patch` for targeted edits; the shell `patch` command is intentionally rejected.
-- Text-backed paths use JSON `{"search":"old","replace":"new"}` or a SEARCH/REPLACE block.
-- Table row paths use `{"data": {...}}` on `/tables/{table}/rows/by-id/{row}.json`; keys must be existing column names or UUIDs.
+- Text-backed paths use JSON `{"search":"old","replace":"new"}` (optionally `"replace_all": true`) or a SEARCH/REPLACE block. The search text must match exactly once: no match is `invalid_request` ("Patch search text was not found in {path}"), several matches are `ambiguous_match` with `context.count` and 1-based `context.lines`, unless `replace_all` is set. Patches always edit the full stored content, never a truncated read.
+- `version` is optional; when given it is checked atomically with the write. A stale version is `conflict` (`context.path`, `current_version`, `given_version`, `hint`). For text patches only, a stale version still applies when the search text matches exactly once in the current content; the result then carries `stale_base: true` and a `note`.
+- Table row paths use `{"data": {...}}` on `/tables/{table}/rows/by-id/{row}.json`; keys must be existing column names or UUIDs. Only the supplied columns are written, merged into the row as it is at write time. Add `"base": {"Column": "value you read"}` to reject the patch with `conflict` (`context.changed_fields`, `context.current`) if any of those fields changed.
 - `vfs_stat` and `vfs_read` expose `capabilities` and mutation metadata so agents can see whether a path is patchable, denied, or approval-gated before attempting a write. A mutation capability is present only when the exact path is domain-eligible and its required tools are allowed or approval-gated.
 - `metadata.mutation_actions.{patch|write}` contains action-specific `required_tools`, `permission`, `requires_approval`, `approval_tool` or `denied_tool`, an optional `denied_reason`, and a usage `hint`. This matters for `/files`, where targeted patch and raw write permissions are independent. Single-action entries also retain the flat `mutation_required_tools`, `mutation_permission`, `mutation_approval_tool`, `mutation_denied_tool`, `mutation_denied_reason`, and `mutation_hint` fields.
 
@@ -39,16 +42,19 @@ Those cursors are encrypted and bound to the normalized path, mount adapter, wor
 
 The three generated collection files above return independently valid transcript, NDJSON, or JSON chunks, expose `metadata.paged_collection: true`, and never exceed `maxBytes`. Records are admitted whole before their keyset is committed, so a byte boundary cannot corrupt a record or make continuation skip it. If the next complete record cannot fit on an otherwise empty page, `vfs_read` returns `invalid_request` with `context.minimum_bytes`, `context.record_id`, and a retry suggestion. `/workspace/members.json` also reserves the bytes required for its valid JSON envelope. Other budget-limited generated JSON and Markdown can still be truncated at the final returned string boundary; when such a non-paged response reports `truncated`, request a larger `maxBytes` budget before parsing it as a complete machine-readable document.
 
+Write-back paths (`vfs_patch`, `>>`, `tee -a`, archive create/extract, `split`) read full content, never the budgeted display read, up to `config('vfs.max_content_bytes')` (20 MB default); above it they fail with `invalid_request`. Display reads may still end with `[... truncated]`, and a redirect or `tee` that would persist that line fails instead.
+
 ## Readiness Checklist
 
 - Broad static-analysis gate: `./vendor/bin/phpstan analyse app/Domain/Vfs/OpenCompany app/Agents/Tools/Vfs app/Console/Commands/VfsAtlasCommand.php --memory-limit=1G --no-progress`.
 - Capability-policy gate: `php artisan test tests/Feature/Vfs/VfsCapabilityTruthTest.php`.
 - Permission-correct pagination gate: `php artisan test tests/Feature/Vfs/VfsPaginationTest.php`.
 - Feature gate: `php artisan test tests/Feature/Vfs/VfsFeatureTest.php`.
+- Integrity, approval, isolation and Code Mode gates: `VfsContentIntegrityTest`, `VfsApprovalCoverageTest`, `VfsWorkspaceIsolationTest`, `VfsCodeModeEffectsTest` under `tests/Feature/Vfs/`.
 - Capability-truth gate: representative entries across `/docs`, `/files`, `/agents`, `/tasks`, `/lists`, `/tables`, `/tools`, and `/workspace` assert that advertised `patch` and `write` capabilities execute on the exact visible path, while generated/read-only entries expose `metadata.read_only_reason` and no mutation capabilities.
-- Atlas smoke gate: `php artisan vfs:atlas` covers root browse, command help/specs, primitive stat/read, generated read truncation, display and canonical `/files` writes, read-only write rejection, unsupported-command help, and `&&`/redirection behavior.
+- Atlas smoke gate (local/testing only; resolves the agent inside `--workspace` or the bound workspace and dispatches through the runtime's approval wrapping): `php artisan vfs:atlas` covers root browse, command help/specs, primitive stat/read, generated read truncation, display and canonical `/files` writes, read-only write rejection, unsupported-command help, and `&&`/redirection behavior.
 - Intentional limits: generated snapshots are not patchable, stderr redirection to files is rejected, symbolic links are recognized but not created, and extraction/OCR/semantic embeddings remain outside VFS.
 
 ## Lua
 
-Lua helpers return `{ ok, result = ... }`, mirror result fields at the top level, and expose list-like results as numeric entries so `#res` works. `app.vfs.exec(command, { response_format = "structured", include_command_spec = true })` keeps stdout text but enriches `data` and diagnostics for programmatic workflows. `app.vfs.write(path, content)` defaults to overwrite for script ergonomics; direct `vfs_write` defaults to create. Generated code should pass `mode = "create"` or `mode = "overwrite"` explicitly.
+Code Mode (`app.vfs.*` in mruby): a helper result with `ok: false` raises a typed failure whose type is the VFS error code (for example `not_found`, `conflict`); an approval created by VFS policy stops the execution as approval-pending, like any gated callback. `app.vfs.shell` calls whose pipeline mutates get a durable write receipt. `app.vfs.grep` is literal (`regex: false` unless passed). The legacy Lua notes below are kept until the docs rewrite: Lua helpers returned `{ ok, result = ... }`, mirror result fields at the top level, and expose list-like results as numeric entries so `#res` works. `app.vfs.exec(command, { response_format = "structured", include_command_spec = true })` keeps stdout text but enriches `data` and diagnostics for programmatic workflows. `app.vfs.write(path, content)` defaults to overwrite for script ergonomics; direct `vfs_write` defaults to create. Generated code should pass `mode = "create"` or `mode = "overwrite"` explicitly.
