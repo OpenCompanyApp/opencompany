@@ -2,8 +2,8 @@
 
 Status: **Locked product direction.** Accepted by the owner on 2026-11-02, with the final
 recommendation (connections, events and routines; integration tiers; nuclear cleanup) accepted the
-same day. The UI structure, sidebar, anti-mess rules and the core-primitives-plus-apps model were
-accepted the same day as well.
+same day. The UI structure, sidebar, anti-mess rules, the core-primitives-plus-apps model, and the
+governance presets with gating by reversibility were accepted the same day as well.
 Supersedes: earlier positioning ("A Company in a Box", "Slack/Discord where half the team is AI",
 the Reader-first modular company OS, the AI app builder framing) and the earlier integration and
 automation plans, wherever they conflict with this document.
@@ -139,23 +139,104 @@ It is aimed at teams and companies, not individuals.
 - **Telegram** is the first external surface. Slack, X and others are later entry points into the
   same conversations.
 
-### 5. Company governance is the moat
+### 5. Company governance is the moat: one engine, three presets, gated by reversibility
 
-- Human roles and approver policies, no self-approval, and a fixed floor of hard-deny actions that no
-  approval can unlock (for example moving money between accounts, changing passwords).
-- **The policy model replaces agent behaviour modes.** The autonomous/supervised/strict modes and
-  their autonomous default are deleted. Writes and external actions need approval by default.
-  Admins grant scoped exceptions: once, this run, this task, time-limited, or always, matched exactly
+Locked 2026-11-02. Governance must feel like Grok Bot for a solo user and scale to large or
+regulated teams. **One policy engine with presets on top.** Full model:
+[Governance model](architecture/governance-model.md).
+
+**Always on, in every preset, never switchable (including self-hosted):**
+
+- Workspace isolation, the encrypted vault, and a credential broker so secrets never enter the
+  model, prompts, the VFS, mruby, logs or computer disks.
+- The hard-deny floor: no money transfers between accounts, no password, 2FA or recovery changes, no
+  credential export, and no agent changing its own grants, budget or policy.
+- Untrusted-content labelling. Runs that read untrusted content lose automatic approval for
+  external actions.
+- **A trigger is never consent** for external actions.
+- Pinned MCP tool definitions, an egress allowlist on computers, signed webhooks and rate limits.
+- The event and audit log is always on.
+- **An agent never approves anything.**
+- **On-behalf-of access.** An agent never exceeds the human it acts for. In a DM, effective access is
+  the agent's grants intersected with the requester's access. In a routine, it is intersected with the
+  routine owner's access. In a group chat, it is intersected with the least-privileged human who
+  invoked it. This prevents confused-deputy escalation.
+
+**Gating by reversibility, not by "write".** This replaces the earlier rule that all writes need
+approval by default.
+
+| Action | Personal | Team | Company |
+|---|---|---|---|
+| Read | Allowed | Allowed within Space access | Allowed within Space access |
+| Reversible internal edits (change set with "revert this run") | Auto-apply, visible in activity | Auto-apply; bulk edits (default over ~50 rows) and schema changes are proposals | Auto-apply small edits; proposals per Space policy |
+| Delete | Moves to trash (30 days) and auto-applies | Trash auto-applies; purge needs approval | Trash is a proposal; purge needs two approvers |
+| External drafts (email draft, calendar hold) | Auto-apply | Auto-apply | Auto-apply |
+| External send, post or submit | Ask the first time per target, then one-tap "always for this recipient or domain" | Same; the agent's manager approves | Same; routine-started runs may only reach admin-allowlisted targets |
+| Spend | Ask, or a per-agent spend cap | Budget per agent | Budget plus two approvers above a threshold |
+| Exposure (share link, open port, add an MCP server or egress domain, share a connection) | Ask | Admin | Admin plus a second approver |
+| Hard-deny floor | Never | Never | Never |
+
+**Design rule: make actions reversible so they need no approval.**
+
+- Archive and trash replace hard delete.
+- Drafts come before sends.
+- Every structured edit is a change set.
+
+**Presets set defaults only.** Switching preset keeps every explicit grant, and everything can be
+tuned afterwards. All presets ship in the AGPL self-hosted product; security is never paywalled.
+
+- **Personal** (solo, Grok Bot style): the owner is the only approver. Approvals arrive as cards in
+  the agent's DM, on Home and on Telegram. There are no role or policy screens.
+- **Team** (about 2–50 people):
+  - Owner, Admin and Member roles; Spaces carry permissions.
+  - Each agent has a manager who is its default approver.
+  - Connections are personal or shared. Each agent has a budget.
+  - Members may grant "always" exceptions for their own personal connections. Exceptions on shared
+    connections need an admin.
+- **Company** (larger or regulated teams):
+  - Approver policies and two approvers on high-risk classes.
+  - Custom roles later.
+  - Admin-approved allowlists for connections and MCP servers, skill approval, and a policy on who
+    may attach computers.
+  - Audit export and retention.
+  - SSO/SCIM later; not claimed before it exists.
+
+**Few, good approvals:**
+
+- **Learned exceptions.** After repeated approvals of the same pattern (default 3), the card offers
+  a scoped, exact-match "always allow", for example "Ada may email @acme.com". Admins can restrict
+  who may accept these.
+- **Batched review.** "Ada wants to send 12 follow-ups" is one card with a toggle per item.
+- **Non-blocking approvals.** A pending approval parks only its step; the agent continues with other
+  work.
+- **Per-agent autonomy slider:** *Ask first · Balanced · Autopilot*.
+  - Each position is a named bundle of scoped exceptions, capped by the preset and the floor.
+  - This is **not** the deleted behaviour modes, which bypassed policy. The slider only writes grants
+    into the policy engine.
+  - New agents start at Balanced. The activity view suggests promotions based on approval history.
+- **Exception scopes:** once, this run, this task, time-limited, or always. Exceptions match exactly
   on later calls.
-- Per-agent identity, least-privilege grants, and a credential broker so secrets never enter the
-  model, prompts, the VFS, mruby or logs.
-- Budgets for tokens, compute and spend, per agent and per workspace, that pause work at the limit.
-- One durable event log (pillar 9) powers audit, run replay, the activity feed and budget accounting.
-- **A trigger is never consent.** A schedule, webhook, event or inbound message can start a run but
-  never approves an external action. Untrusted content (web, connections, inbound messages, trigger
-  payloads) is labelled. Runs that read it lose automatic approval.
+
+**Permissions are simple on purpose (no Notion-style ACL soup):**
+
+- Access is set at Space level. Private Spaces and personal items exist. A single object can be
+  shared with a guest only as an explicit exception. There are no per-document ACLs.
+- **Agents join Spaces like teammates.** "Add Ada to Sales" is the whole data-access model.
+  Connections and computers are granted per agent on top.
+- Effective access is Space membership ∩ the agent's grants ∩ the on-behalf-of human ∩ the external
+  ACL (for deep connectors).
+- "Why can't Ada see this?" is answered in one click from the policy engine's decision trace.
+
+**Budgets and visibility:**
+
+- Budgets for tokens, compute and spend, per agent and per workspace, pause work at the limit.
 - Read-only run modes for heartbeats, monitors and background research, enforced where tools are
   registered.
+- One durable event log (pillar 9) powers the audit trail, run replay, the activity feed, budget
+  accounting, and the answer to "who allowed what, at what cost".
+- **The UI follows the preset.** Personal shows approval cards, the per-agent "always allow" list and
+  the slider. Team and Company add a Governance area in Admin: policies, exceptions, approvers,
+  budgets and audit.
 
 ### 6. Agent primitives
 
@@ -330,7 +411,8 @@ OpenCompany has no users yet, so it breaks compatibility freely:
   digests become Routines, Triggers and Events.
 - **Migrations squashed** into a fresh baseline. No compatibility code and no legacy-history gates,
   including those in the mruby plan.
-- **Behaviour modes deleted** in favour of the policy model (pillar 5).
+- **Behaviour modes deleted** in favour of the policy model (pillar 5): presets, gating by
+  reversibility, and an autonomy slider that only writes scoped grants.
 - **API-first now.** Inertia is frozen. Workload and the old Dashboard are deleted, and Lists folds
   into Issues.
 - **Branches cleaned up.** After the Phase 0 work lands, it becomes `main`. The old `main` is tagged
@@ -365,7 +447,7 @@ Phases may overlap. Phase 0 security work always takes priority over new surface
 | Per-package PHP integrations ([integrations](planning/integrations.md), [integration refactor](planning/integration-refactor.md)) | Deleted. Replaced by deep connectors plus generic MCP, API manifests and skills (pillar 9) |
 | Automations and visual programming ([research](planning/visual-programming-research.md)) | Replaced by Routines authored in chat; no flow builder |
 | Bowerbird owning triggers and durable execution ([integration doc](architecture/bowerbird-durable-automation-integration.md)) | Superseded. OpenCompany owns events and routines natively. Bowerbird is a computer provider, and optionally later an executor for heavy pipeline routines behind the routine contract |
-| Agent behaviour modes (autonomous, supervised, strict) | Deleted. Replaced by the policy model |
+| Agent behaviour modes (autonomous, supervised, strict) | Deleted. Replaced by the policy model with presets, gating by reversibility, and a per-agent autonomy slider that writes scoped grants (pillar 5) |
 | Inertia pages as the UI architecture | Frozen. API-first clients |
 
 ## Non-goals
