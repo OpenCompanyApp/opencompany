@@ -10,31 +10,36 @@ use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsPageCursor;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Models\User;
-use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Code Mode helper `app.vfs.find` (`vfs_find`, script-only, read).
+ *
+ * Resumable depth-first name/type search; cursors are bound to paths, filters, workspace and actor. Governed by the `vfs_exec` permission
+ * (ToolRegistry `permissionAs`); authorization and audit are the
+ * OpenCompanyVfs facade's. Description and schema come from
+ * VfsOperationSpecRegistry.
+ */
 class VfsFind implements ReturnsVfsEnvelope, Tool
 {
     use HandlesVfsJson;
+
+    public const TOOL_SLUG = 'vfs_find';
 
     public function __construct(
         private readonly User $agent,
         private readonly OpenCompanyVfs $vfs,
     ) {}
 
-    public function description(): string
-    {
-        return 'Code Mode helper for finding VFS entries by name/type across bounded directory trees.';
-    }
-
     public function handle(Request $request): string
     {
         try {
+            $input = $this->input($request);
             $paths = $request['paths'] ?? [$request['path'] ?? '/'];
             $paths = is_array($paths) ? array_map(fn (mixed $path): string => $this->vfs->normalizePath((string) $path), array_values($paths)) : [$this->vfs->normalizePath((string) $paths)];
-            $budget = $this->budgetFromRequest($request);
-            $name = (string) ($request['name'] ?? $request['glob'] ?? '*');
+            $budget = $input->budget();
+            $name = $input->string('name');
             $type = $request['type'] ?? null;
             if ($type !== null && ! is_string($type)) {
                 throw VfsError::invalid('type must be a string.', ['field' => 'type']);
@@ -47,7 +52,7 @@ class VfsFind implements ReturnsVfsEnvelope, Tool
                 'max_depth' => $budget->maxDepth,
             ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
             $scope = hash('sha256', (string) $this->agent->workspace_id.'|'.(string) $this->agent->id);
-            $cursor = $this->pageCursor($request);
+            $cursor = $input->cursor();
             $payload = VfsPageCursor::decode($cursor, $binding, 'find-depth-first-v1', $scope);
             $state = $this->findState($payload['state']);
             $items = [];
@@ -82,20 +87,6 @@ class VfsFind implements ReturnsVfsEnvelope, Tool
         } catch (\Throwable $e) {
             return $this->errorResponse($e);
         }
-    }
-
-    public function schema(JsonSchema $schema): array
-    {
-        return [
-            'paths' => $schema->array()->description('Directory paths to search. Defaults to /.'),
-            'name' => $schema->string()->description('fnmatch-style name filter such as *.md. Default: *.'),
-            'glob' => $schema->string()->description('Alias for name, for Code Mode callers that think in glob filters.'),
-            'type' => $schema->string()->description('Optional entry type: file or directory.'),
-            'limit' => $schema->integer()->description('Maximum entries to return. Default: 100.'),
-            'cursor' => $schema->string()->description('Opaque cursor from a previous truncated response.'),
-            'maxDepth' => $schema->integer()->description('Maximum recursion depth. Default: 3.'),
-            'maxFiles' => $schema->integer()->description('Maximum entries to scan. Default: 100.'),
-        ];
     }
 
     /**

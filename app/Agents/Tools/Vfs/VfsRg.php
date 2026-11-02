@@ -6,33 +6,37 @@ use App\Agents\Tools\Vfs\Concerns\HandlesVfsJson;
 use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Models\User;
-use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Code Mode helper `app.vfs.rg` (`vfs_rg`, script-only, read).
+ *
+ * Permission-filtered text search; regex by default, `app.vfs.grep` passes regex: false (this replaced vfs_search). Governed by the `vfs_exec` permission
+ * (ToolRegistry `permissionAs`); authorization and audit are the
+ * OpenCompanyVfs facade's. Description and schema come from
+ * VfsOperationSpecRegistry.
+ */
 class VfsRg implements ReturnsVfsEnvelope, Tool
 {
     use HandlesVfsJson;
+
+    public const TOOL_SLUG = 'vfs_rg';
 
     public function __construct(
         private readonly User $agent,
         private readonly OpenCompanyVfs $vfs,
     ) {}
 
-    public function description(): string
-    {
-        return 'Code Mode helper for exact or regex text search over VFS paths. Search is deterministic and permission-filtered, not semantic embedding retrieval.';
-    }
-
     public function handle(Request $request): string
     {
         try {
-            $pattern = (string) ($request['pattern'] ?? $request['query'] ?? '');
-            $paths = $request['paths'] ?? [$request['path'] ?? '/'];
+            $input = $this->input($request);
+            $pattern = $input->string('pattern');
+            $paths = $input->raw('paths') ?? '/';
             $paths = is_array($paths) ? array_values($paths) : [(string) $paths];
-            $budget = $this->budgetFromRequest($request);
-            $ignoreCase = (bool) ($request['ignoreCase'] ?? $request['ignore_case'] ?? $request['caseInsensitive'] ?? $request['case_insensitive'] ?? false);
-            $search = $this->vfs->searchWithMetadata($this->agent, $pattern, $paths, $budget, (bool) ($request['regex'] ?? true), $ignoreCase);
+            $budget = $input->budget();
+            $search = $this->vfs->searchWithMetadata($this->agent, $pattern, $paths, $budget, $input->bool('regex'), $input->bool('ignoreCase'));
             $matches = $search['matches'];
 
             return $this->encodeResult([
@@ -51,18 +55,5 @@ class VfsRg implements ReturnsVfsEnvelope, Tool
         } catch (\Throwable $e) {
             return $this->errorResponse($e);
         }
-    }
-
-    public function schema(JsonSchema $schema): array
-    {
-        return [
-            'pattern' => $schema->string()->required()->description('Literal or regex pattern to search for.'),
-            'paths' => $schema->array()->description('Virtual paths to search. Defaults to /.'),
-            'regex' => $schema->boolean()->description('Treat pattern as a regular expression. Default: true for rg/app.vfs.rg; app.vfs.grep passes false.'),
-            'maxMatches' => $schema->integer()->description('Maximum matches to return. Default: 100.'),
-            'maxFiles' => $schema->integer()->description('Maximum files to scan. Default: 100.'),
-            'maxDepth' => $schema->integer()->description('Maximum directory recursion depth. Default: 3.'),
-            'ignoreCase' => $schema->boolean()->description('Case-insensitive search.'),
-        ];
     }
 }

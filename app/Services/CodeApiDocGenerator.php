@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Agents\Tools\ToolRegistry;
+use App\Domain\Vfs\Spec\VfsOperationSpecRegistry;
 use App\Models\McpServer;
 use App\Models\User;
 use OpenCompany\IntegrationCore\Contracts\CredentialResolver;
@@ -21,18 +22,14 @@ class CodeApiDocGenerator
 {
     /**
      * Host-owned argument defaults for alias paths, applied by CodeBridge
-     * before dispatch (caller values win).
-     *
-     * `vfs.grep` aliases vfs_rg, whose `regex` defaults to true; grep is
-     * documented as literal, so the alias defaults `regex: false`. Keep this
-     * in sync with the aliases in buildFunctionMap(). A constant (not a
-     * method) so it holds even when the generator is mocked.
+     * before dispatch (caller values win), e.g. `vfs.grep` is literal and
+     * `vfs.cat` raw. Generated from the VFS operation spec, like the alias
+     * paths in buildFunctionMap(). A constant (not a method) so it holds even
+     * when the generator is mocked.
      *
      * @var array<string, array<string, mixed>>
      */
-    public const ALIAS_ARGUMENT_DEFAULTS = [
-        'vfs.grep' => ['regex' => false],
-    ];
+    public const ALIAS_ARGUMENT_DEFAULTS = VfsOperationSpecRegistry::RUBY_ALIAS_DEFAULTS;
 
     /**
      * @var array<string, array{
@@ -245,23 +242,7 @@ class CodeApiDocGenerator
             ? $builder->buildFunctionMap($this->buildScriptNamespaces($agent))
             : [];
 
-        // Familiar VFS aliases. `exec` is rejected by the mruby profile
-        // (Kernel#exec), so `vfs.shell` is the callable name for vfs_exec;
-        // `app.call("vfs.exec", ...)` also works.
-        if (isset($map['vfs.read'])) {
-            $map['vfs.cat'] = $map['vfs.read'];
-        }
-        if (isset($map['vfs.rg'])) {
-            $map['vfs.grep'] = $map['vfs.rg'];
-        }
-        if (isset($map['vfs.exec'])) {
-            $map['vfs.shell'] = $map['vfs.exec'];
-        }
-        if (isset($map['vfs.exec'])) {
-            $map['vfs.shell'] = $map['vfs.exec'];
-        }
-
-        return $map;
+        return $this->withVfsAliases($map);
     }
 
     /**
@@ -275,11 +256,23 @@ class CodeApiDocGenerator
             ? $builder->buildParameterMap($this->buildScriptNamespaces($agent))
             : [];
 
-        if (isset($map['vfs.read'])) {
-            $map['vfs.cat'] = $map['vfs.read'];
-        }
-        if (isset($map['vfs.rg'])) {
-            $map['vfs.grep'] = $map['vfs.rg'];
+        return $this->withVfsAliases($map);
+    }
+
+    /**
+     * Add the VFS alias paths (`vfs.shell`, `vfs.cat`, `vfs.grep`) declared in
+     * VfsOperationSpecRegistry::RUBY_ALIASES. An alias exists only when its
+     * target is visible to the agent, so it can never widen access.
+     *
+     * @param  array<string, mixed>  $map
+     * @return array<string, mixed>
+     */
+    private function withVfsAliases(array $map): array
+    {
+        foreach (VfsOperationSpecRegistry::RUBY_ALIASES as $alias => $target) {
+            if (isset($map[$target])) {
+                $map[$alias] = $map[$target];
+            }
         }
 
         return $map;

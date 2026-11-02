@@ -6,6 +6,7 @@ use App\Agents\Tools\System\ApprovalWrappedTool;
 use App\Agents\Tools\ToolRegistry;
 use App\Domain\Vfs\Core\VfsCommandSpecRegistry;
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\Spec\VfsOperationSpecRegistry;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Console\Command;
@@ -38,7 +39,7 @@ class VfsAtlasCommand extends Command
         {vfsCommand?* : VFS command tokens, or one quoted VFS command string}
         {--agent=Atlas : Agent name, email, or ID to execute as}
         {--workspace= : Workspace ID or slug to resolve the agent in (defaults to the bound workspace)}
-        {--primitive= : Direct VFS primitive to run instead of shell command: exec, ls, stat, read, write, patch, find, rg, search, count, exists, mkdir, cp, mv, rm}
+        {--primitive= : Direct VFS primitive to run instead of shell command: exec, read, edit, write, patch, stat, ls, find, rg, exists, mkdir, cp, mv, rm}
         {--input= : JSON object payload for --primitive}
         {--arg=* : Primitive payload key=value pair; repeat as needed}
         {--cwd=/ : Virtual working directory}
@@ -254,7 +255,8 @@ class VfsAtlasCommand extends Command
 
     private function makePrimitiveTool(string $primitive, User $agent, ToolRegistry $registry): Tool
     {
-        $supported = ['exec', 'ls', 'stat', 'read', 'write', 'patch', 'find', 'rg', 'search', 'count', 'exists', 'mkdir', 'cp', 'mv', 'rm'];
+        // The primitive list is the VFS operation spec (one source of truth).
+        $supported = array_values(array_map(fn ($spec): string => $spec->name, VfsOperationSpecRegistry::all()));
         $name = $this->canonicalPrimitiveName($primitive);
         if (! in_array($name, $supported, true)) {
             throw VfsError::invalid('Unknown VFS primitive.', [

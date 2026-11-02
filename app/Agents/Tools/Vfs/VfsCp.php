@@ -6,45 +6,38 @@ use App\Agents\Tools\Vfs\Concerns\HandlesVfsJson;
 use App\Agents\Tools\Vfs\Contracts\ReturnsVfsEnvelope;
 use App\Domain\Vfs\OpenCompany\OpenCompanyVfs;
 use App\Models\User;
-use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 
+/**
+ * Code Mode helper `app.vfs.cp` (`vfs_cp`, script-only, write).
+ *
+ * File copy through the facade write policy. Governed by the `vfs_write` permission
+ * (ToolRegistry `permissionAs`); authorization and audit are the
+ * OpenCompanyVfs facade's. Description and schema come from
+ * VfsOperationSpecRegistry.
+ */
 class VfsCp implements ReturnsVfsEnvelope, Tool
 {
     use HandlesVfsJson;
+
+    public const TOOL_SLUG = 'vfs_cp';
 
     public function __construct(
         private readonly User $agent,
         private readonly OpenCompanyVfs $vfs,
     ) {}
 
-    public function description(): string
-    {
-        return 'Code Mode helper for copying writable workspace files.';
-    }
-
     public function handle(Request $request): string
     {
         try {
             return $this->encodeResult($this->vfs->copy(
                 $this->agent,
-                (string) ($request['source'] ?? $request['src'] ?? ''),
-                (string) ($request['destination'] ?? $request['dst'] ?? $request['dest'] ?? ''),
+                $this->input($request)->string('source'),
+                $this->input($request)->string('destination'),
             ));
         } catch (\Throwable $e) {
             return $this->errorResponse($e);
         }
-    }
-
-    public function schema(JsonSchema $schema): array
-    {
-        return [
-            'source' => $schema->string()->required()->description('Source /files path.'),
-            'destination' => $schema->string()->required()->description('Destination /files path.'),
-            'src' => $schema->string()->description('Alias for source.'),
-            'dst' => $schema->string()->description('Alias for destination.'),
-            'dest' => $schema->string()->description('Alias for destination.'),
-        ];
     }
 }

@@ -2,27 +2,58 @@
 
 namespace App\Agents\Tools\Vfs\Concerns;
 
-use App\Domain\Vfs\Core\VfsBudget;
-use App\Domain\Vfs\Core\VfsError;
+use App\Agents\Tools\Vfs\Support\VfsToolEnvelope;
+use App\Agents\Tools\Vfs\Support\VfsToolInput;
+use App\Domain\Vfs\Spec\VfsOperationSpec;
+use App\Domain\Vfs\Spec\VfsOperationSpecRegistry;
+use App\Domain\Vfs\Spec\VfsToolSchemaFactory;
+use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\JsonSchema\Types\Type;
+use Laravel\Ai\Tools\Request;
 
 /**
- * Shared JSON response helpers for VFS tools.
+ * Shared surface of every `vfs_*` tool class.
  *
- * VFS direct tools and Code Mode helpers all return the same structured shape so
- * agents can branch on `ok`, `result`, and stable VFS error codes instead of
- * scraping prose.
+ * A using class declares `public const TOOL_SLUG`. Its description() and
+ * schema() then come from VfsOperationSpecRegistry (single source: the
+ * provider meta, Code Mode catalog, OpenAPI export and docs use the same
+ * spec), and its results go through VfsToolEnvelope (compact JSON, one
+ * error location, sanitized internal errors).
+ *
+ * Agent breadcrumb: do not add a hand-written description() or schema() to a
+ * VFS tool; change the spec instead and run `php artisan vfs:spec --write-docs`.
  */
 trait HandlesVfsJson
 {
+    public function description(): string
+    {
+        return $this->spec()->description;
+    }
+
+    /**
+     * @return array<string, Type>
+     */
+    public function schema(JsonSchema $schema): array
+    {
+        return VfsToolSchemaFactory::build($schema, $this->spec());
+    }
+
+    private function spec(): VfsOperationSpec
+    {
+        return VfsOperationSpecRegistry::get(static::TOOL_SLUG);
+    }
+
+    private function input(Request $request): VfsToolInput
+    {
+        return new VfsToolInput($this->spec(), $request->toArray());
+    }
+
     /**
      * @param  array<string, mixed>  $result
      */
     private function encodeResult(array $result): string
     {
-        return json_encode([
-            'ok' => true,
-            'result' => $result,
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        return VfsToolEnvelope::encode(VfsToolEnvelope::success($result));
     }
 
     /**
@@ -30,73 +61,11 @@ trait HandlesVfsJson
      */
     private function encodeError(string $code, string $message, array $context = []): string
     {
-        return json_encode([
-            'ok' => false,
-            'error' => [
-                'code' => $code,
-                'message' => $message,
-                'context' => $context,
-            ],
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-
-    private function budgetFromRequest(mixed $request): VfsBudget
-    {
-        return new VfsBudget(
-            maxEntries: $this->budgetInteger($request, ['limit', 'maxEntries', 'max_entries'], 100, 1, 'limit'),
-            maxDepth: $this->budgetInteger($request, ['maxDepth', 'max_depth'], 3, 0, 'maxDepth'),
-            maxBytes: $this->budgetInteger($request, ['maxBytes', 'max_bytes'], 100000, 1, 'maxBytes'),
-            maxFiles: $this->budgetInteger($request, ['maxFiles', 'max_files'], 100, 1, 'maxFiles'),
-            maxMatches: $this->budgetInteger($request, ['maxMatches', 'max_matches'], 100, 1, 'maxMatches'),
-        );
-    }
-
-    /**
-     * @param  list<string>  $keys
-     */
-    private function budgetInteger(mixed $request, array $keys, int $default, int $min, string $label): int
-    {
-        foreach ($keys as $key) {
-            if (! isset($request[$key])) {
-                continue;
-            }
-
-            $raw = $request[$key];
-            if (! is_int($raw) && (! is_string($raw) || preg_match('/^\d+$/', $raw) !== 1)) {
-                throw VfsError::invalid("{$label} must be an integer.", ['field' => $key]);
-            }
-
-            $value = (int) $raw;
-            if ($value < $min) {
-                throw VfsError::invalid("{$label} must be at least {$min}.", ['field' => $key, 'min' => $min]);
-            }
-
-            return $value;
-        }
-
-        return $default;
-    }
-
-    private function pageCursor(mixed $request): ?string
-    {
-        $cursor = $request['cursor'] ?? null;
-        if ($cursor === null || $cursor === '') {
-            return null;
-        }
-
-        if (! is_string($cursor)) {
-            throw VfsError::invalid('cursor must be an opaque string.', ['field' => 'cursor']);
-        }
-
-        return $cursor;
+        return VfsToolEnvelope::encode(VfsToolEnvelope::error($code, $message, $context));
     }
 
     private function errorResponse(\Throwable $e): string
     {
-        if ($e instanceof VfsError) {
-            return $this->encodeError($e->errorCode, $e->getMessage(), $e->context);
-        }
-
-        return $this->encodeError('internal_error', $e->getMessage());
+        return VfsToolEnvelope::encode(VfsToolEnvelope::fromThrowable($e, static::TOOL_SLUG));
     }
 }
