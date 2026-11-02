@@ -10,13 +10,28 @@ use App\Models\DataTableColumn;
 use App\Models\DataTableRow;
 use App\Models\DataTableView;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Data table mount operations for OpenCompanyVfs.
  *
- * Tables expose schema, rows, and saved views as read-only files. Mutating table
- * records is handled by patch concerns so browse/read semantics stay isolated
- * from structured write rules.
+ * Addressing: every table is reachable as `/tables/by-id/{tableId}/…`
+ * (canonical) and as `/tables/{slug}/…` (friendly; `{slug}--{id8}` when two
+ * tables share a slug, see ResolvesVfsFriendlyNames). Under a table:
+ *
+ *   schema.json          columns with id, name, type, required, order, options
+ *                        plus a `column_ids` name => id map
+ *   rows.ndjson          paged; one line per row:
+ *                        {"id","path","version","data":{Name: value},"data_by_column_id":{…}}
+ *   rows.csv             paged read-only view of the same rows; header on page 1
+ *   rows/by-id/{id}.json one row in the same name-keyed shape (+ columns)
+ *   rows/{id}[.json]     alias of rows/by-id/{id}.json
+ *   rows/new.json        write-only: vfs_write {"data":{…}} creates a row
+ *   rows/.trash/         trashed rows; mv one out to restore it
+ *   views/               saved views as JSON
+ *
+ * Row mutations live in MutatesVfsTableRows / PatchesVfsRecords; this trait
+ * is read-side only.
  */
 trait MountsVfsTables
 {
@@ -39,35 +54,65 @@ trait MountsVfsTables
      */
     private function pageTables(User $agent, array $segments, string $path, VfsBudget $budget, array $state): array
     {
-        if (count($segments) === 1) {
+        if (count($segments) === 1 || ($segments[1] === 'by-id' && ! isset($segments[2]))) {
+            $byId = count($segments) === 2;
+
             return $this->paginateVfsLabelQuery(
                 DataTable::forWorkspace(),
                 'name',
                 $budget->maxEntries,
                 $state,
-                fn (DataTable $table): VfsEntry => new VfsEntry($this->slug($table->name), '/tables/'.$this->slug($table->name), 'directory', "/tables/{$this->slug($table->name)}", 'data_table', $table->id, capabilities: ['browse', 'read', 'search']),
+                function (DataTable $table) use ($byId): VfsEntry {
+                    $token = $byId ? (string) $table->id : $this->tableToken($table);
+
+                    return new VfsEntry(
+                        $token,
+                        $byId ? "/tables/by-id/{$table->id}" : "/tables/{$token}",
+                        'directory',
+                        "/tables/by-id/{$table->id}",
+                        'data_table',
+                        $table->id,
+                        capabilities: ['browse', 'read', 'search'],
+                        metadata: ['name' => $table->name, 'description' => $table->description],
+                    );
+                },
+                $byId ? null : new VfsEntry('by-id', '/tables/by-id', 'directory', capabilities: ['browse']),
             );
         }
 
-        $table = DataTable::forWorkspace()->lazy(100)->first(fn (DataTable $candidate): bool => $this->slug($candidate->name) === ($segments[1] ?? '')) ?? throw VfsError::notFound($path);
+        ['table' => $table, 'rest' => $rest, 'base' => $base] = $this->resolveTableSegments($segments, $path);
+        $canonical = "/tables/by-id/{$table->id}";
 
-        if (count($segments) === 4 && $segments[2] === 'rows' && $segments[3] === 'by-id') {
+        if ($rest === []) {
+            return $this->paginateVfsStaticEntries($this->tableDirectoryEntries($table, $base), $budget->maxEntries, $state);
+        }
+
+        if ($rest === ['rows']) {
+            return $this->paginateVfsStaticEntries([
+                new VfsEntry('by-id', "{$base}/rows/by-id", 'directory', "{$canonical}/rows/by-id", 'data_table', $table->id, capabilities: ['browse', 'read', 'search']),
+                new VfsEntry('.trash', "{$base}/rows/.trash", 'directory', "{$canonical}/rows/.trash", 'data_table', $table->id, capabilities: ['browse', 'read'], metadata: [
+                    'description' => 'Trashed rows; mv one out of here to restore it.',
+                ]),
+            ], $budget->maxEntries, $state);
+        }
+
+        if ($rest === ['rows', 'by-id']) {
+            $table->loadMissing('columns');
+
             return $this->paginateVfsRecentQuery(
                 DataTableRow::where('table_id', $table->id),
                 $budget->maxEntries,
                 $budget->maxFiles,
                 $state,
-                fn (DataTableRow $row): VfsEntry => $this->tableRowEntry($agent, $table, $row),
+                fn (DataTableRow $row): VfsEntry => $this->tableRowEntry($agent, $table, $row, "{$base}/rows/by-id/{$row->id}.json"),
             );
         }
 
-        if (count($segments) === 3 && $segments[2] === 'rows') {
-            return $this->paginateVfsStaticEntries([
-                new VfsEntry('by-id', "/tables/{$this->slug($table->name)}/rows/by-id", 'directory', "/tables/{$this->slug($table->name)}/rows/by-id", 'data_table', $table->id, capabilities: ['browse', 'read', 'search']),
-            ], $budget->maxEntries, $state);
+        if ($rest === ['rows', '.trash']) {
+            return $this->paginateVfsStaticEntries($this->listTrashedTableRows($table, $base, $budget), $budget->maxEntries, $state);
         }
 
-        if (count($segments) === 3 && $segments[2] === 'views') {
+        if ($rest === ['views']) {
             return $this->paginateVfsTimestampQuery(
                 $table->views()->getQuery(),
                 'created_at',
@@ -76,9 +121,10 @@ trait MountsVfsTables
                 $budget->maxFiles,
                 $state,
                 fn (DataTableView $view): VfsEntry => new VfsEntry(
-                    $this->slug($view->name).'--'.substr($view->id, 0, 8).'.json',
-                    "/tables/{$this->slug($table->name)}/views/{$this->slug($view->name)}--".substr($view->id, 0, 8).'.json',
+                    $this->tableViewToken($view).'.json',
+                    "{$base}/views/".$this->tableViewToken($view).'.json',
                     'file',
+                    "{$canonical}/views/".$this->tableViewToken($view).'.json',
                     backendType: 'data_table_view',
                     backendId: $view->id,
                     capabilities: ['read'],
@@ -95,28 +141,40 @@ trait MountsVfsTables
             );
         }
 
-        if (count($segments) > 2) {
-            throw VfsError::notFound($path);
+        if (in_array($rest[0], ['schema.json', 'rows.ndjson', 'rows.csv'], true) && count($rest) === 1) {
+            throw VfsError::notReadable($path);
         }
 
-        return $this->paginateVfsStaticEntries([
+        throw $this->tableNotFound($path, $base);
+    }
+
+    /**
+     * @return list<VfsEntry>
+     */
+    private function tableDirectoryEntries(DataTable $table, string $base): array
+    {
+        $canonical = "/tables/by-id/{$table->id}";
+
+        return [
             new VfsEntry(
                 'schema.json',
-                "/tables/{$this->slug($table->name)}/schema.json",
+                "{$base}/schema.json",
                 'file',
+                "{$canonical}/schema.json",
                 backendType: 'data_table',
                 backendId: $table->id,
                 capabilities: ['read'],
                 metadata: $this->readOnlyMetadata(
                     'Table schema is a generated snapshot.',
                     'table column tools',
-                    'Use table column tools to change schema; use rows/by-id for row edits.',
+                    'Use table column tools to change schema; edit rows under rows/by-id.',
                 ),
             ),
             new VfsEntry(
                 'rows.ndjson',
-                "/tables/{$this->slug($table->name)}/rows.ndjson",
+                "{$base}/rows.ndjson",
                 'file',
+                "{$canonical}/rows.ndjson",
                 backendType: 'data_table',
                 backendId: $table->id,
                 capabilities: ['read', 'search'],
@@ -125,13 +183,32 @@ trait MountsVfsTables
                     ...$this->readOnlyMetadata(
                         'rows.ndjson is a bulk export and cannot be patched safely.',
                         'vfs_patch',
-                        'Use vfs_read with next_cursor to continue; patch individual rows under rows/by-id.',
+                        'Use vfs_read with next_cursor to continue; edit rows under rows/by-id; create with vfs_write rows/new.json.',
                     ),
                 ],
             ),
-            new VfsEntry('rows', "/tables/{$this->slug($table->name)}/rows", 'directory', "/tables/{$this->slug($table->name)}/rows", 'data_table', $table->id, capabilities: ['browse', 'read', 'search']),
-            new VfsEntry('views', "/tables/{$this->slug($table->name)}/views", 'directory', backendType: 'data_table', backendId: $table->id, capabilities: ['browse', 'read']),
-        ], $budget->maxEntries, $state);
+            new VfsEntry(
+                'rows.csv',
+                "{$base}/rows.csv",
+                'file',
+                "{$canonical}/rows.csv",
+                backendType: 'data_table',
+                backendId: $table->id,
+                capabilities: ['read'],
+                metadata: [
+                    'paged_collection' => true,
+                    ...$this->readOnlyMetadata(
+                        'rows.csv is a read-only view; the header row is on the first page only.',
+                        'vfs_patch',
+                        'Use vfs_read with next_cursor to continue; edit rows under rows/by-id.',
+                    ),
+                ],
+            ),
+            new VfsEntry('rows', "{$base}/rows", 'directory', "{$canonical}/rows", 'data_table', $table->id, capabilities: ['browse', 'read', 'search'], metadata: [
+                'description' => 'Rows by id; vfs_write rows/new.json with {"data":{…}} creates one.',
+            ]),
+            new VfsEntry('views', "{$base}/views", 'directory', "{$canonical}/views", backendType: 'data_table', backendId: $table->id, capabilities: ['browse', 'read']),
+        ];
     }
 
     /**
@@ -139,62 +216,56 @@ trait MountsVfsTables
      */
     private function readTables(User $agent, array $segments, string $path, VfsBudget $budget): string
     {
-        if (count($segments) === 1 || count($segments) === 2) {
+        if (count($segments) === 1 || ($segments[1] === 'by-id' && ! isset($segments[2]))) {
             return $this->entriesToText($this->listTables($agent, $segments, $path, $budget));
         }
-        if (count($segments) > 5) {
-            throw VfsError::notFound($path);
-        }
 
-        $table = DataTable::forWorkspace()->with('columns')->lazy(100)->first(fn (DataTable $candidate): bool => $this->slug($candidate->name) === ($segments[1] ?? '')) ?? throw VfsError::notFound($path);
-        $leaf = $segments[2] ?? '';
+        ['table' => $table, 'rest' => $rest, 'base' => $base] = $this->resolveTableSegments($segments, $path);
+        $table->loadMissing('columns');
+        $leaf = $rest[0] ?? null;
 
-        if ($leaf === 'schema.json') {
-            if (isset($segments[3])) {
-                throw VfsError::notFound($path);
+        if ($leaf === null || $rest === ['rows'] || $rest === ['rows', 'by-id'] || $rest === ['rows', '.trash'] || $rest === ['views']) {
+            if ($budget->isContentRead()) {
+                throw VfsError::notReadable($path);
             }
 
-            return json_encode([
-                'id' => $table->id,
-                'name' => $table->name,
-                'description' => $table->description,
-                'columns' => $table->columns->map(fn ($column) => $column->toArray())->values()->all(),
-            ], JSON_PRETTY_PRINT);
+            return $this->entriesToText($this->listTables($agent, $segments, $path, $budget));
         }
 
-        if ($leaf === 'rows.ndjson') {
-            if (isset($segments[3])) {
-                throw VfsError::notFound($path);
-            }
+        if ($rest === ['schema.json']) {
+            $budget->recordCanonicalPath("/tables/by-id/{$table->id}/schema.json");
 
+            return json_encode($this->tableSchemaPayload($table), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        }
+
+        if ($rest === ['rows.ndjson']) {
             return $this->pageTableRowsExport($table, $path, $budget, [])['content'];
         }
 
+        if ($rest === ['rows.csv']) {
+            return $this->pageTableRowsCsv($table, $path, $budget, [])['content'];
+        }
+
         if ($leaf === 'rows') {
-            if (($segments[3] ?? null) === 'by-id' && isset($segments[4])) {
-                $rowId = preg_replace('/\.json$/', '', $segments[4]) ?? $segments[4];
-                $row = DataTableRow::where('table_id', $table->id)->find($rowId) ?? throw VfsError::notFound($path);
+            if (($rest[1] ?? null) === '.trash' && count($rest) === 3) {
+                $row = $this->resolveTrashedTableRow($table, $rest[2], $path);
 
                 return json_encode($this->tableRowPayload($table, $row), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             }
 
-            if (($segments[3] ?? null) === 'by-id' || ! isset($segments[3])) {
-                return $this->entriesToText($this->listTables($agent, $segments, $path, $budget));
-            }
+            $row = $this->resolveTableRowFromRest($table, $rest, $path, $base);
+            $budget->recordReadVersion($this->tableRowVersion($row));
+            $budget->recordCanonicalPath($this->tableRowCanonicalPath($table, $row));
 
-            throw VfsError::notFound($path);
+            return json_encode($this->tableRowPayload($table, $row), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         }
 
-        if ($leaf === 'views') {
-            if (! isset($segments[3])) {
-                return $this->entriesToText($this->listTables($agent, $segments, $path, $budget));
-            }
-
-            $token = preg_replace('/\.json$/', '', $segments[3]) ?? $segments[3];
+        if ($leaf === 'views' && count($rest) === 2) {
+            $token = preg_replace('/\.json$/', '', $rest[1]) ?? $rest[1];
             $view = $table->views()
                 ->get()
-                ->first(fn (DataTableView $candidate): bool => $this->slug($candidate->name).'--'.substr($candidate->id, 0, 8) === $token)
-                ?? throw VfsError::notFound($path);
+                ->first(fn (DataTableView $candidate): bool => $this->tableViewToken($candidate) === $token || $candidate->id === $token)
+                ?? throw $this->tableNotFound($path, "{$base}/views");
 
             return json_encode([
                 'id' => $view->id,
@@ -207,7 +278,110 @@ trait MountsVfsTables
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         }
 
-        throw VfsError::notFound($path);
+        throw $this->tableNotFound($path, $base);
+    }
+
+    /**
+     * Resolve the table a /tables path addresses and the segments below it.
+     *
+     * @param  list<string>  $segments
+     * @return array{table: DataTable, rest: list<string>, base: string}
+     *
+     * @throws VfsError not_found (did_you_mean) / ambiguous_match
+     */
+    private function resolveTableSegments(array $segments, string $path): array
+    {
+        if (($segments[1] ?? null) === 'by-id') {
+            $id = $segments[2] ?? throw VfsError::notFound($path);
+            $table = DataTable::forWorkspace()->find($id) ?? throw VfsError::notFound($path);
+
+            return ['table' => $table, 'rest' => array_slice($segments, 3), 'base' => "/tables/by-id/{$table->id}"];
+        }
+
+        $table = $this->resolveFriendlySegment(
+            DataTable::forWorkspace(),
+            'name',
+            (string) ($segments[1] ?? ''),
+            '/tables',
+            $path,
+            fn (Model $candidate): string => "/tables/by-id/{$candidate->getKey()}",
+        );
+        if (! $table instanceof DataTable) {
+            throw VfsError::notFound($path);
+        }
+
+        return ['table' => $table, 'rest' => array_slice($segments, 2), 'base' => '/tables/'.$segments[1]];
+    }
+
+    private function tableToken(DataTable $table): string
+    {
+        return $this->friendlyToken(DataTable::forWorkspace(), 'name', $table);
+    }
+
+    private function tableViewToken(DataTableView $view): string
+    {
+        return $this->slug($view->name).'--'.substr($view->id, 0, 8);
+    }
+
+    /**
+     * Resolve `rows/by-id/{id}.json`, or the aliases `rows/{id}` and
+     * `rows/{id}.json`, to a live row of $table.
+     *
+     * @param  list<string>  $rest
+     */
+    private function resolveTableRowFromRest(DataTable $table, array $rest, string $path, string $base): DataTableRow
+    {
+        $token = match (true) {
+            count($rest) === 3 && $rest[1] === 'by-id' => $rest[2],
+            count($rest) === 2 && ! in_array($rest[1], ['by-id', '.trash', 'new.json'], true) => $rest[1],
+            default => throw $this->tableNotFound($path, $base),
+        };
+        $rowId = preg_replace('/\.json$/', '', $token) ?? $token;
+
+        return DataTableRow::where('table_id', $table->id)->find($rowId) ?? throw new VfsError('not_found', "Path not found: {$path}", [
+            'path' => $path,
+            'hint' => "List {$base}/rows/by-id to see row ids, or create one with vfs_write {$base}/rows/new.json.",
+        ]);
+    }
+
+    private function tableNotFound(string $path, string $base): VfsError
+    {
+        return new VfsError('not_found', "Path not found: {$path}", [
+            'path' => $path,
+            'did_you_mean' => ["{$base}/schema.json", "{$base}/rows.ndjson", "{$base}/rows/by-id"],
+            'hint' => 'Tables contain schema.json, rows.ndjson, rows.csv, rows/by-id/{id}.json and views/.',
+        ]);
+    }
+
+    private function tableRowCanonicalPath(DataTable $table, DataTableRow $row): string
+    {
+        return "/tables/by-id/{$table->id}/rows/by-id/{$row->id}.json";
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function tableSchemaPayload(DataTable $table): array
+    {
+        $columns = $table->columns;
+
+        return [
+            'id' => $table->id,
+            'name' => $table->name,
+            'description' => $table->description,
+            'canonical_path' => "/tables/by-id/{$table->id}",
+            'columns' => $columns->map(fn (DataTableColumn $column): array => [
+                'id' => $column->id,
+                'name' => $column->name,
+                'type' => $column->type,
+                'required' => (bool) $column->required,
+                'order' => $column->order,
+                'options' => $column->options,
+            ])->values()->all(),
+            // Name-keyed rows use these names; data_by_column_id uses the ids.
+            'column_ids' => $columns->mapWithKeys(fn (DataTableColumn $column): array => [$column->name => $column->id])->all(),
+            'row_shape' => '{"id","path","version","data":{ColumnName: value},"data_by_column_id":{columnId: value}}',
+        ];
     }
 
     /**
@@ -220,7 +394,47 @@ trait MountsVfsTables
      */
     private function pageTableRowsExport(DataTable $table, string $path, VfsBudget $budget, array $state): array
     {
+        $table->loadMissing('columns');
+        $page = $this->pageTableRowRecords($table, $path, $budget, $state, fn (DataTableRow $row): string => $this->tableRowsExportRecord($table, $row));
+
+        return [...$page, 'content' => implode("\n", $page['records'])];
+    }
+
+    /**
+     * CSV view of the same pages as rows.ndjson. Page 1 starts with a header
+     * row (`id` then column names in schema order); continuation pages carry
+     * data rows only so concatenated pages form one valid CSV.
+     *
+     * @param  array<string, mixed>  $state
+     * @return array{content: string, returned: int, has_more: bool, next_state: array<string, mixed>, scanned: int, skipped: int}
+     */
+    private function pageTableRowsCsv(DataTable $table, string $path, VfsBudget $budget, array $state): array
+    {
+        $table->loadMissing('columns');
+        $columns = $table->columns->values();
+        $page = $this->pageTableRowRecords($table, $path, $budget, $state, function (DataTableRow $row) use ($columns): string {
+            $data = $row->data ?? [];
+
+            return $this->csvLine([(string) $row->id, ...$columns->map(fn (DataTableColumn $column): string => $this->csvCell($data[$column->id] ?? null))->all()]);
+        });
+
+        $lines = $page['records'];
+        if (($state['after'] ?? null) === null) {
+            array_unshift($lines, $this->csvLine(['id', ...$columns->map(fn (DataTableColumn $column): string => (string) $column->name)->all()]));
+        }
+
+        return [...$page, 'content' => implode("\n", $lines)];
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @param  callable(DataTableRow): string  $render
+     * @return array{records: list<string>, returned: int, has_more: bool, next_state: array<string, mixed>, scanned: int, skipped: int}
+     */
+    private function pageTableRowRecords(DataTable $table, string $path, VfsBudget $budget, array $state, callable $render): array
+    {
         $usedBytes = 0;
+        $rendered = [];
         $page = $this->paginateVfsRecentQuery(
             DataTableRow::where('table_id', $table->id),
             $budget->maxEntries,
@@ -228,14 +442,14 @@ trait MountsVfsTables
             $state,
             fn (DataTableRow $row): VfsEntry => new VfsEntry(
                 name: (string) $row->id,
-                path: "/tables/{$this->slug($table->name)}/rows/by-id/{$row->id}.json",
+                path: $this->tableRowCanonicalPath($table, $row),
                 type: 'file',
                 backendType: 'data_table_row',
                 backendId: $row->id,
-                metadata: ['export_data' => $row->data],
+                metadata: ['record' => $render($row)],
             ),
             acceptEntry: function (array $entries, VfsEntry $candidate) use ($path, $budget, &$usedBytes): bool {
-                $record = $this->tableRowsExportRecord($candidate);
+                $record = (string) $candidate->metadata['record'];
                 $additionalBytes = strlen($record) + ($entries === [] ? 0 : 1);
                 if (! $this->vfsRecordFitsByteBudget(
                     $path,
@@ -254,14 +468,45 @@ trait MountsVfsTables
             },
         );
 
+        foreach ($page['entries'] as $entry) {
+            $rendered[] = (string) $entry->metadata['record'];
+        }
+
         return [
-            'content' => collect($page['entries'])->map($this->tableRowsExportRecord(...))->implode("\n"),
+            'records' => $rendered,
             'returned' => count($page['entries']),
             'has_more' => $page['has_more'],
             'next_state' => $page['next_state'],
             'scanned' => $page['scanned'],
             'skipped' => $page['skipped'],
         ];
+    }
+
+    /**
+     * @param  list<string>  $cells
+     */
+    private function csvLine(array $cells): string
+    {
+        $handle = fopen('php://memory', 'r+');
+        if ($handle === false) {
+            throw new \RuntimeException('Unable to render CSV.');
+        }
+        fputcsv($handle, $cells, ',', '"', '');
+        rewind($handle);
+        $line = (string) stream_get_contents($handle);
+        fclose($handle);
+
+        return rtrim($line, "\n");
+    }
+
+    private function csvCell(mixed $value): string
+    {
+        return match (true) {
+            $value === null => '',
+            is_bool($value) => $value ? 'true' : 'false',
+            is_scalar($value) => (string) $value,
+            default => json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) ?: '',
+        };
     }
 
     /**
@@ -274,33 +519,52 @@ trait MountsVfsTables
      */
     private function readTableRowsExportPage(array $segments, string $path, VfsBudget $budget, array $state): array
     {
-        if (count($segments) !== 3 || $segments[2] !== 'rows.ndjson') {
-            throw VfsError::notFound($path);
-        }
+        ['table' => $table, 'rest' => $rest] = $this->resolveTableSegments($segments, $path);
 
-        $table = DataTable::forWorkspace()->lazy(100)
-            ->first(fn (DataTable $candidate): bool => $this->slug($candidate->name) === $segments[1])
-            ?? throw VfsError::notFound($path);
-
-        return $this->pageTableRowsExport($table, $path, $budget, $state);
+        return match ($rest) {
+            ['rows.ndjson'] => $this->pageTableRowsExport($table, $path, $budget, $state),
+            ['rows.csv'] => $this->pageTableRowsCsv($table, $path, $budget, $state),
+            default => throw VfsError::notFound($path),
+        };
     }
 
     /**
-     * Encode one complete NDJSON record. Invalid UTF-8 is substituted rather
-     * than allowing encoding failure to advance a cursor without emitting the
-     * corresponding row.
+     * Whether a /tables path is a paged row export (rows.ndjson or rows.csv).
+     *
+     * @param  list<string>  $segments
      */
-    private function tableRowsExportRecord(VfsEntry $entry): string
+    private function isTableRowsExportPath(array $segments): bool
     {
+        if (($segments[0] ?? null) !== 'tables' || ! isset($segments[1])) {
+            return false;
+        }
+        $rest = $segments[1] === 'by-id' ? array_slice($segments, 3) : array_slice($segments, 2);
+
+        return $rest === ['rows.ndjson'] || $rest === ['rows.csv'];
+    }
+
+    /**
+     * Encode one complete NDJSON record in the shared name-keyed row shape.
+     * Invalid UTF-8 is substituted rather than allowing encoding failure to
+     * advance a cursor without emitting the corresponding row.
+     */
+    private function tableRowsExportRecord(DataTable $table, DataTableRow $row): string
+    {
+        $data = $row->data ?? [];
+
         return json_encode([
-            'id' => $entry->backendId,
-            'data' => $entry->metadata['export_data'] ?? [],
+            'id' => $row->id,
+            'path' => $this->tableRowCanonicalPath($table, $row),
+            'version' => $this->tableRowVersion($row),
+            'data' => $this->tableRowDataByColumnName($table->columns, $data)['data'],
+            'data_by_column_id' => (object) $data,
         ], JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
     }
 
-    private function tableRowEntry(User $agent, DataTable $table, DataTableRow $row): VfsEntry
+    private function tableRowEntry(User $agent, DataTable $table, DataTableRow $row, ?string $path = null): VfsEntry
     {
-        $path = "/tables/{$this->slug($table->name)}/rows/by-id/{$row->id}.json";
+        $canonical = $this->tableRowCanonicalPath($table, $row);
+        $path ??= $canonical;
         $canPatch = $this->canPatchTableRows($agent);
         $capabilities = ['read', 'search'];
         if ($canPatch) {
@@ -311,7 +575,7 @@ trait MountsVfsTables
             "{$row->id}.json",
             $path,
             'file',
-            $path,
+            $canonical,
             'data_table_row',
             $row->id,
             $this->tableRowVersion($row),
@@ -323,7 +587,7 @@ trait MountsVfsTables
                 ...$this->mutationToolMetadata(
                     $agent,
                     ['vfs_patch', 'update_table_row'],
-                    'Patch row data with vfs_patch using {"data": {...}}; keys must be existing column names or column UUIDs.',
+                    'Patch row data with vfs_patch using {"data": {...}} (optionally "base": {...}); keys are column names or ids. Overwrite the whole row with vfs_write and the row version.',
                 ),
             ],
         );
@@ -338,21 +602,24 @@ trait MountsVfsTables
     }
 
     /**
+     * The one name-keyed row shape served by rows/by-id/{id}.json.
+     *
      * @return array<string, mixed>
      */
     private function tableRowPayload(DataTable $table, DataTableRow $row): array
     {
-        $columns = $table->columns()->get();
+        $table->loadMissing('columns');
+        $columns = $table->columns;
         $dataByColumnId = $row->data ?? [];
-
         $namedData = $this->tableRowDataByColumnName($columns, $dataByColumnId);
 
         return [
             'id' => $row->id,
+            'path' => $this->tableRowCanonicalPath($table, $row),
             'table_id' => $table->id,
             'version' => $this->tableRowVersion($row),
-            'data' => $namedData['data'],
-            'data_by_column_id' => $dataByColumnId,
+            'data' => (object) $namedData['data'],
+            'data_by_column_id' => (object) $dataByColumnId,
             'ambiguous_column_names' => $namedData['ambiguous_column_names'],
             'columns' => $columns->map(fn (DataTableColumn $column): array => [
                 'id' => $column->id,
@@ -361,6 +628,7 @@ trait MountsVfsTables
                 'required' => $column->required,
                 'order' => $column->order,
             ])->values()->all(),
+            ...($row->trashed() ? ['trashed' => true, 'deleted_at' => $row->deleted_at?->toIso8601String()] : []),
         ];
     }
 
@@ -397,5 +665,41 @@ trait MountsVfsTables
             'data' => $named,
             'ambiguous_column_names' => $ambiguous,
         ];
+    }
+
+    /**
+     * @return list<VfsEntry>
+     */
+    private function listTrashedTableRows(DataTable $table, string $base, VfsBudget $budget): array
+    {
+        return DataTableRow::onlyTrashed()
+            ->where('table_id', $table->id)
+            ->orderByDesc('deleted_at')
+            ->orderBy('id')
+            ->limit($budget->maxEntries)
+            ->get()
+            ->map(fn (DataTableRow $row): VfsEntry => new VfsEntry(
+                "{$row->id}.json",
+                "{$base}/rows/.trash/{$row->id}.json",
+                'file',
+                "/tables/by-id/{$table->id}/rows/.trash/{$row->id}.json",
+                'data_table_row',
+                $row->id,
+                capabilities: ['read'],
+                metadata: [
+                    'trashed' => true,
+                    'deleted_at' => $row->deleted_at?->toIso8601String(),
+                    'deleted_by' => $row->getAttribute('deleted_by'),
+                    'restore_hint' => "mv {$base}/rows/.trash/{$row->id}.json {$base}/rows/ restores it.",
+                ],
+            ))
+            ->all();
+    }
+
+    private function resolveTrashedTableRow(DataTable $table, string $token, string $path): DataTableRow
+    {
+        $rowId = preg_replace('/\.json$/', '', $token) ?? $token;
+
+        return DataTableRow::onlyTrashed()->where('table_id', $table->id)->find($rowId) ?? throw VfsError::notFound($path);
     }
 }

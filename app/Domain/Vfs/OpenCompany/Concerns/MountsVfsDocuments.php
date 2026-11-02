@@ -11,6 +11,11 @@ use App\Models\User;
 
 /**
  * Document mount operations for OpenCompanyVfs.
+ *
+ * Listing names follow the friendly-name contract (slug, `--{id8}` on sibling
+ * collisions); every entry's canonical path is /docs/by-id/{id}. `/docs/.trash/`
+ * lists trashed documents the agent can still see (MountsVfsTrash). Writes,
+ * deletes, moves and folder creation live in MutatesVfsDocumentRecords.
  */
 trait MountsVfsDocuments
 {
@@ -40,12 +45,16 @@ trait MountsVfsDocuments
     {
         $prefix = null;
 
+        if (($segments[1] ?? null) === '.trash') {
+            return $this->paginateVfsStaticEntries($this->listDocumentTrash($agent, $segments, $path, $budget), $budget->maxEntries, $state);
+        }
+
         if (count($segments) === 1) {
             $prefix = new VfsEntry('by-id', '/docs/by-id', 'directory', capabilities: ['browse']);
             $query = Document::forWorkspace()
                 ->whereNull('parent_id')
                 ->where('is_system', false);
-            $entryPath = fn (Document $doc): string => '/docs/'.$this->slug($doc->title);
+            $entryPath = fn (Document $doc): string => '/docs/'.$this->documentToken($doc);
         } elseif (($segments[1] ?? null) === 'by-id' && ! isset($segments[2])) {
             $query = Document::forWorkspace()->where('is_system', false);
             $entryPath = fn (Document $doc): string => "/docs/by-id/{$doc->id}";
@@ -70,7 +79,7 @@ trait MountsVfsDocuments
             $basePath = ($segments[1] ?? null) === 'by-id'
                 ? "/docs/by-id/{$folder->id}"
                 : $path;
-            $entryPath = fn (Document $doc): string => rtrim($basePath, '/').'/'.$this->slug($doc->title);
+            $entryPath = fn (Document $doc): string => rtrim($basePath, '/').'/'.$this->documentToken($doc);
         }
 
         return $this->paginateVfsMountQuery(
@@ -93,8 +102,11 @@ trait MountsVfsDocuments
         if (count($segments) === 1) {
             return $this->entriesToText($this->listDocs($agent, $segments, $path, $budget));
         }
+        if ($segments[1] === '.trash') {
+            return $this->readDocumentTrash($agent, $segments, $path, $budget);
+        }
 
-        $doc = (isset($segments[1], $segments[2]) && $segments[1] === 'by-id')
+        $doc = (isset($segments[2]) && $segments[1] === 'by-id')
             ? $this->documentFromByIdSegments($segments, $path)
             : $this->resolveDocumentPath(array_slice($segments, 1), $path);
 
@@ -117,6 +129,7 @@ trait MountsVfsDocuments
 
         $content = (string) $doc->content;
         $budget->recordReadVersion($this->version($doc->updated_at?->toIso8601String(), $content));
+        $budget->recordCanonicalPath("/docs/by-id/{$doc->id}");
 
         return VfsText::fit($content, $budget, $path);
     }
@@ -142,7 +155,7 @@ trait MountsVfsDocuments
             toEntry: fn (Document $doc): VfsEntry => $this->documentEntry(
                 $agent,
                 $doc,
-                rtrim($path, '/').'/'.$this->slug($doc->title),
+                rtrim($path, '/').'/'.$this->documentToken($doc),
             ),
         )['entries'];
     }

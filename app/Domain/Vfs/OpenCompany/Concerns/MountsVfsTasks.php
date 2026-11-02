@@ -7,7 +7,6 @@ use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Support\Str;
 
 /**
  * Task mount operations for OpenCompanyVfs.
@@ -84,20 +83,15 @@ trait MountsVfsTasks
                 $budget->maxEntries,
                 $state,
                 fn (User $target): VfsEntry => new VfsEntry(
-                    $this->slug($target->name),
-                    "/tasks/by-agent/{$this->slug($target->name)}",
+                    $this->agentToken($agent, $target),
+                    "/tasks/by-agent/{$this->agentToken($agent, $target)}",
                     'directory',
                     capabilities: ['browse', 'read', 'search'],
                     metadata: ['agent_id' => $target->id, 'name' => $target->name],
                 ),
             );
         } elseif ($label === 'by-agent' && isset($segments[2])) {
-            $agentSlug = $segments[2];
-            $target = User::where('workspace_id', $agent->workspace_id)
-                ->where('type', 'agent')
-                ->lazy(100)
-                ->first(fn (User $candidate): bool => Str::slug($candidate->name) === $agentSlug);
-            $target ? $query->where('agent_id', $target->id) : $query->whereRaw('1 = 0');
+            $query->where('agent_id', $this->resolveAgent($agent, [$segments[2]], $path)->id);
             if (isset($segments[3])) {
                 $segments[3] === 'completed'
                     ? $query->where('status', Task::STATUS_COMPLETED)

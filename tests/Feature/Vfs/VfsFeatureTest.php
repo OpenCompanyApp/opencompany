@@ -300,9 +300,12 @@ class VfsFeatureTest extends TestCase
             'author_id' => $this->agent->id,
         ]);
 
-        $this->expectExceptionMessage('Path is not writable through VFS');
+        // Phase 2 (C1): documents are writable through vfs_write, but an
+        // overwrite still needs an explicit folder grant containing the
+        // document; a default (no grants) agent is refused.
+        $this->expectExceptionMessage('Permission denied');
 
-        app(OpenCompanyVfs::class)->write($this->agent, "/docs/by-id/{$doc->id}", 'Raw overwrite');
+        app(OpenCompanyVfs::class)->write($this->agent, "/docs/by-id/{$doc->id}", 'Raw overwrite', 'overwrite', 'any-version');
     }
 
     public function test_vfs_patch_respects_document_folder_scope(): void
@@ -1240,8 +1243,9 @@ RUBY);
         }
         $this->assertFalse(WorkspaceFile::forWorkspace()->where('parent_id', $blockedFolder->id)->where('name', 'nope')->exists());
 
-        $this->assertStringContainsString('deleted', $executor->execute($this->agent, "rm {$canonicalFile}")['stdout']);
-        $this->assertStringContainsString('deleted', $executor->execute($this->agent, "rm -d /files/by-id/{$allowedFolder->id}/canonical-smoke")['stdout']);
+        // rm moves to the trash since Phase 2 (C1): status "trashed".
+        $this->assertStringContainsString('trashed', $executor->execute($this->agent, "rm {$canonicalFile}")['stdout']);
+        $this->assertStringContainsString('trashed', $executor->execute($this->agent, "rm -d /files/by-id/{$allowedFolder->id}/canonical-smoke")['stdout']);
     }
 
     public function test_vfs_write_rejects_invalid_modes_without_overwriting(): void
@@ -1366,7 +1370,8 @@ RUBY);
         }
         $this->assertStringContainsString('created', $executor->execute($this->agent, 'mkdir -p /files/tmp-vfs/deep/nested')['stdout']);
         $this->assertStringContainsString('created', $executor->execute($this->agent, 'touch /files/tmp-vfs/deep/nested/file.txt')['stdout']);
-        $this->assertStringContainsString('deleted', $executor->execute($this->agent, 'rm -rf /files/tmp-vfs/deep')['stdout']);
+        // rm moves to the trash since Phase 2 (C1): status "trashed".
+        $this->assertStringContainsString('trashed', $executor->execute($this->agent, 'rm -rf /files/tmp-vfs/deep')['stdout']);
         $tempFile = trim($executor->execute($this->agent, 'mktemp -p /files/tmp-vfs temp.XXXXXX')['stdout']);
         $tempDir = trim($executor->execute($this->agent, 'mktemp -d -p /files/tmp-vfs dir.XXXXXX')['stdout']);
         $this->assertMatchesRegularExpression('#^/files/tmp-vfs/temp\.[A-Za-z0-9]{6}$#', $tempFile);
@@ -1400,7 +1405,8 @@ RUBY);
         } catch (VfsError $e) {
             $this->assertSame('not_found', $e->errorCode);
         }
-        $this->assertStringContainsString('deleted', $executor->execute($this->agent, 'rm /files/tmp-vfs/c.txt')['stdout']);
+        // rm moves to the trash since Phase 2 (C1): status "trashed".
+        $this->assertStringContainsString('trashed', $executor->execute($this->agent, 'rm /files/tmp-vfs/c.txt')['stdout']);
     }
 
     public function test_vfs_exec_file_mutations_do_not_bypass_approval_required_write_tool(): void
@@ -2300,7 +2306,9 @@ RUBY);
         $this->assertStringContainsString('VFS channel transcript line', $executor->execute($this->agent, 'cat /channels/general/messages/'.now()->toDateString().'.md')['stdout']);
         $this->assertStringContainsString('VFS channel transcript line', $executor->execute($this->agent, 'cat /channels/by-id/'.$channel->id.'/messages/'.now()->toDateString().'.md')['stdout']);
         $this->assertStringContainsString('vfs@example.com', $executor->execute($this->agent, 'cat /tables/customers/rows.ndjson')['stdout']);
-        $this->assertStringContainsString('vfs@example.com', $executor->execute($this->agent, 'cat /tables/customers/rows.ndjson | jq ".data.email"')['stdout']);
+        // rows.ndjson is name-keyed since Phase 2 (C1); this row's key is not a
+        // column of the table, so it only appears under data_by_column_id.
+        $this->assertStringContainsString('vfs@example.com', $executor->execute($this->agent, 'cat /tables/customers/rows.ndjson | jq ".data_by_column_id.email"')['stdout']);
         $this->assertStringContainsString('"type": "file"', $executor->execute($this->agent, 'stat /tables/customers/rows.ndjson')['stdout']);
         $this->assertStringContainsString('"backend_type": "data_table"', $executor->execute($this->agent, 'stat /tables/customers')['stdout']);
         $this->assertStringContainsString('grid--', $executor->execute($this->agent, 'ls /tables/customers/views')['stdout']);

@@ -11,6 +11,10 @@ use Illuminate\Support\Str;
 
 /**
  * List-item mount operations for OpenCompanyVfs.
+ *
+ * Read side only: items render as front-matter markdown (MutatesVfsListItems
+ * owns the format and every write). `/lists/projects/{project}` lists a
+ * project's items by friendly name; `/lists/.trash/` lists trashed items.
  */
 trait MountsVfsLists
 {
@@ -43,6 +47,23 @@ trait MountsVfsLists
         }
 
         $label = $segments[1] ?? '';
+        if ($label === '.trash' && ! isset($segments[2])) {
+            return $this->paginateVfsStaticEntries($this->listTrashedListItems($agent, $budget), $budget->maxEntries, $state);
+        }
+        if ($label === 'projects' && isset($segments[2])) {
+            $project = $this->resolveListItemSegments($segments, $path);
+            if (! $project->is_folder) {
+                throw VfsError::notReadable($path);
+            }
+
+            return $this->paginateVfsRecentQuery(
+                ListItem::forWorkspace()->where('parent_id', $project->id),
+                $budget->maxEntries,
+                $budget->maxFiles,
+                $state,
+                fn (ListItem $child): VfsEntry => $this->listItemEntry($agent, $child, rtrim($path, '/').'/'.$this->listItemName($child)),
+            );
+        }
         if ($label === 'by-id') {
             if (! isset($segments[2])) {
                 return $this->paginateVfsRecentQuery(
@@ -53,13 +74,7 @@ trait MountsVfsLists
                     fn (ListItem $item): VfsEntry => $this->listItemEntry($agent, $item),
                 );
             }
-            $item = ListItem::forWorkspace()->find($segments[2]) ?? throw VfsError::notFound($path);
-            if (isset($segments[3])) {
-                $item = $this->resolveListChild($item, $segments[3], $path);
-                if (isset($segments[4])) {
-                    throw VfsError::notFound($path);
-                }
-            }
+            $item = $this->resolveListItemSegments($segments, $path);
             if (! $item->is_folder) {
                 throw VfsError::notReadable($path);
             }
@@ -79,7 +94,15 @@ trait MountsVfsLists
 
         $query = ListItem::forWorkspace();
         if ($label === 'projects') {
-            $query->where('is_folder', true);
+            $projectsQuery = ListItem::forWorkspace()->where('is_folder', true)->whereNull('parent_id');
+
+            return $this->paginateVfsRecentQuery(
+                $projectsQuery,
+                $budget->maxEntries,
+                $budget->maxFiles,
+                $state,
+                fn (ListItem $project): VfsEntry => $this->listItemEntry($agent, $project, '/lists/projects/'.$this->friendlyToken(ListItem::forWorkspace()->where('is_folder', true)->whereNull('parent_id'), 'title', $project)),
+            );
         } elseif ($label === 'by-status' && ! isset($segments[2])) {
             $entries = ListItem::forWorkspace()
                 ->select('status')
@@ -141,6 +164,9 @@ trait MountsVfsLists
             new VfsEntry('by-status', '/lists/by-status', 'directory', capabilities: ['browse', 'read']),
             new VfsEntry('by-assignee', '/lists/by-assignee', 'directory', capabilities: ['browse', 'read']),
             new VfsEntry('counts.json', '/lists/counts.json', 'file', capabilities: ['read']),
+            new VfsEntry('.trash', '/lists/.trash', 'directory', capabilities: ['browse', 'read'], metadata: [
+                'description' => 'Trashed list items; mv one out of here to restore it.',
+            ]),
         ];
     }
 
@@ -157,17 +183,26 @@ trait MountsVfsLists
             ], JSON_PRETTY_PRINT);
         }
 
-        if (($segments[1] ?? null) === 'by-id' && isset($segments[2])) {
-            if (isset($segments[4])) {
+        if (($segments[1] ?? null) === '.trash' && isset($segments[2])) {
+            if (isset($segments[3])) {
                 throw VfsError::notFound($path);
             }
-            $item = ListItem::forWorkspace()->with(['assignee:id,name', 'creator:id,name'])->find($segments[2]) ?? throw VfsError::notFound($path);
-            if (isset($segments[3])) {
-                $item = $this->resolveListChild($item, $segments[3], $path);
-            }
+
+            return $this->listItemMarkdown($this->resolveTrashedListItem($segments[2], $path));
+        }
+
+        if ((($segments[1] ?? null) === 'by-id' || ($segments[1] ?? null) === 'projects') && isset($segments[2])) {
+            $item = $this->resolveListItemSegments($segments, $path);
             if ($item->is_folder) {
+                if ($budget->isContentRead()) {
+                    throw VfsError::notReadable($path);
+                }
+
                 return $this->entriesToText($this->listLists($agent, $segments, $path, $budget));
             }
+
+            $budget->recordReadVersion($this->listItemVersion($item));
+            $budget->recordCanonicalPath("/lists/by-id/{$item->id}");
 
             return $this->listItemMarkdown($item);
         }
@@ -211,7 +246,7 @@ trait MountsVfsLists
             canonicalPath: "/lists/by-id/{$item->id}",
             backendType: 'list_item',
             backendId: $item->id,
-            version: $this->version($item->updated_at?->toIso8601String(), $item->status ?? ''),
+            version: $this->listItemVersion($item),
             capabilities: $capabilities,
             metadata: $metadata,
         );
@@ -219,38 +254,31 @@ trait MountsVfsLists
 
     private function listItemName(ListItem $item): string
     {
-        return $this->slug($item->title).($item->is_folder ? '' : '.md');
+        $token = $this->friendlyToken(ListItem::forWorkspace()->where('parent_id', $item->parent_id), 'title', $item);
+
+        return $token.($item->is_folder ? '' : '.md');
     }
 
+    /**
+     * Resolve a child of a project by friendly name (`.md` optional,
+     * `--{id8}` on collisions; ambiguous names fail with ambiguous_match).
+     */
     private function resolveListChild(ListItem $folder, string $token, string $path): ListItem
     {
         if (! $folder->is_folder) {
             throw VfsError::notFound($path);
         }
 
-        $normalized = preg_replace('/\.md$/', '', $token) ?? $token;
+        $child = $this->resolveFriendlySegment(
+            ListItem::forWorkspace()->where('parent_id', $folder->id),
+            'title',
+            $token,
+            "/lists/by-id/{$folder->id}",
+            $path,
+            fn (\Illuminate\Database\Eloquent\Model $candidate): string => "/lists/by-id/{$candidate->getKey()}",
+            allowMarkdownSuffix: true,
+        );
 
-        return ListItem::forWorkspace()
-            ->where('parent_id', $folder->id)
-            ->get()
-            ->first(fn (ListItem $candidate): bool => $this->slug($candidate->title) === $normalized || $this->listItemName($candidate) === $token)
-            ?? throw VfsError::notFound($path);
-    }
-
-    private function listItemMarkdown(ListItem $item): string
-    {
-        return implode("\n", [
-            '# '.$item->title,
-            '',
-            "- ID: {$item->id}",
-            "- Status: {$item->status}",
-            "- Priority: {$item->priority}",
-            '- Assignee: '.($item->assignee->name ?? 'Unassigned'),
-            '- Folder: '.($item->is_folder ? 'yes' : 'no'),
-            '',
-            '## Description',
-            '',
-            (string) ($item->description ?? ''),
-        ]);
+        return $child instanceof ListItem ? $child : throw VfsError::notFound($path);
     }
 }
