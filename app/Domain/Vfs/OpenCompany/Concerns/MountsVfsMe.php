@@ -6,8 +6,10 @@ use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsText;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsSecretRedactor;
 use App\Models\ApprovalRequest;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * `/me`: the acting agent's own working area, identical with or without a
@@ -168,9 +170,9 @@ trait MountsVfsMe
     /**
      * Pending approvals requested by this agent in its own workspace.
      *
-     * @return \Illuminate\Database\Eloquent\Builder<ApprovalRequest>
+     * @return Builder<ApprovalRequest>
      */
-    private function pendingApprovalQuery(User $agent): \Illuminate\Database\Eloquent\Builder
+    private function pendingApprovalQuery(User $agent): Builder
     {
         return ApprovalRequest::query()
             ->where('requester_id', $agent->id)
@@ -195,13 +197,14 @@ trait MountsVfsMe
 
     /**
      * Agent-readable summary: operation, path, tools and the preview the
-     * approver sees. Secrets in the preview are redacted by key name.
+     * approver sees. Secrets in the preview are redacted precisely
+     * (VfsSecretRedactor, same as /approvals): ids and paths stay readable.
      */
     private function pendingApprovalMarkdown(ApprovalRequest $approval): string
     {
         $context = $approval->tool_execution_context ?? [];
         $vfs = is_array($context['vfs_approval'] ?? null) ? $context['vfs_approval'] : [];
-        $preview = ApprovalRequest::redactSecretValue($vfs['preview'] ?? null);
+        $preview = VfsSecretRedactor::redact($vfs['preview'] ?? null);
 
         $lines = [
             '# '.$approval->title,
