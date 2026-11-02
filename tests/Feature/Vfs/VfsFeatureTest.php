@@ -461,14 +461,16 @@ class VfsFeatureTest extends TestCase
             'command' => 'printf "api_key=sk-test-secret-value-1234567890"',
         ]));
 
-        $event = VfsOperationEvent::query()->where('operation', 'vfs_exec')->firstOrFail();
+        // Phase 2: tool calls are `vfs.tool_call` rows of the event-envelope
+        // schema; cwd and the redacted command live in the payload.
+        $event = VfsOperationEvent::query()->where('type', 'vfs.tool_call')->where('operation', 'vfs_exec')->firstOrFail();
 
         $this->assertSame($this->workspace->id, $event->workspace_id);
         $this->assertSame($this->agent->id, $event->agent_id);
-        $this->assertTrue($event->success);
-        $this->assertSame('/', $event->cwd);
-        $this->assertStringContainsString('[redacted]', $event->metadata['command']);
-        $this->assertStringNotContainsString('sk-test-secret', json_encode($event->metadata));
+        $this->assertNull($event->error_code);
+        $this->assertSame('/', $event->payload['cwd']);
+        $this->assertStringContainsString('[redacted]', $event->payload['command']);
+        $this->assertStringNotContainsString('sk-test-secret', json_encode($event->payload));
     }
 
     public function test_grep_recursive_flag_keeps_literal_matching(): void
@@ -2305,7 +2307,9 @@ RUBY);
         $this->assertStringContainsString('"backend_type": "data_table"', $executor->execute($this->agent, 'stat /tables/customers')['stdout']);
         $this->assertStringContainsString('grid--', $executor->execute($this->agent, 'ls /tables/customers/views')['stdout']);
         $this->assertStringContainsString('members.json', $executor->execute($this->agent, 'ls /workspace')['stdout']);
-        $this->assertStringContainsString('human@example.com', $executor->execute($this->agent, 'cat /workspace/members.json')['stdout']);
+        // Phase 2: human emails need an explicit members grant (list_members allow row).
+        $this->assertStringNotContainsString('human@example.com', $executor->execute($this->agent, 'cat /workspace/members.json')['stdout']);
+        $this->assertStringContainsString('"email_redacted": true', $executor->execute($this->agent, 'cat /workspace/members.json')['stdout']);
         $this->assertStringContainsString('"role": "admin"', $executor->execute($this->agent, 'cat /workspace/members.json')['stdout']);
         $this->assertStringContainsString('"membership_id"', $executor->execute($this->agent, 'cat /workspace/members.json')['stdout']);
         $this->assertStringContainsString('/agents/by-id/'.$this->agent->id, $executor->execute($this->agent, 'cat /workspace/members.json')['stdout']);

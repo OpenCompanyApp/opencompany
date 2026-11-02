@@ -311,7 +311,8 @@ class OpenCompanyVfs
         $page = match ($adapter) {
             'channel-transcript-keyset-v1' => $this->readChannelTranscriptPage($agent, $segments, $path, $budget, $payload['state']),
             'table-rows-export-keyset-v1' => $this->readTableRowsExportPage($segments, $path, $budget, $payload['state']),
-            'workspace-members-keyset-v1' => $this->pageWorkspaceMembersExport($budget, $payload['state']),
+            'workspace-members-keyset-v1' => $this->pageWorkspaceMembersExport($agent, $budget, $payload['state']),
+            'workspace-changes-keyset-v1' => $this->pageWorkspaceChanges($agent, $budget, $payload['state']),
             default => [
                 'content' => $this->read($agent, $path, $budget),
                 'returned' => 1,
@@ -322,7 +323,9 @@ class OpenCompanyVfs
             ],
         };
 
-        $nextCursor = $page['has_more']
+        // `resumable` collections (the change feed) always return a cursor so
+        // a drained feed can be polled again later from where it stopped.
+        $nextCursor = $page['has_more'] || ($page['resumable'] ?? false) === true
             ? VfsPageCursor::encode(
                 $path,
                 $adapter,
@@ -354,6 +357,9 @@ class OpenCompanyVfs
         }
         if ($segments === ['workspace', 'members.json']) {
             return 'workspace-members-keyset-v1';
+        }
+        if ($segments === ['workspace', 'changes.ndjson']) {
+            return 'workspace-changes-keyset-v1';
         }
 
         return 'plain-read-v1';
