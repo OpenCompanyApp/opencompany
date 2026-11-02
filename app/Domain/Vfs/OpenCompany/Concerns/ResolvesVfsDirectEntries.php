@@ -48,6 +48,7 @@ trait ResolvesVfsDirectEntries
             'approvals' => $this->directApprovalEntry($agent, $segments, $path),
             'automations' => $this->directAutomationEntry($segments, $path),
             'workspace' => $this->directWorkspaceEntry($segments, $path),
+            'tools' => $this->directToolEntry($path),
             default => null,
         };
     }
