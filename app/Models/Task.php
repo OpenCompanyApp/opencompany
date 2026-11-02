@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 /**
@@ -194,13 +195,22 @@ class Task extends Model
         return $this->hasMany(TaskStep::class)->orderBy('created_at');
     }
 
+    /** @return HasOne<AgentRunRecord, $this> */
+    public function agentRun(): HasOne
+    {
+        return $this->hasOne(AgentRunRecord::class);
+    }
+
     // Lifecycle Methods
 
     public function start(): self
     {
+        $this->assertTransitionAllowed([self::STATUS_PENDING], self::STATUS_ACTIVE);
+
         $this->update([
             'status' => self::STATUS_ACTIVE,
-            'started_at' => now(),
+            'started_at' => $this->started_at ?? now(),
+            'completed_at' => null,
         ]);
 
         return $this;
@@ -208,14 +218,29 @@ class Task extends Model
 
     public function pause(): self
     {
+        if ($this->status === self::STATUS_PAUSED) {
+            return $this;
+        }
+
+        $this->assertTransitionAllowed([self::STATUS_PENDING, self::STATUS_ACTIVE], self::STATUS_PAUSED);
         $this->update(['status' => self::STATUS_PAUSED]);
+        $this->agentRun?->markWaiting();
 
         return $this;
     }
 
     public function resume(): self
     {
-        $this->update(['status' => self::STATUS_ACTIVE]);
+        if ($this->status === self::STATUS_PENDING) {
+            return $this;
+        }
+
+        $this->assertTransitionAllowed([self::STATUS_PAUSED], self::STATUS_PENDING);
+
+        // Resume returns assigned work to the queueable pending state. The
+        // application service is responsible for dispatching exactly one job.
+        $this->update(['status' => self::STATUS_PENDING, 'completed_at' => null]);
+        $this->agentRun?->markQueued();
 
         return $this;
     }
@@ -223,28 +248,46 @@ class Task extends Model
     /** @param array<string, mixed>|null $result */
     public function complete(?array $result = null): self
     {
+        if ($this->status === self::STATUS_COMPLETED) {
+            return $this;
+        }
+
+        $this->assertTransitionAllowed([self::STATUS_PENDING, self::STATUS_ACTIVE, self::STATUS_PAUSED], self::STATUS_COMPLETED);
         $this->update([
             'status' => self::STATUS_COMPLETED,
             'completed_at' => now(),
             'result' => $result,
         ]);
+        $this->agentRun?->markCompleted();
 
         return $this;
     }
 
     public function fail(?string $reason = null): self
     {
+        if ($this->status === self::STATUS_FAILED) {
+            return $this;
+        }
+
+        $this->assertTransitionAllowed([self::STATUS_PENDING, self::STATUS_ACTIVE, self::STATUS_PAUSED], self::STATUS_FAILED);
         $this->update([
             'status' => self::STATUS_FAILED,
             'completed_at' => now(),
             'result' => ['error' => $reason],
         ]);
+        $this->agentRun?->markFailed($reason);
 
         return $this;
     }
 
     public function cancel(): self
     {
+        if ($this->status === self::STATUS_CANCELLED) {
+            return $this;
+        }
+
+        $this->assertTransitionAllowed([self::STATUS_PENDING, self::STATUS_ACTIVE, self::STATUS_PAUSED], self::STATUS_CANCELLED);
+
         $this->update([
             'status' => self::STATUS_CANCELLED,
             'completed_at' => now(),
@@ -252,10 +295,16 @@ class Task extends Model
 
         // Cascade only work that has not reached a terminal state. Completed or
         // failed subtasks remain as historical evidence for the parent task.
-        Task::where('parent_task_id', $this->id)
-            ->whereIn('status', [self::STATUS_ACTIVE, self::STATUS_PENDING])
+        Task::where('workspace_id', $this->workspace_id)
+            ->where('parent_task_id', $this->id)
+            ->whereIn('status', [self::STATUS_ACTIVE, self::STATUS_PENDING, self::STATUS_PAUSED])
             ->get()
             ->each->cancel();
+
+        // Queue workers and tools treat this timestamp as a cooperative stop
+        // signal. A process already inside an external API call cannot be killed
+        // safely, but it will not start another tool or deliver a response.
+        $this->agentRun?->requestCancellation();
 
         return $this;
     }
@@ -316,7 +365,7 @@ class Task extends Model
     {
         // AgentRespondJob starts pending tasks. Creating the row before dispatch
         // gives retries, delegation callbacks, and UI progress a stable ID.
-        return self::create([
+        $task = self::create([
             'id' => Str::uuid()->toString(),
             'workspace_id' => $agent->workspace_id,
             'title' => Str::limit($message->content, 80),
@@ -328,6 +377,10 @@ class Task extends Model
             'channel_id' => $channelId,
             'trigger_message_id' => $message->id,
         ]);
+
+        AgentRunRecord::ensureForTask($task, AgentRunRecord::KIND_CHAT, 3);
+
+        return $task;
     }
 
     // Helper Methods
@@ -359,6 +412,24 @@ class Task extends Model
     public function isTerminal(): bool
     {
         return $this->isClosed();
+    }
+
+    /**
+     * Reject lifecycle rewrites that would resurrect or overwrite history.
+     * Idempotent transitions are accepted because Telegram callbacks and UI
+     * retries can legitimately repeat the same command.
+     *
+     * @param  list<string>  $from
+     */
+    private function assertTransitionAllowed(array $from, string $to): void
+    {
+        if ($this->status === $to) {
+            return;
+        }
+
+        if (! in_array($this->status, $from, true)) {
+            throw new \DomainException("Task [{$this->id}] cannot transition from [{$this->status}] to [{$to}].");
+        }
     }
 
     /** @param array<string, mixed> $metadata */

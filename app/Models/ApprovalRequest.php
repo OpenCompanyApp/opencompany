@@ -72,6 +72,13 @@ class ApprovalRequest extends Model
         if (array_key_exists('tool_execution_context', $array)) {
             $array['tool_execution_context'] = self::redactSecretValue($array['tool_execution_context']);
         }
+        $vfs = $this->tool_execution_context['vfs_approval'] ?? null;
+        if (is_array($vfs)) {
+            $array['source'] = 'VFS';
+            $array['resource'] = $vfs['subject'] ?? null;
+            $array['scope'] = $vfs['approval_tool'] ?? null;
+            $array['details'] = $this->vfsApprovalDetails($vfs);
+        }
 
         return $array;
     }
@@ -104,6 +111,25 @@ class ApprovalRequest extends Model
         }
 
         return $value;
+    }
+
+    /**
+     * @param  array<string, mixed>  $vfs
+     */
+    private function vfsApprovalDetails(array $vfs): string
+    {
+        $lines = [
+            'Operation: '.($vfs['operation'] ?? 'unknown'),
+            'Subject: '.($vfs['subject'] ?? 'unknown'),
+            'Required tools: '.implode(', ', array_filter((array) ($vfs['required_tools'] ?? []), 'is_string')),
+            'Approval tool: '.($vfs['approval_tool'] ?? 'unknown'),
+        ];
+
+        if (is_array($vfs['preview'] ?? null)) {
+            $lines[] = 'Preview: '.json_encode(self::redactSecretValue($vfs['preview']), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        }
+
+        return implode("\n", $lines);
     }
 
     /** @return BelongsTo<Channel, $this> */

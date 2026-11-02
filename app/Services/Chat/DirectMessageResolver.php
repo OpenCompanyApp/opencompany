@@ -32,8 +32,10 @@ class DirectMessageResolver
      */
     public function getOrCreate(string $userAId, string $userBId): DirectMessage
     {
-        $existing = $this->findForParticipants($userAId, $userBId)
-            ?? $this->findGlobalPairForLegacyUniqueConstraint($userAId, $userBId);
+        $this->assertWorkspaceParticipant($userAId);
+        $this->assertWorkspaceParticipant($userBId);
+
+        $existing = $this->findForParticipants($userAId, $userBId);
 
         if ($existing !== null) {
             if ($existing->channel) {
@@ -61,6 +63,7 @@ class DirectMessageResolver
     {
         $existing = DirectMessage::query()
             ->where('channel_id', $channel->id)
+            ->where('workspace_id', $channel->workspace_id)
             ->first();
 
         if ($existing !== null) {
@@ -91,19 +94,43 @@ class DirectMessageResolver
 
     public function findForParticipants(string $userAId, string $userBId): ?DirectMessage
     {
-        return DirectMessage::query()
-            ->whereHas('channel', fn ($query) => $query
-                ->where('workspace_id', workspace()->id)
-                ->where('type', 'dm'))
-            ->where(function ($outer) use ($userAId, $userBId): void {
-                $outer->where(function ($query) use ($userAId, $userBId): void {
-                    $query->where('user1_id', $userAId)->where('user2_id', $userBId);
-                })->orWhere(function ($query) use ($userAId, $userBId): void {
-                    $query->where('user1_id', $userBId)->where('user2_id', $userAId);
+        $participantKey = $this->participantKey($userAId, $userBId);
+        $existing = DirectMessage::query()
+            ->where('workspace_id', workspace()->id)
+            ->where('participant_key', $participantKey)
+            ->latest('updated_at')
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        // Repair a pre-scope row only through a channel proven to belong to
+        // the active workspace. Never fall back to an unscoped global pair.
+        // This also covers imports/tests where model events were disabled and
+        // therefore could not fill the derived columns at creation time.
+        $legacy = DirectMessage::query()
+            ->whereHas('channel', fn ($query) => $query->where('workspace_id', workspace()->id))
+            ->where(function ($query) use ($userAId, $userBId): void {
+                $query->where(function ($ordered) use ($userAId, $userBId): void {
+                    $ordered->where('user1_id', $userAId)->where('user2_id', $userBId);
+                })->orWhere(function ($reversed) use ($userAId, $userBId): void {
+                    $reversed->where('user1_id', $userBId)->where('user2_id', $userAId);
                 });
             })
             ->latest('updated_at')
             ->first();
+
+        if ($legacy === null) {
+            return null;
+        }
+
+        $legacy->update([
+            'workspace_id' => workspace()->id,
+            'participant_key' => $participantKey,
+        ]);
+
+        return $legacy;
     }
 
     /**
@@ -125,17 +152,24 @@ class DirectMessageResolver
 
     private function createMetadata(Channel $channel, string $userAId, string $userBId): DirectMessage
     {
+        if ($channel->workspace_id !== workspace()->id) {
+            throw new \DomainException('Direct message channel is outside the active workspace.');
+        }
+        $this->assertWorkspaceParticipant($userAId);
+        $this->assertWorkspaceParticipant($userBId);
+
         try {
             return DirectMessage::query()->create([
                 'id' => Str::uuid()->toString(),
+                'workspace_id' => $channel->workspace_id,
+                'participant_key' => $this->participantKey($userAId, $userBId),
                 'user1_id' => $userAId,
                 'user2_id' => $userBId,
                 'channel_id' => $channel->id,
                 'last_message_at' => $channel->last_message_at ?? now(),
             ]);
         } catch (UniqueConstraintViolationException $e) {
-            $existing = $this->findForParticipants($userAId, $userBId)
-                ?? $this->findGlobalPairForLegacyUniqueConstraint($userAId, $userBId);
+            $existing = $this->findForParticipants($userAId, $userBId);
 
             if ($existing !== null) {
                 return $existing;
@@ -163,32 +197,38 @@ class DirectMessageResolver
             });
     }
 
-    private function findGlobalPairForLegacyUniqueConstraint(string $userAId, string $userBId): ?DirectMessage
+    /**
+     * Canonical ordering makes the workspace pair unique even when concurrent
+     * callers supply the participants in opposite orders.
+     *
+     * @return array{string, string}
+     */
+    private function participantKey(string $userAId, string $userBId): string
     {
-        $dm = DirectMessage::query()
-            ->with('channel')
-            ->where(function ($outer) use ($userAId, $userBId): void {
-                $outer->where(function ($query) use ($userAId, $userBId): void {
-                    $query->where('user1_id', $userAId)->where('user2_id', $userBId);
-                })->orWhere(function ($query) use ($userAId, $userBId): void {
-                    $query->where('user1_id', $userBId)->where('user2_id', $userAId);
+        $pair = [$userAId, $userBId];
+        sort($pair, SORT_STRING);
+
+        return implode(':', $pair);
+    }
+
+    private function assertWorkspaceParticipant(string $userId): void
+    {
+        $workspaceId = workspace()->id;
+        $belongs = User::query()
+            ->whereKey($userId)
+            ->where(function ($query) use ($workspaceId): void {
+                $query->where(function ($agent) use ($workspaceId): void {
+                    $agent->where('type', 'agent')->where('workspace_id', $workspaceId);
+                })->orWhere(function ($human) use ($workspaceId): void {
+                    $human->where('type', 'human')
+                        ->whereHas('workspaces', fn ($membership) => $membership->where('workspaces.id', $workspaceId));
                 });
             })
-            ->latest('updated_at')
-            ->first();
+            ->exists();
 
-        if ($dm && $dm->channel?->workspace_id !== workspace()->id) {
-            Log::warning('Using globally unique direct message pair outside current workspace scope.', [
-                'direct_message_id' => $dm->id,
-                'channel_id' => $dm->channel_id,
-                'channel_workspace_id' => $dm->channel?->workspace_id,
-                'current_workspace_id' => workspace()->id,
-                'user_a_id' => $userAId,
-                'user_b_id' => $userBId,
-            ]);
+        if (! $belongs) {
+            throw new \DomainException('Direct message participant is outside the active workspace.');
         }
-
-        return $dm;
     }
 
     /**

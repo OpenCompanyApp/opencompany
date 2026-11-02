@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\AgentPermissionService;
 use App\Services\FileSystemService;
+use Illuminate\Support\Collection;
 
 /**
  * Builds the enriched agent-detail payload consumed by the agent settings UI.
@@ -146,24 +147,27 @@ class AgentDetailQuery
         $exec = $tools->get('vfs_exec', []);
         $patch = $tools->get('vfs_patch', []);
         $write = $tools->get('vfs_write', []);
+        $tableRowUpdate = $tools->get('update_table_row', []);
+        $identityUpdate = $tools->get('update_agent_identity_file', []);
 
         $execEnabled = (bool) ($exec['enabled'] ?? false);
         $patchEnabled = (bool) ($patch['enabled'] ?? false);
         $writeEnabled = (bool) ($write['enabled'] ?? false);
-
-        $writeApproval = ((bool) ($patch['requiresApproval'] ?? false) || (bool) ($write['requiresApproval'] ?? false))
-            ? 'Writes'
-            : $this->approvalLabelForMode((string) ($agent->behavior_mode ?? 'autonomous'));
+        $patchState = $this->vfsComposedState($tools, ['vfs_patch']);
+        $writeState = $this->vfsComposedState($tools, ['vfs_write']);
+        $execWriteState = $this->vfsComposedState($tools, ['vfs_exec', 'vfs_write']);
+        $tableRowState = $this->vfsComposedState($tools, ['vfs_patch', 'update_table_row']);
+        $identityState = $this->vfsComposedState($tools, ['vfs_patch', 'update_agent_identity_file']);
 
         $rows = [
             [
                 'mount' => 'Documents',
                 'path' => '/docs',
                 'scope' => $folderPermissions === [] ? 'All document folders' : count($folderPermissions).' selected folder(s)',
-                'actions' => array_values(array_filter(['browse', 'read/search', $patchEnabled ? 'patch' : null])),
-                'approval' => $patchEnabled ? $writeApproval : 'Inherit',
+                'actions' => $this->vfsActions(['browse', 'read/search', $patchState['enabled'] ? 'patch' : null]),
+                'approval' => $patchState['approval'],
                 'status' => $execEnabled ? 'enabled' : 'blocked',
-                'reason' => $execEnabled ? null : 'vfs_exec is disabled',
+                'reason' => $execEnabled ? $patchState['reason'] : 'vfs_exec is disabled',
             ],
             [
                 'mount' => 'Files',
@@ -171,37 +175,37 @@ class AgentDetailQuery
                 'scope' => in_array('*', $fileFolderPermissions, true)
                     ? 'All file folders'
                     : ($fileFolderPermissions === [] ? 'Home folder only' : 'Home folder + '.count($fileFolderPermissions).' selected folder(s)'),
-                'actions' => array_values(array_filter(['browse', 'read/search', $writeEnabled ? 'write/manage' : null])),
-                'approval' => $writeEnabled ? $writeApproval : 'Inherit',
+                'actions' => $this->vfsActions(['browse', 'read/search', $writeState['enabled'] ? 'write/manage' : null]),
+                'approval' => $writeState['approval'],
                 'status' => $execEnabled ? 'enabled' : 'blocked',
-                'reason' => $execEnabled ? null : 'vfs_exec is disabled',
+                'reason' => $execEnabled ? $execWriteState['reason'] : 'vfs_exec is disabled',
             ],
             [
-                'mount' => 'Agent memory',
+                'mount' => 'Agent identity and memory',
                 'path' => '/agents',
-                'scope' => 'Own, manager, and direct-report agent documents',
-                'actions' => array_values(array_filter(['browse', 'read/search', $patchEnabled ? 'patch' : null])),
-                'approval' => $patchEnabled ? $writeApproval : 'Inherit',
+                'scope' => 'Own docs plus manager/direct-report read; managers can edit direct-report identity and MEMORY.md',
+                'actions' => $this->vfsActions(['browse', 'read/search', $identityState['enabled'] ? 'patch identity' : null, $patchState['enabled'] ? 'patch scoped memory' : null]),
+                'approval' => $identityState['enabled'] || $patchState['enabled'] ? $this->vfsMostRestrictiveApproval([$identityState, $patchState]) : 'Denied',
                 'status' => $execEnabled ? 'limited' : 'blocked',
-                'reason' => $execEnabled ? 'Private memory remains scoped by agent relationship' : 'vfs_exec is disabled',
+                'reason' => $execEnabled ? 'Identity uses VFS Patch + Update Agent Identity File; memory uses VFS Patch plus relationship rules' : 'vfs_exec is disabled',
             ],
             [
                 'mount' => 'Tasks',
                 'path' => '/tasks',
                 'scope' => 'Workspace task projections, windowed',
-                'actions' => array_values(array_filter(['browse', 'read/search', $patchEnabled ? 'patch status/fields' : null])),
-                'approval' => $patchEnabled ? $writeApproval : 'Inherit',
+                'actions' => $this->vfsActions(['browse', 'read/search', $patchState['enabled'] ? 'patch status/fields' : null]),
+                'approval' => $patchState['approval'],
                 'status' => $execEnabled ? 'enabled' : 'blocked',
-                'reason' => $execEnabled ? null : 'vfs_exec is disabled',
+                'reason' => $execEnabled ? $patchState['reason'] : 'vfs_exec is disabled',
             ],
             [
                 'mount' => 'Lists',
                 'path' => '/lists',
                 'scope' => 'Workspace list projections, windowed',
-                'actions' => array_values(array_filter(['browse', 'read/search', $patchEnabled ? 'patch status/fields' : null])),
-                'approval' => $patchEnabled ? $writeApproval : 'Inherit',
+                'actions' => $this->vfsActions(['browse', 'read/search', $patchState['enabled'] ? 'patch status/fields' : null]),
+                'approval' => $patchState['approval'],
                 'status' => $execEnabled ? 'enabled' : 'blocked',
-                'reason' => $execEnabled ? null : 'vfs_exec is disabled',
+                'reason' => $execEnabled ? $patchState['reason'] : 'vfs_exec is disabled',
             ],
             [
                 'mount' => 'Channels',
@@ -216,10 +220,10 @@ class AgentDetailQuery
                 'mount' => 'Tables',
                 'path' => '/tables',
                 'scope' => 'Workspace tables',
-                'actions' => ['browse', 'read/search'],
-                'approval' => 'Inherit',
+                'actions' => $this->vfsActions(['browse', 'read/search', $tableRowState['enabled'] ? 'patch rows' : null]),
+                'approval' => $tableRowState['approval'],
                 'status' => $execEnabled ? 'enabled' : 'blocked',
-                'reason' => $execEnabled ? null : 'vfs_exec is disabled',
+                'reason' => $execEnabled ? $tableRowState['reason'] : 'vfs_exec is disabled',
             ],
             [
                 'mount' => 'Approvals',
@@ -250,20 +254,77 @@ class AgentDetailQuery
             ],
             'summary' => [
                 'Read/search: '.($execEnabled ? 'enabled across allowed mounts' : 'disabled'),
-                'Writes: '.($patchEnabled || $writeEnabled ? strtolower($writeApproval) : 'disabled'),
-                'Scopes: documents/files/channels reuse existing pickers',
+                'Patch: '.strtolower($patchState['approval']),
+                'Files: '.($writeEnabled ? strtolower($execWriteState['approval']) : 'disabled'),
+                'Domain edits reuse normal tool permissions',
             ],
             'rows' => $rows,
         ];
     }
 
-    private function approvalLabelForMode(string $mode): string
+    /**
+     * @param  Collection<string, array<string, mixed>>  $tools
+     * @param  list<string>  $required
+     * @return array{enabled: bool, approval: string, reason: string|null}
+     */
+    private function vfsComposedState(Collection $tools, array $required): array
     {
-        return match ($mode) {
-            'strict' => 'All',
-            'supervised' => 'Writes',
-            default => 'Inherit',
-        };
+        foreach ($required as $tool) {
+            $meta = $tools->get($tool, []);
+            if (! (bool) ($meta['enabled'] ?? false)) {
+                return [
+                    'enabled' => false,
+                    'approval' => 'Denied',
+                    'reason' => "Denied because {$this->toolDisplayName($meta, $tool)} is disabled",
+                ];
+            }
+        }
+
+        foreach ($required as $tool) {
+            $meta = $tools->get($tool, []);
+            if ((bool) ($meta['requiresApproval'] ?? false)) {
+                return [
+                    'enabled' => true,
+                    'approval' => 'Requires approval',
+                    'reason' => "Requires approval because {$this->toolDisplayName($meta, $tool)} requires approval",
+                ];
+            }
+        }
+
+        return [
+            'enabled' => true,
+            'approval' => 'Allowed',
+            'reason' => count($required) > 1 ? 'Requires '.implode(' + ', array_map(fn (string $tool): string => $this->toolDisplayName($tools->get($tool, []), $tool), $required)) : null,
+        ];
+    }
+
+    /**
+     * @param  list<array{enabled: bool, approval: string, reason: string|null}>  $states
+     */
+    private function vfsMostRestrictiveApproval(array $states): string
+    {
+        if (collect($states)->contains(fn (array $state): bool => $state['approval'] === 'Requires approval')) {
+            return 'Requires approval';
+        }
+
+        return collect($states)->contains(fn (array $state): bool => $state['approval'] === 'Allowed') ? 'Allowed' : 'Denied';
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     */
+    private function toolDisplayName(array $meta, string $fallback): string
+    {
+        return (string) ($meta['name'] ?? str_replace('_', ' ', $fallback));
+    }
+
+    /**
+     * @param  list<string|null>  $actions
+     * @return list<string>
+     */
+    private function vfsActions(array $actions): array
+    {
+        return array_values(array_filter($actions, fn (?string $action): bool => $action !== null));
     }
 
     /**

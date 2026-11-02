@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Agents\Runtime\ActiveAgentRun;
 use App\Agents\Tools\ToolRegistry;
+use App\Domain\AgentRuntime\Application\IdempotentToolExecutor;
 use App\Models\User;
 use OpenCompany\IntegrationCore\Lua\LuaBridge as SharedLuaBridge;
 
@@ -38,13 +40,34 @@ class LuaBridge
 
     public function call(string $path, mixed ...$args): mixed
     {
-        if (str_starts_with($path, 'vfs.')) {
-            return $this->callVfs($path, $args);
+        if (app()->bound(ActiveAgentRun::class)) {
+            $activeRun = app(ActiveAgentRun::class);
+
+            return app(IdempotentToolExecutor::class)->execute(
+                $activeRun,
+                'lua',
+                $activeRun->nextInternalToolSequence(),
+                $path,
+                $args,
+                fn (): mixed => $this->callUntracked($path, $args),
+            );
         }
 
-        // Delegate to the package bridge so OpenCompany does not duplicate the
-        // Lua function binding semantics used by package integrations.
-        return $this->bridge->call($path, ...$args);
+        return $this->callUntracked($path, $args);
+    }
+
+    /** @param array<int, mixed> $args */
+    private function callUntracked(string $path, array $args): mixed
+    {
+        if (str_starts_with($path, 'vfs.')) {
+            $result = $this->callVfs($path, $args);
+        } else {
+            // Delegate to the package bridge so OpenCompany does not duplicate
+            // the Lua function binding semantics used by package integrations.
+            $result = $this->bridge->call($path, ...$args);
+        }
+
+        return $result;
     }
 
     /** @return list<array{path: string, durationMs: float, status: string, error?: string, icon?: string, name?: string, group?: string}> */

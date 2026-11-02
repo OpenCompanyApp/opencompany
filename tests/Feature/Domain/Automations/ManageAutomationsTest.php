@@ -77,7 +77,7 @@ class ManageAutomationsTest extends TestCase
     public function test_script_automation_execution_records_task_output_and_message(): void
     {
         $creator = User::factory()->create(['type' => 'human']);
-        $agent = User::factory()->agent()->create();
+        $agent = User::factory()->agent()->create(['status' => 'idle']);
         $automation = Automation::create([
             'id' => 'script-automation',
             'workspace_id' => $this->workspace->id,

@@ -20,7 +20,20 @@ class AgentRunBuilder
     public function build(User $agent, string $channelId, ?string $taskId = null, ?AgentRunOptions $options = null): AgentRun
     {
         $options ??= new AgentRunOptions;
-        $instance = OpenCompanyAgent::for($agent, $channelId, $taskId);
+        $runtimeAgent = clone $agent;
+
+        if ($options->permissionMode !== null) {
+            if (! in_array($options->permissionMode, ['autonomous', 'supervised', 'strict'], true)) {
+                throw new \InvalidArgumentException("Unknown run permission mode [{$options->permissionMode}].");
+            }
+
+            // This attribute changes permission resolution for this in-memory
+            // model only; the persisted agent policy remains untouched.
+            $runtimeAgent->setAttribute('behavior_mode', $options->permissionMode);
+        }
+
+        $instance = OpenCompanyAgent::for($runtimeAgent, $channelId, $taskId)
+            ->withMaxSteps($options->maxTurns);
 
         if ($options->resumeFromTask && $taskId !== null) {
             // Resume state is only meaningful when the caller has a durable
@@ -28,6 +41,6 @@ class AgentRunBuilder
             $instance->resumeFrom($taskId);
         }
 
-        return new AgentRun($agent, $instance, $options, $this->context, $taskId);
+        return new AgentRun($runtimeAgent, $instance, $options, $this->context, $taskId);
     }
 }

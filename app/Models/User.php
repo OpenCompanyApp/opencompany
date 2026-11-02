@@ -311,6 +311,15 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $this->refresh();
 
+        // Paused/offline are operator-owned gates, not transient runtime states.
+        // A job finalizer must never wake an agent that an admin explicitly
+        // stopped while the job was running.
+        if (in_array($this->status, ['paused', 'offline'], true)) {
+            safeBroadcast(new AgentStatusUpdated($this), 'agent status');
+
+            return;
+        }
+
         $status = match (true) {
             (bool) $this->sleeping_until => 'sleeping',
             (bool) $this->awaiting_approval_id => 'awaiting_approval',

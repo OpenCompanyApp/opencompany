@@ -38,6 +38,7 @@ class Message extends Model
         'timestamp',
         'source',
         'external_message_id',
+        'agent_run_id',
     ];
 
     protected function casts(): array
@@ -96,6 +97,12 @@ class Message extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(MessageAttachment::class);
+    }
+
+    /** @return BelongsTo<AgentRunRecord, $this> */
+    public function agentRun(): BelongsTo
+    {
+        return $this->belongsTo(AgentRunRecord::class, 'agent_run_id');
     }
 
     /**

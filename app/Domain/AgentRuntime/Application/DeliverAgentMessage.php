@@ -3,6 +3,7 @@
 namespace App\Domain\AgentRuntime\Application;
 
 use App\Events\MessageSent;
+use App\Models\AgentRunRecord;
 use App\Models\Channel;
 use App\Models\DirectMessage;
 use App\Models\Message;
@@ -21,7 +22,7 @@ use Laravel\Ai\Responses\AgentResponse;
  */
 class DeliverAgentMessage
 {
-    public function handle(User $agent, Message $userMessage, string $channelId, AgentResponse $response, string $responseText): Message
+    public function handle(User $agent, Message $userMessage, string $channelId, AgentRunRecord $run, AgentResponse $response, string $responseText): Message
     {
         $agentMessage = Message::create([
             'id' => Str::uuid()->toString(),
@@ -30,6 +31,7 @@ class DeliverAgentMessage
             'author_id' => $agent->id,
             'reply_to_id' => $userMessage->reply_to_id,
             'timestamp' => now(),
+            'agent_run_id' => $run->id,
         ]);
 
         $this->saveImageAttachments($agent, $response, $agentMessage);

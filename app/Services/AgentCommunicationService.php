@@ -4,11 +4,10 @@ namespace App\Services;
 
 use App\Events\MessageSent;
 use App\Models\Channel;
-use App\Models\ChannelMember;
 use App\Models\DirectMessage;
 use App\Models\Message;
 use App\Models\User;
-use Illuminate\Database\QueryException;
+use App\Services\Chat\DirectMessageResolver;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -22,6 +21,8 @@ use Illuminate\Support\Str;
 class AgentCommunicationService
 {
     private static int $depth = 0;
+
+    public function __construct(private DirectMessageResolver $directMessages) {}
 
     public static function incrementDepth(): int
     {
@@ -51,58 +52,11 @@ class AgentCommunicationService
      */
     public function getOrCreateDmChannel(User $agentA, User $agentB): string
     {
-        // DirectMessage historically stored user pairs in either order. Check
-        // both directions so older DMs are reused instead of duplicating threads.
-        $existingDm = DirectMessage::where(function ($query) use ($agentA, $agentB) {
-            $query->where('user1_id', $agentA->id)->where('user2_id', $agentB->id);
-        })->orWhere(function ($query) use ($agentA, $agentB) {
-            $query->where('user1_id', $agentB->id)->where('user2_id', $agentA->id);
-        })->first();
-
-        if ($existingDm) {
-            return $existingDm->channel_id;
+        if (! $agentA->workspace_id || $agentA->workspace_id !== $agentB->workspace_id || $agentA->workspace_id !== workspace()->id) {
+            throw new \DomainException('Agent communication participants must belong to the active workspace.');
         }
 
-        try {
-            $channel = Channel::create([
-                'id' => Str::uuid()->toString(),
-                'name' => 'DM',
-                'type' => 'dm',
-                'workspace_id' => $agentA->workspace_id ?? workspace()->id,
-            ]);
-
-            foreach ([$agentA->id, $agentB->id] as $userId) {
-                ChannelMember::create([
-                    'id' => Str::uuid()->toString(),
-                    'channel_id' => $channel->id,
-                    'user_id' => $userId,
-                    'role' => 'member',
-                ]);
-            }
-
-            DirectMessage::create([
-                'id' => Str::uuid()->toString(),
-                'user1_id' => $agentA->id,
-                'user2_id' => $agentB->id,
-                'channel_id' => $channel->id,
-            ]);
-
-            return $channel->id;
-        } catch (QueryException $e) {
-            // Race condition: another worker created the DM first. Re-read the
-            // pair before surfacing the database error.
-            $dm = DirectMessage::where(function ($query) use ($agentA, $agentB) {
-                $query->where('user1_id', $agentA->id)->where('user2_id', $agentB->id);
-            })->orWhere(function ($query) use ($agentA, $agentB) {
-                $query->where('user1_id', $agentB->id)->where('user2_id', $agentA->id);
-            })->first();
-
-            if ($dm) {
-                return $dm->channel_id;
-            }
-
-            throw $e;
-        }
+        return $this->directMessages->getOrCreate($agentA->id, $agentB->id)->channel_id;
     }
 
     /**

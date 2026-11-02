@@ -3,14 +3,16 @@
 namespace App\Listeners;
 
 use App\Agents\OpenCompanyAgent;
+use App\Agents\Runtime\ActiveAgentRun;
+use App\Agents\Tools\ToolRegistry;
 use App\Events\TaskUpdated;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\Memory\OutputTruncator;
 use App\Support\LuaMetaParser;
-use Laravel\Ai\Events\ToolInvoked;
-use App\Agents\Tools\ToolRegistry;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Laravel\Ai\Events\ToolInvoked;
 
 class CheckpointToolCall
 {
@@ -35,7 +37,11 @@ class CheckpointToolCall
             return;
         }
 
-        $task = Task::find($taskId);
+        $task = Task::query()
+            ->when(app()->bound(ActiveAgentRun::class), function ($query): void {
+                $query->where('workspace_id', app(ActiveAgentRun::class)->record()->workspace_id);
+            })
+            ->find($taskId);
         if (! $task) {
             return;
         }
@@ -89,7 +95,7 @@ class CheckpointToolCall
             }
 
             // For LuaExec, derive description and icon from bridge calls
-            if ($toolName === 'LuaExec' && $luaMeta && !empty($luaMeta['bridgeCalls'])) {
+            if ($toolName === 'LuaExec' && $luaMeta && ! empty($luaMeta['bridgeCalls'])) {
                 $names = collect($luaMeta['bridgeCalls'])
                     ->pluck('name')
                     ->filter()
@@ -111,20 +117,33 @@ class CheckpointToolCall
                 }
             }
 
-            $step = $task->addStep(
-                $description,
-                'action',
-                array_filter([
-                    'tool' => $toolName,
-                    'tool_name' => $toolDisplayName,
-                    'tool_call_id' => $event->toolInvocationId,
-                    'icon' => $stepIcon,
-                    'arguments' => $event->arguments,
-                    'result' => $result,
-                    'lua_meta' => $luaMeta,
-                    'checkpointed' => true,
-                ])
+            $step = TaskStep::query()->firstOrCreate(
+                [
+                    'task_id' => $task->id,
+                    'tool_invocation_id' => $event->toolInvocationId,
+                ],
+                [
+                    'id' => (string) Str::uuid(),
+                    'description' => $description,
+                    'step_type' => 'action',
+                    'status' => TaskStep::STATUS_PENDING,
+                    'metadata' => array_filter([
+                        'tool' => $toolName,
+                        'tool_name' => $toolDisplayName,
+                        'tool_call_id' => $event->toolInvocationId,
+                        'icon' => $stepIcon,
+                        'arguments' => $event->arguments,
+                        'result' => $result,
+                        'lua_meta' => $luaMeta,
+                        'checkpointed' => true,
+                    ]),
+                ],
             );
+
+            if (! $step->wasRecentlyCreated) {
+                return;
+            }
+
             $step->start();
             $step->complete();
             safeBroadcast(new TaskUpdated($task->fresh(['steps']) ?? $task, 'progress'), 'task tool progress');

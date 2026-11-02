@@ -26,6 +26,11 @@ use App\Services\IntegrationSettingCredentialResolver;
 use App\Services\Mcp\McpServerRegistrar;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Queue\Events\JobExceptionOccurred;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Vite;
@@ -92,6 +97,17 @@ class AppServiceProvider extends ServiceProvider
         Document::observe(DocumentObserver::class);
 
         Event::listen(TaskUpdated::class, [TelegramNotificationRouter::class, 'handleTaskUpdated']);
+        foreach ([JobProcessing::class, JobProcessed::class, JobExceptionOccurred::class, JobFailed::class] as $queueEvent) {
+            Event::listen($queueEvent, function (object $event): void {
+                $job = $event->job ?? null;
+                Cache::put('agent-runtime:queue-worker-heartbeat', [
+                    'at' => now()->toIso8601String(),
+                    'event' => class_basename($event),
+                    'job' => $job && method_exists($job, 'resolveName') ? class_basename($job->resolveName()) : null,
+                    'connection' => $event->connectionName ?? null,
+                ], now()->addDay());
+            });
+        }
         Event::listen(VfsOperationLog::class, function (VfsOperationLog $event): void {
             if (! Schema::hasTable('vfs_operation_events')) {
                 return;

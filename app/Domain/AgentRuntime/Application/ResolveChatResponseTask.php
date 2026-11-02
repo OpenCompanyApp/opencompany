@@ -2,6 +2,7 @@
 
 namespace App\Domain\AgentRuntime\Application;
 
+use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Task;
 use App\Models\User;
@@ -19,16 +20,34 @@ class ResolveChatResponseTask
 {
     public function handle(Message $userMessage, User $agent, string $channelId, ?string $taskId, int $attempts): Task
     {
+        $channel = Channel::query()
+            ->where('id', $channelId)
+            ->where('workspace_id', $agent->workspace_id)
+            ->firstOrFail();
+
+        if ($userMessage->channel_id !== $channel->id) {
+            throw new \DomainException('The queued trigger message does not belong to the run channel.');
+        }
+
         if ($taskId) {
-            $task = Task::find($taskId);
+            $task = Task::query()
+                ->where('workspace_id', $agent->workspace_id)
+                ->where('agent_id', $agent->id)
+                ->where('channel_id', $channelId)
+                ->find($taskId);
             if ($task) {
-                $task->isPending() ? $task->start() : $task->resume();
+                if ($task->isPending()) {
+                    $task->start();
+                }
 
                 return $task;
             }
+
+            throw new \DomainException('The queued chat task does not match the agent workspace and channel.');
         }
 
-        $task = Task::where('agent_id', $agent->id)
+        $task = Task::where('workspace_id', $agent->workspace_id)
+            ->where('agent_id', $agent->id)
             ->where('channel_id', $channelId)
             ->whereIn('source', [Task::SOURCE_AGENT_DELEGATION, Task::SOURCE_AGENT_ASK, Task::SOURCE_AGENT_NOTIFY])
             ->where('status', Task::STATUS_PENDING)
@@ -41,13 +60,13 @@ class ResolveChatResponseTask
             return $task;
         }
 
-        $task = Task::where('agent_id', $agent->id)
+        $task = Task::where('workspace_id', $agent->workspace_id)
+            ->where('agent_id', $agent->id)
             ->where('trigger_message_id', $userMessage->id)
-            ->whereIn('status', [Task::STATUS_ACTIVE, Task::STATUS_FAILED])
+            ->where('status', Task::STATUS_ACTIVE)
             ->first();
 
         if ($task) {
-            $task->update(['status' => Task::STATUS_ACTIVE, 'started_at' => now()]);
             Log::info('Reusing existing task from previous attempt', [
                 'task' => $task->id,
                 'agent' => $agent->name,

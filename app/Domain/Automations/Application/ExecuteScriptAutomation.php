@@ -2,14 +2,19 @@
 
 namespace App\Domain\Automations\Application;
 
+use App\Agents\Runtime\ActiveAgentRun;
+use App\Agents\Runtime\AgentRunCancelled;
+use App\Agents\Runtime\AgentRunPaused;
 use App\Agents\Tools\ToolRegistry;
+use App\Domain\AgentRuntime\Application\RetryableRunFailure;
+use App\Events\AgentStatusUpdated;
 use App\Events\MessageSent;
 use App\Events\TaskUpdated;
+use App\Models\AgentRunRecord;
 use App\Models\Automation;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Task;
-use App\Models\User;
 use App\Services\LuaApiDocGenerator;
 use App\Services\LuaBridge;
 use App\Services\LuaSandboxService;
@@ -18,12 +23,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Executes one script-based automation run through the Luau sandbox.
+ * Executes one script automation through the same durable run control plane.
  *
- * The queue job owns retry/timeout/uniqueness and workspace binding. This use
- * case owns OpenCompany's script automation lifecycle: creating the run task,
- * building the script context, invoking the sandbox bridge, posting output, and
- * recording task/automation success or failure.
+ * Lua remains a separate execution engine, but task identity, semantic retry,
+ * cancellation, output correlation, and workspace boundaries match prompt runs.
  */
 class ExecuteScriptAutomation
 {
@@ -31,21 +34,74 @@ class ExecuteScriptAutomation
         private ToolRegistry $toolRegistry,
         private LuaApiDocGenerator $docGenerator,
         private LuaSandboxService $luaSandbox,
+        private ResolveAutomationRun $runs,
+        private RetryableRunFailure $retryableFailures,
     ) {}
 
-    public function handle(Automation $automation): void
+    public function handle(Automation $automation, ?string $dispatchKey = null, ?string $queueJobUuid = null, int $maxAttempts = 2): void
     {
-        $agent = User::find($automation->agent_id);
+        $dispatchKey ??= (string) Str::uuid();
 
-        if (! $agent) {
-            $automation->recordFailure('Agent not found');
+        try {
+            $context = $this->runs->handle(
+                $automation,
+                $dispatchKey,
+                AgentRunRecord::KIND_SCRIPT_AUTOMATION,
+                $maxAttempts,
+            );
+        } catch (\DomainException $exception) {
+            $automation->recordFailure($exception->getMessage());
+            Log::error('Script automation rejected before execution', [
+                'automation' => $automation->id,
+                'error' => $exception->getMessage(),
+            ]);
 
             return;
         }
 
+        $agent = $context->agent;
+        $task = $context->task;
+        $run = $context->run;
+        $channelId = $context->channelId;
+
+        if ($task->isTerminal()) {
+            $run->reconcileFromTerminalTask();
+
+            return;
+        }
+
+        if ($run->isTerminal()) {
+            $run->reconcileTaskFromTerminalRun();
+            $task = $task->fresh() ?? $task;
+            safeBroadcast(new TaskUpdated($task, $task->status), 'terminal script run reconciliation');
+
+            return;
+        }
+
+        if ($task->status === Task::STATUS_PAUSED) {
+            return;
+        }
+
+        if (in_array($agent->status, ['paused', 'offline'], true)) {
+            $task->pause();
+            $run->markWaiting();
+            safeBroadcast(new TaskUpdated($task, 'paused'), 'script automation agent unavailable');
+
+            return;
+        }
+
+        $attempt = $run->beginAttempt($queueJobUuid);
+        app()->instance(ActiveAgentRun::class, new ActiveAgentRun($run->id));
+
         try {
-            $channelId = $automation->ensureChannel();
-            $task = $this->createRunTask($automation, $agent, $channelId);
+            if ($task->isPending()) {
+                $task->start();
+            }
+            safeBroadcast(new TaskUpdated($task, 'started'), 'script automation started');
+
+            $agent->update(['status' => 'working']);
+            safeBroadcast(new AgentStatusUpdated($agent), 'script automation agent working');
+
             $bridge = new LuaBridge($agent, $this->toolRegistry, $this->docGenerator);
             $result = $this->luaSandbox->execute(
                 $automation->script,
@@ -53,13 +109,14 @@ class ExecuteScriptAutomation
                 $bridge,
                 ['ctx' => $this->scriptContext($automation)],
             );
+            app(ActiveAgentRun::class)->checkpoint(force: true);
 
             $output = trim($result->output);
-            $this->postOutputMessage($agent, $channelId, $output);
+            $this->postOutputMessage($agent->id, $channelId, $run, $output);
 
             $bridgeCalls = $bridge->getCallLog();
             if ($result->error !== null) {
-                $task->fail();
+                $task->fail($result->error);
                 $task->update([
                     'result' => [
                         'error' => $result->error,
@@ -69,6 +126,7 @@ class ExecuteScriptAutomation
                         'bridge_calls' => $bridgeCalls,
                     ],
                 ]);
+                $run->markFailed($result->error);
 
                 safeBroadcast(new TaskUpdated($task, 'failed'), 'script task failure');
                 $automation->recordFailure($result->error);
@@ -84,11 +142,13 @@ class ExecuteScriptAutomation
                 'bridge_calls' => $bridgeCalls,
                 'tool_calls_count' => count($bridgeCalls),
             ]);
+            $run->markCompleted();
 
             safeBroadcast(new TaskUpdated($task, 'completed'), 'script task completion');
 
             $automation->recordSuccess([
                 'task_id' => $task->id,
+                'agent_run_id' => $run->id,
                 'output' => Str::limit($output, 200),
                 'return_value' => $result->result,
                 'execution_time_ms' => $result->executionTime,
@@ -99,53 +159,50 @@ class ExecuteScriptAutomation
             Log::info('Script automation completed', [
                 'automation' => $automation->name,
                 'task' => $task->id,
+                'run' => $run->id,
                 'execution_time_ms' => $result->executionTime,
             ]);
-        } catch (\Throwable $e) {
-            Log::error('Script automation failed', [
+        } catch (AgentRunPaused) {
+            $run->markWaiting();
+            safeBroadcast(new TaskUpdated($task, 'paused'), 'script task paused');
+        } catch (AgentRunCancelled) {
+            if ($task->isTerminal()) {
+                $run->reconcileFromTerminalTask();
+            } else {
+                $task->cancel();
+                if (! $run->cancellationRequested()) {
+                    $run->requestCancellation();
+                }
+            }
+            $task = $task->fresh() ?? $task;
+            safeBroadcast(new TaskUpdated($task, $task->status), 'script task stopped during run');
+        } catch (\Throwable $exception) {
+            Log::error('Script automation attempt failed', [
                 'automation' => $automation->name,
-                'error' => $e->getMessage(),
+                'attempt' => $attempt,
+                'error' => $exception->getMessage(),
             ]);
 
-            if (isset($task)) {
-                $task->fail();
-                $task->update(['result' => ['error' => $e->getMessage()]]);
-                safeBroadcast(new TaskUpdated($task, 'failed'), 'script task failure');
+            if ($attempt < $maxAttempts && $this->retryableFailures->handle($exception)) {
+                $run->markRetrying($exception);
+                safeBroadcast(new TaskUpdated($task, 'retrying'), 'script task retry');
+
+                throw $exception;
             }
 
-            $automation->recordFailure($e->getMessage());
-
-            throw $e;
+            if (! $task->isTerminal()) {
+                $task->fail($exception->getMessage());
+            }
+            $run->markFailed($exception);
+            $automation->recordFailure($exception->getMessage());
+            safeBroadcast(new TaskUpdated($task, 'failed'), 'script task failure');
+        } finally {
+            $agent->resolveIdleStatus();
+            app()->forgetInstance(ActiveAgentRun::class);
         }
     }
 
-    private function createRunTask(Automation $automation, User $agent, string $channelId): Task
-    {
-        return Task::create([
-            'id' => Str::uuid()->toString(),
-            'workspace_id' => $automation->workspace_id,
-            'title' => "Script: {$automation->name}",
-            'description' => Str::limit($automation->script, 200),
-            'type' => Task::TYPE_CUSTOM,
-            'status' => Task::STATUS_ACTIVE,
-            'priority' => Task::PRIORITY_NORMAL,
-            'source' => Task::SOURCE_AUTOMATION,
-            'agent_id' => $agent->id,
-            'requester_id' => $automation->created_by_id,
-            'channel_id' => $channelId,
-            'started_at' => now(),
-            'context' => [
-                'automation_id' => $automation->id,
-                'execution_type' => 'script',
-                'schedule' => $automation->cron_expression,
-                'run_number' => $automation->run_count + 1,
-            ],
-        ]);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     private function scriptContext(Automation $automation): array
     {
         /** @var Carbon|null $lastRunAt */
@@ -163,22 +220,27 @@ class ExecuteScriptAutomation
         ];
     }
 
-    private function postOutputMessage(User $agent, string $channelId, string $output): void
+    private function postOutputMessage(string $agentId, string $channelId, AgentRunRecord $run, string $output): void
     {
         if ($channelId === '' || $output === '') {
             return;
         }
 
-        $agentMessage = Message::create([
-            'id' => Str::uuid()->toString(),
-            'content' => $output,
-            'channel_id' => $channelId,
-            'author_id' => $agent->id,
-            'timestamp' => now(),
-            'source' => 'automation',
-        ]);
+        $agentMessage = Message::query()->firstOrCreate(
+            ['agent_run_id' => $run->id],
+            [
+                'id' => (string) Str::uuid(),
+                'content' => $output,
+                'channel_id' => $channelId,
+                'author_id' => $agentId,
+                'timestamp' => now(),
+                'source' => 'automation',
+            ],
+        );
 
-        Channel::where('id', $channelId)->update(['last_message_at' => now()]);
-        broadcast(new MessageSent($agentMessage));
+        if ($agentMessage->wasRecentlyCreated) {
+            Channel::whereKey($channelId)->update(['last_message_at' => now()]);
+            safeBroadcast(new MessageSent($agentMessage), 'script automation output');
+        }
     }
 }

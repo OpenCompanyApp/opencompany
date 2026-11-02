@@ -273,10 +273,10 @@
       </div>
     </section>
 
-    <!-- Filesystem Access -->
+    <!-- Effective VFS Access -->
     <section>
       <div class="flex items-center justify-between mb-1">
-        <h3 class="text-sm font-medium text-neutral-900 dark:text-white">Filesystem Access</h3>
+        <h3 class="text-sm font-medium text-neutral-900 dark:text-white">Effective VFS access</h3>
         <span
           :class="[
             'text-[11px] font-medium px-2 py-0.5 rounded',
@@ -748,7 +748,7 @@ const groupedTools = computed<ToolGroup[]>(() => {
 const vfsRows = computed(() => props.vfsPolicy?.rows ?? [])
 const vfsSummaryText = computed(() => {
   const summary = props.vfsPolicy?.summary ?? []
-  return summary.length > 0 ? summary.join(' · ') : 'VFS access follows primitive tool toggles and resource scopes'
+  return summary.length > 0 ? summary.join(' · ') : 'VFS access composes primitive VFS tools with the existing domain permissions shown above'
 })
 
 const toggleGroup = (name: string) => {

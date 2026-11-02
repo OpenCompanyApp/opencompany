@@ -2,11 +2,15 @@
 
 namespace App\Domain\AgentRuntime\Application;
 
-use App\Agents\OpenCompanyAgent;
-use App\Ai\Prompting\SystemPromptBag;
+use App\Agents\Runtime\ActiveAgentRun;
+use App\Agents\Runtime\AgentRunBuilder;
+use App\Agents\Runtime\AgentRunCancelled;
+use App\Agents\Runtime\AgentRunOptions;
+use App\Agents\Runtime\AgentRunPaused;
 use App\Domain\Ai\Usage\UsageRecorder;
 use App\Events\AgentStatusUpdated;
 use App\Events\TaskUpdated;
+use App\Models\AgentRunRecord;
 use App\Models\Channel;
 use App\Models\Task;
 use App\Models\User;
@@ -23,21 +27,71 @@ use Illuminate\Support\Facades\Log;
  */
 class ExecuteAssignedTask
 {
-    public function handle(Task $task): void
-    {
-        $agent = User::find($task->agent_id);
+    public function __construct(private RetryableRunFailure $retryableFailures) {}
 
-        if (! $agent) {
-            $task->fail();
-            $task->addStep('No agent assigned to this task.', 'action');
-            broadcast(new TaskUpdated($task, 'failed'));
+    public function handle(Task $task, ?string $queueJobUuid = null, int $maxAttempts = 3): void
+    {
+        if ($task->isTerminal()) {
+            $task->agentRun?->reconcileFromTerminalTask();
 
             return;
         }
 
+        if ($task->status === Task::STATUS_PAUSED) {
+            return;
+        }
+
+        $agent = User::query()
+            ->where('workspace_id', $task->workspace_id)
+            ->where('type', 'agent')
+            ->find($task->agent_id);
+
+        if (! $agent) {
+            $task->fail('No workspace-scoped agent assigned to this task.');
+            $task->addStep('No agent assigned to this task.', 'action');
+            safeBroadcast(new TaskUpdated($task, 'failed'), 'assigned task missing agent');
+
+            return;
+        }
+
+        if (in_array($agent->status, ['paused', 'offline'], true)) {
+            if ($task->status !== Task::STATUS_PAUSED) {
+                $task->pause();
+            }
+            $run = AgentRunRecord::ensureForTask($task, AgentRunRecord::KIND_ASSIGNED_TASK, $maxAttempts);
+            $run->markWaiting();
+            safeBroadcast(new TaskUpdated($task, 'paused'), 'assigned task agent unavailable');
+
+            return;
+        }
+
+        if ($task->channel_id !== null && ! Channel::query()
+            ->where('workspace_id', $task->workspace_id)
+            ->whereKey($task->channel_id)
+            ->exists()) {
+            $task->fail('Assigned task channel is outside the task workspace.');
+            safeBroadcast(new TaskUpdated($task, 'failed'), 'assigned task invalid channel');
+
+            return;
+        }
+
+        $run = AgentRunRecord::ensureForTask($task, AgentRunRecord::KIND_ASSIGNED_TASK, $maxAttempts);
+        if ($run->isTerminal()) {
+            $run->reconcileTaskFromTerminalRun();
+            $task = $task->fresh() ?? $task;
+            safeBroadcast(new TaskUpdated($task, $task->status), 'terminal assigned run reconciliation');
+
+            return;
+        }
+
+        $attempt = $run->beginAttempt($queueJobUuid);
+        app()->instance(ActiveAgentRun::class, new ActiveAgentRun($run->id));
+
         try {
-            $task->start();
-            broadcast(new TaskUpdated($task, 'started'));
+            if ($task->isPending()) {
+                $task->start();
+            }
+            safeBroadcast(new TaskUpdated($task, 'started'), 'assigned task started');
 
             $analyzeStep = $task->addStep('Generating response', 'action');
             $prompt = $this->buildTaskPrompt($task);
@@ -46,13 +100,16 @@ class ExecuteAssignedTask
             $agent->update(['status' => 'working']);
             broadcast(new AgentStatusUpdated($agent));
 
-            $agentInstance = OpenCompanyAgent::for($agent, $channelId, $task->id);
+            $agentRun = app(AgentRunBuilder::class)->build(
+                $agent,
+                $channelId,
+                $task->id,
+                new AgentRunOptions(resumeFromTask: $attempt > 1),
+            );
+            $agentInstance = $agentRun->agent();
             $analyzeStep->start();
-            app()->instance(SystemPromptBag::class, new SystemPromptBag(
-                $agentInstance->systemPrompts()
-            ));
-
-            $response = $agentInstance->prompt($prompt);
+            $runResult = $agentRun->run($prompt);
+            $response = $runResult->response;
             $analyzeStep->complete();
 
             $responseText = $response->text ?: 'Task processed (no text response).';
@@ -78,12 +135,27 @@ class ExecuteAssignedTask
             ]);
 
             safeBroadcast(new TaskUpdated($task, 'completed'), 'task completion');
+            $run->markCompleted();
 
             Log::info('Agent task completed', [
                 'task' => $task->id,
                 'agent' => $agent->name,
                 'tokens' => $response->usage->promptTokens + $response->usage->completionTokens,
             ]);
+        } catch (AgentRunPaused) {
+            $run->markWaiting();
+            safeBroadcast(new TaskUpdated($task, 'paused'), 'assigned task paused');
+        } catch (AgentRunCancelled) {
+            if ($task->isTerminal()) {
+                $run->reconcileFromTerminalTask();
+            } else {
+                $task->cancel();
+                if (! $run->cancellationRequested()) {
+                    $run->requestCancellation();
+                }
+            }
+            $task = $task->fresh() ?? $task;
+            safeBroadcast(new TaskUpdated($task, $task->status), 'assigned task stopped during run');
         } catch (\Throwable $e) {
             Log::error('Agent task failed', [
                 'task' => $task->id,
@@ -91,17 +163,24 @@ class ExecuteAssignedTask
                 'error' => $e->getMessage(),
             ]);
 
-            $task->addStep("Error: {$e->getMessage()}", 'action');
-            $task->fail();
-            $task->update([
-                'result' => ['error' => $e->getMessage()],
-            ]);
+            if ($attempt < $maxAttempts && $this->retryableFailures->handle($e)) {
+                $task->addStep("Retrying after provider error: {$e->getMessage()}", 'action')->complete();
+                $run->markRetrying($e);
+                safeBroadcast(new TaskUpdated($task, 'retrying'), 'assigned task retry');
+
+                throw $e;
+            }
+
+            $task->addStep("Error: {$e->getMessage()}", 'action')->complete();
+            $task->fail($e->getMessage());
+            $run->markFailed($e);
 
             safeBroadcast(new TaskUpdated($task, 'failed'), 'task failure');
 
             throw $e;
         } finally {
             $agent->resolveIdleStatus();
+            app()->forgetInstance(ActiveAgentRun::class);
         }
     }
 
@@ -130,7 +209,9 @@ class ExecuteAssignedTask
     private function getDefaultChannel(User $agent): string
     {
         /** @var Channel|null $channel */
-        $channel = $agent->channels()->first();
+        $channel = $agent->channels()
+            ->where('channels.workspace_id', $agent->workspace_id)
+            ->first();
         if ($channel) {
             return $channel->id;
         }

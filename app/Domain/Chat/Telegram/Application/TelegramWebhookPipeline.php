@@ -2,12 +2,14 @@
 
 namespace App\Domain\Chat\Telegram\Application;
 
+use App\Domain\Work\Application\ManageTasks;
 use App\Events\MessageSent;
 use App\Events\TaskUpdated;
 use App\Jobs\AgentRespondJob;
 use App\Jobs\CompactConversationJob;
 use App\Jobs\EnrichTelegramMediaJob;
 use App\Jobs\RunAutomationJob;
+use App\Models\AgentRunRecord;
 use App\Models\ApprovalRequest;
 use App\Models\Automation;
 use App\Models\CalendarEvent;
@@ -40,6 +42,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -209,13 +212,13 @@ class TelegramWebhookPipeline
                 'id' => Str::uuid()->toString(),
                 'workspace_id' => $workspace->id,
                 'update_type' => $updateType,
-                        'payload_hash' => hash('sha256', $encoded ?: ''),
-                        'payload' => $payload,
-                        'diagnostics' => [],
-                        'status' => 'received',
-                        'duplicate_count' => 0,
-                        'received_at' => now(),
-                    ],
+                'payload_hash' => hash('sha256', $encoded ?: ''),
+                'payload' => $payload,
+                'diagnostics' => [],
+                'status' => 'received',
+                'duplicate_count' => 0,
+                'received_at' => now(),
+            ],
         );
     }
 
@@ -480,9 +483,18 @@ class TelegramWebhookPipeline
                 // source-of-truth OpenCompany message or task creation.
             }
 
-            $laneQueueState = $this->laneQueueState($workspace, $channel->id);
+            [$laneQueueState, $task] = DB::transaction(function () use ($workspace, $channel, $internalMessage, $agent): array {
+                // Every ingress/handoff path locks the Telegram channel row.
+                // This makes "is the lane empty? + create pending task" one
+                // decision even when webhook workers receive messages together.
+                Channel::query()->whereKey($channel->id)->lockForUpdate()->firstOrFail();
+                $state = $this->laneQueueState($workspace, $channel->id);
+                $task = Task::createPending($internalMessage, $agent, $channel->id);
+                AgentRunRecord::ensureForTask($task, AgentRunRecord::KIND_CHAT, 3);
+
+                return [$state, $task];
+            });
             $shouldRunNow = $laneQueueState['open_count'] === 0;
-            $task = Task::createPending($internalMessage, $agent, $channel->id);
             if ($this->isBatchableTextSplit($message, $conversation, $shouldDispatch)) {
                 $context = $task->context ?? [];
                 $context['telegram_text_batch'] = [
@@ -654,8 +666,8 @@ class TelegramWebhookPipeline
         DB::table('telegram_message_mappings')->insert([
             ...$keys,
             ...$values,
-                'id' => Str::uuid()->toString(),
-                'created_at' => now(),
+            'id' => Str::uuid()->toString(),
+            'created_at' => now(),
         ]);
     }
 
@@ -1780,9 +1792,9 @@ class TelegramWebhookPipeline
      * Load captured files from callback payload under the active workspace.
      *
      * @param  array<string, mixed>  $payload
-     * @return \Illuminate\Support\Collection<int, WorkspaceFile>
+     * @return Collection<int, WorkspaceFile>
      */
-    private function capturedMediaFiles(Workspace $workspace, array $payload): \Illuminate\Support\Collection
+    private function capturedMediaFiles(Workspace $workspace, array $payload): Collection
     {
         $fileIds = collect($payload['workspace_file_ids'] ?? [])
             ->filter(fn (mixed $id): bool => is_string($id) && $id !== '')
@@ -1797,9 +1809,9 @@ class TelegramWebhookPipeline
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, Document>
+     * @return Collection<int, Document>
      */
-    private function mediaCaptureDestinationDocuments(Workspace $workspace): \Illuminate\Support\Collection
+    private function mediaCaptureDestinationDocuments(Workspace $workspace): Collection
     {
         return Document::where('workspace_id', $workspace->id)
             ->where('is_folder', false)
@@ -1814,9 +1826,9 @@ class TelegramWebhookPipeline
      * Return a bounded set of existing workspace folders suitable for Telegram.
      *
      * @param  list<WorkspaceFile>  $files
-     * @return \Illuminate\Support\Collection<int, WorkspaceFile>
+     * @return Collection<int, WorkspaceFile>
      */
-    private function mediaCaptureDestinationFolders(Workspace $workspace, array $files): \Illuminate\Support\Collection
+    private function mediaCaptureDestinationFolders(Workspace $workspace, array $files): Collection
     {
         $currentParentIds = collect($files)
             ->map(fn (WorkspaceFile $file): ?string => $file->parent_id)
@@ -2061,14 +2073,8 @@ class TelegramWebhookPipeline
             return;
         }
 
-        match ($action) {
-            'pause' => $task->pause(),
-            'resume' => $task->resume(),
-            'cancel' => $task->cancel(),
-            default => null,
-        };
-        if ($action === 'cancel') {
-            event(new TaskUpdated($task->fresh() ?? $task, 'cancelled'));
+        if (in_array($action, ['pause', 'resume', 'cancel'], true)) {
+            $task = app(ManageTasks::class)->transition($task->id, $action);
         }
 
         $interaction->update([
@@ -4501,8 +4507,7 @@ class TelegramWebhookPipeline
             ->get();
 
         foreach ($tasks as $task) {
-            $task->cancel();
-            event(new TaskUpdated($task->fresh(['agent', 'steps', 'workspace']) ?? $task, 'cancelled'));
+            app(ManageTasks::class)->transition($task->id, 'cancel');
         }
 
         return app(TelegramCardRenderer::class)->cancelText($tasks->count(), true);
@@ -4514,12 +4519,16 @@ class TelegramWebhookPipeline
             return app(TelegramCardRenderer::class)->resumeText(0, false);
         }
 
-        $count = Task::where('workspace_id', $workspace->id)
+        $tasks = Task::where('workspace_id', $workspace->id)
             ->where('channel_id', $conversation->channel_id)
             ->where('status', Task::STATUS_PAUSED)
-            ->update(['status' => Task::STATUS_ACTIVE]);
+            ->get();
 
-        return app(TelegramCardRenderer::class)->resumeText($count, true);
+        foreach ($tasks as $task) {
+            app(ManageTasks::class)->transition($task->id, 'resume');
+        }
+
+        return app(TelegramCardRenderer::class)->resumeText($tasks->count(), true);
     }
 
     private function settingsText(IntegrationSetting $setting, TelegramConversation $conversation): string

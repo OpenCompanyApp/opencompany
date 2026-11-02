@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domain\Chat\Telegram\Application\TelegramMiniAppVerifier;
 use App\Domain\Chat\Telegram\Application\TelegramOperationsService;
+use App\Domain\Work\Application\ManageTasks;
 use App\Http\Controllers\Controller;
 use App\Jobs\RunAutomationJob;
 use App\Models\ApprovalRequest;
@@ -871,11 +872,11 @@ class TelegramMiniAppController extends Controller
             ], 422);
         }
 
-        match ($action) {
-            'pause_task' => $task->pause(),
-            'resume_task' => $task->resume(),
-            'cancel_task' => $task->cancel(),
-        };
+        $task = app(ManageTasks::class)->transition($task->id, match ($action) {
+            'pause_task' => 'pause',
+            'resume_task' => 'resume',
+            'cancel_task' => 'cancel',
+        });
 
         return [
             'task' => $this->taskDetail($workspace, $task->fresh(['agent', 'requester', 'channel', 'steps'])),

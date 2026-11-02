@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Agents\Tools\ToolRegistry;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsApprovalRequestFactory;
+use App\Domain\Vfs\OpenCompany\Approvals\VfsApprovedExecutionContext;
 use App\Jobs\AgentRespondJob;
 use App\Models\AgentPermission;
 use App\Models\ApprovalRequest;
@@ -28,6 +30,8 @@ class ApprovalExecutionService
     public function __construct(
         private ToolRegistry $toolRegistry,
         private ?AgentPermissionService $permissions = null,
+        private ?VfsApprovedExecutionContext $vfsApprovedContext = null,
+        private ?VfsApprovalRequestFactory $vfsApprovals = null,
     ) {}
 
     /**
@@ -113,7 +117,7 @@ class ApprovalExecutionService
             (string) ($toolMeta['type'] ?? 'read'),
         );
 
-        if (($permission['allowed'] ?? false) !== true) {
+        if ($permission['allowed'] !== true) {
             Log::warning("Approved tool {$toolSlug} was not executed because permission is now denied.", [
                 'approval_id' => $approval->id,
                 'agent_id' => $agent->id,
@@ -123,8 +127,15 @@ class ApprovalExecutionService
         }
 
         try {
-            $toolRequest = new ToolRequest($context['parameters'] ?? []);
-            $result = $tool->handle($toolRequest);
+            $parameters = is_array($context['parameters'] ?? null) ? $context['parameters'] : [];
+            $toolRequest = new ToolRequest($parameters);
+            $vfsContext = $this->vfsReplayContext($agent, $toolSlug, $parameters, $context);
+            $result = $vfsContext === null
+                ? $tool->handle($toolRequest)
+                : ($this->vfsApprovedContext ?? app(VfsApprovedExecutionContext::class))->runWith(
+                    $vfsContext,
+                    fn () => $tool->handle($toolRequest),
+                );
             $decodedResult = is_string($result) ? json_decode($result, true) : null;
             $toolSucceeded = ! (is_array($decodedResult) && ($decodedResult['ok'] ?? true) === false);
 
@@ -296,5 +307,75 @@ class ApprovalExecutionService
         return Channel::query()
             ->where('workspace_id', $agent->workspace_id)
             ->find($channelId);
+    }
+
+    /**
+     * Build the internal-only approval context used by VFS policy during
+     * approved replay. Direct VFS approvals approve only the visible primitive;
+     * dynamic VFS approvals approve the backing tool captured by VFS policy.
+     *
+     * @param  array<string, mixed>  $parameters
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>|null
+     */
+    private function vfsReplayContext(User $agent, string $toolSlug, array $parameters, array $context): ?array
+    {
+        if (is_array($context['vfs_approval'] ?? null)) {
+            return $context['vfs_approval'];
+        }
+
+        if (! in_array($toolSlug, ['vfs_exec', 'vfs_patch', 'vfs_write'], true)) {
+            return null;
+        }
+
+        $approvals = $this->vfsApprovals ?? app(VfsApprovalRequestFactory::class);
+        $operation = match ($toolSlug) {
+            'vfs_exec' => 'exec_write',
+            'vfs_write' => 'write',
+            default => 'patch',
+        };
+        $subject = match ($toolSlug) {
+            'vfs_exec' => trim((string) ($parameters['command'] ?? 'VFS command')),
+            default => (string) ($parameters['path'] ?? 'VFS path'),
+        };
+        if ($toolSlug !== 'vfs_exec' && $subject !== 'VFS path' && ! str_starts_with($subject, '/')) {
+            $subject = '/'.$subject;
+        }
+
+        return [
+            'requester_id' => $agent->id,
+            'direct_tool_slug' => $toolSlug,
+            'operation' => $operation,
+            'subject' => $subject,
+            'required_tools' => $this->vfsReplayRequiredTools($toolSlug, $parameters),
+            'approval_tool' => $toolSlug,
+            'approved_tools' => [$toolSlug],
+            'parameters_hash' => $approvals->hashParameters($parameters),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     * @return list<string>
+     */
+    private function vfsReplayRequiredTools(string $toolSlug, array $parameters): array
+    {
+        if ($toolSlug === 'vfs_exec') {
+            return ['vfs_exec', 'vfs_write'];
+        }
+
+        if ($toolSlug !== 'vfs_patch') {
+            return [$toolSlug];
+        }
+
+        $path = (string) ($parameters['path'] ?? '');
+        if (str_starts_with($path, '/tables/') && str_contains($path, '/rows/by-id/')) {
+            return ['vfs_patch', 'update_table_row'];
+        }
+        if (str_starts_with($path, '/agents/') && str_contains($path, '/identity/')) {
+            return ['vfs_patch', 'update_agent_identity_file'];
+        }
+
+        return ['vfs_patch'];
     }
 }

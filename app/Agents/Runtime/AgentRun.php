@@ -34,6 +34,7 @@ class AgentRun
 
     public function run(string $prompt): AgentRunResult
     {
+        $this->checkpointActiveRun();
         $this->emit('run.started');
 
         // Capture the model-visible context before the call so both success and
@@ -60,6 +61,7 @@ class AgentRun
                 model: $this->options->model,
                 timeout: $this->options->timeout,
             );
+            $this->checkpointActiveRun();
 
             $wasTruncated = $response->steps->contains(
                 fn ($step) => $step->finishReason === FinishReason::Length
@@ -83,6 +85,10 @@ class AgentRun
             ]);
 
             return new AgentRunResult($response, $text, $snapshot, $this->events);
+        } catch (AgentRunCancelled|AgentRunPaused $e) {
+            $this->emit($e instanceof AgentRunCancelled ? 'run.cancelled' : 'run.paused');
+
+            throw $e;
         } catch (\Throwable $e) {
             $this->emit('run.failed', [
                 'error' => $e->getMessage(),
@@ -113,6 +119,7 @@ class AgentRun
             return $this->run($prompt);
         }
 
+        $this->checkpointActiveRun();
         $this->emit('run.started');
 
         $snapshot = $this->context->snapshot($this->agentUser, $this->agent)->toArray();
@@ -134,6 +141,7 @@ class AgentRun
             );
 
             $stream->each(function (StreamEvent $event) use ($onEvent) {
+                $this->checkpointActiveRun();
                 $onEvent($event);
             })->then(function (StreamedAgentResponse $response) use (&$streamedResponse) {
                 $streamedResponse = $response;
@@ -151,6 +159,10 @@ class AgentRun
             ]);
 
             return new AgentRunResult($streamedResponse, $text, $snapshot, $this->events);
+        } catch (AgentRunCancelled|AgentRunPaused $e) {
+            $this->emit($e instanceof AgentRunCancelled ? 'run.cancelled' : 'run.paused');
+
+            throw $e;
         } catch (\Throwable $e) {
             $this->emit('run.failed', [
                 'error' => $e->getMessage(),
@@ -179,6 +191,13 @@ class AgentRun
     private function emit(string $type, array $data = []): void
     {
         $this->events[] = new AgentRuntimeEvent($type, $data, $this->taskId, $this->agentUser->id);
+    }
+
+    private function checkpointActiveRun(): void
+    {
+        if (app()->bound(ActiveAgentRun::class)) {
+            app(ActiveAgentRun::class)->checkpoint();
+        }
     }
 
     /**

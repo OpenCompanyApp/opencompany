@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,27 +14,37 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class TaskStep extends Model
 {
-    /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory<self>> */
+    /** @use HasFactory<Factory<self>> */
     use HasFactory;
 
     protected $table = 'task_steps';
+
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_IN_PROGRESS = 'in_progress';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_SKIPPED = 'skipped';
 
     public const TYPE_ACTION = 'action';
+
     public const TYPE_DECISION = 'decision';
+
     public const TYPE_APPROVAL = 'approval';
+
     public const TYPE_SUB_TASK = 'sub_task';
+
     public const TYPE_MESSAGE = 'message';
 
     protected $fillable = [
         'id',
         'task_id',
+        'tool_invocation_id',
         'description',
         'status',
         'step_type',

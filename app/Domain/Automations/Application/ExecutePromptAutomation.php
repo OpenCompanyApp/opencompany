@@ -2,97 +2,129 @@
 
 namespace App\Domain\Automations\Application;
 
-use App\Agents\OpenCompanyAgent;
+use App\Agents\Runtime\ActiveAgentRun;
+use App\Agents\Runtime\AgentRunBuilder;
+use App\Agents\Runtime\AgentRunCancelled;
+use App\Agents\Runtime\AgentRunOptions;
+use App\Agents\Runtime\AgentRunPaused;
 use App\Agents\Tools\ToolRegistry;
-use App\Ai\Prompting\SystemPromptBag;
+use App\Domain\AgentRuntime\Application\RetryableRunFailure;
 use App\Domain\Ai\Usage\UsageRecorder;
 use App\Events\AgentStatusUpdated;
 use App\Events\MessageSent;
 use App\Events\TaskUpdated;
+use App\Models\AgentRunRecord;
 use App\Models\Automation;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Task;
-use App\Models\User;
 use App\Support\TokenMetrics;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Executes one prompt-based scheduled automation run.
+ * Executes one prompt automation through the shared AgentRun runtime.
  *
- * Queue transport, uniqueness, retries, and workspace binding are handled by
- * RunAutomationJob. This service owns the OpenCompany automation workflow:
- * creating the run task, posting prompt/output messages, invoking the agent,
- * recording metrics, and updating automation success/failure counters.
+ * ResolveAutomationRun provides a stable task/run pair across queue retries.
+ * This service owns prompt/output delivery, model evidence, accounting, and
+ * terminal automation counters; queue reservation remains in RunAutomationJob.
  */
 class ExecutePromptAutomation
 {
-    public function handle(Automation $automation, int $attempts = 1): void
-    {
-        $agent = User::find($automation->agent_id);
+    public function __construct(
+        private ResolveAutomationRun $runs,
+        private RetryableRunFailure $retryableFailures,
+    ) {}
 
-        if (! $agent) {
-            $automation->recordFailure('Agent not found');
+    public function handle(Automation $automation, ?string $dispatchKey = null, ?string $queueJobUuid = null, int $maxAttempts = 2): void
+    {
+        $dispatchKey ??= (string) Str::uuid();
+
+        try {
+            $context = $this->runs->handle(
+                $automation,
+                $dispatchKey,
+                AgentRunRecord::KIND_PROMPT_AUTOMATION,
+                $maxAttempts,
+            );
+        } catch (\DomainException $exception) {
+            $automation->recordFailure($exception->getMessage());
+            Log::error('Automation rejected before execution', [
+                'automation' => $automation->id,
+                'error' => $exception->getMessage(),
+            ]);
 
             return;
         }
 
-        if ($attempts > 1 && $automation->channel_id) {
-            $hasRecentResponse = Message::where('channel_id', $automation->channel_id)
-                ->where('source', 'automation')
-                ->where('created_at', '>', now()->subMinutes(30))
-                ->exists();
+        $agent = $context->agent;
+        $task = $context->task;
+        $run = $context->run;
+        $channelId = $context->channelId;
 
-            if ($hasRecentResponse) {
-                Log::info('Skipping automation retry - response already exists', [
-                    'automation' => $automation->name,
-                    'attempt' => $attempts,
-                ]);
+        if ($task->isTerminal()) {
+            $run->reconcileFromTerminalTask();
 
-                return;
-            }
+            return;
         }
 
-        try {
-            $channelId = $automation->ensureChannel();
-            $task = Task::create([
-                'id' => Str::uuid()->toString(),
-                'workspace_id' => $automation->workspace_id,
-                'title' => "Scheduled: {$automation->name}",
-                'description' => $automation->prompt,
-                'type' => Task::TYPE_CUSTOM,
-                'status' => Task::STATUS_ACTIVE,
-                'priority' => Task::PRIORITY_NORMAL,
-                'source' => Task::SOURCE_AUTOMATION,
-                'agent_id' => $agent->id,
-                'requester_id' => $automation->created_by_id,
-                'channel_id' => $channelId,
-                'started_at' => now(),
-                'context' => [
-                    'automation_id' => $automation->id,
-                    'schedule' => $automation->cron_expression,
-                    'run_number' => $automation->run_count + 1,
-                ],
-            ]);
+        if ($run->isTerminal()) {
+            $run->reconcileTaskFromTerminalRun();
+            $task = $task->fresh() ?? $task;
+            safeBroadcast(new TaskUpdated($task, $task->status), 'terminal automation run reconciliation');
 
-            if ($channelId) {
-                $promptMessage = Message::create([
-                    'id' => Str::uuid()->toString(),
-                    'content' => $automation->prompt,
+            return;
+        }
+
+        if ($task->status === Task::STATUS_PAUSED) {
+            return;
+        }
+
+        if (in_array($agent->status, ['paused', 'offline'], true)) {
+            $task->pause();
+            $run->markWaiting();
+            safeBroadcast(new TaskUpdated($task, 'paused'), 'automation agent unavailable');
+
+            return;
+        }
+
+        $attempt = $run->beginAttempt($queueJobUuid);
+        app()->instance(ActiveAgentRun::class, new ActiveAgentRun($run->id));
+
+        try {
+            if ($task->isPending()) {
+                $task->start();
+            }
+            safeBroadcast(new TaskUpdated($task, 'started'), 'automation task started');
+
+            $promptMessage = Message::query()->firstOrCreate(
+                [
                     'channel_id' => $channelId,
+                    'external_message_id' => "agent-run:{$run->id}:prompt",
+                ],
+                [
+                    'id' => (string) Str::uuid(),
+                    'content' => $automation->prompt,
                     'author_id' => $automation->created_by_id,
                     'timestamp' => now(),
                     'source' => 'automation_prompt',
-                ]);
-                broadcast(new MessageSent($promptMessage));
+                ],
+            );
+            if ($promptMessage->wasRecentlyCreated) {
+                safeBroadcast(new MessageSent($promptMessage), 'automation prompt');
             }
 
             $agent->update(['status' => 'working']);
-            broadcast(new AgentStatusUpdated($agent));
+            safeBroadcast(new AgentStatusUpdated($agent), 'automation agent working');
 
-            $agentInstance = OpenCompanyAgent::for($agent, $channelId, $task->id);
+            $agentRun = app(AgentRunBuilder::class)->build(
+                $agent,
+                $channelId,
+                $task->id,
+                new AgentRunOptions(resumeFromTask: $attempt > 1),
+            );
+            $agentInstance = $agentRun->agent();
 
             try {
                 $toolRegistry = app(ToolRegistry::class);
@@ -109,27 +141,33 @@ class ExecutePromptAutomation
                         'volatile_prompt_sections' => $promptFrame['volatile_breakdown'],
                     ]),
                 ]);
-            } catch (\Throwable $e) {
-                Log::warning('Failed to capture automation LLM context', ['error' => $e->getMessage()]);
+            } catch (\Throwable $exception) {
+                Log::warning('Failed to capture automation LLM context', ['error' => $exception->getMessage()]);
             }
 
             $generationStartedAt = now();
-            app()->instance(SystemPromptBag::class, new SystemPromptBag($agentInstance->systemPrompts()));
-            $response = $agentInstance->prompt($this->buildScheduledPrompt($automation));
+            $runResult = $agentRun->run($this->buildScheduledPrompt($automation));
+            $response = $runResult->response;
             $generationCompletedAt = now();
+            app(ActiveAgentRun::class)->checkpoint(force: true);
 
-            if ($channelId && ! empty(trim($response->text ?? ''))) {
-                $agentMessage = Message::create([
-                    'id' => Str::uuid()->toString(),
-                    'content' => $response->text,
-                    'channel_id' => $channelId,
-                    'author_id' => $agent->id,
-                    'timestamp' => now(),
-                    'source' => 'automation',
-                ]);
+            if (! empty(trim($response->text ?? ''))) {
+                $agentMessage = Message::query()->firstOrCreate(
+                    ['agent_run_id' => $run->id],
+                    [
+                        'id' => (string) Str::uuid(),
+                        'content' => $response->text,
+                        'channel_id' => $channelId,
+                        'author_id' => $agent->id,
+                        'timestamp' => now(),
+                        'source' => 'automation',
+                    ],
+                );
 
-                Channel::where('id', $channelId)->update(['last_message_at' => now()]);
-                broadcast(new MessageSent($agentMessage));
+                if ($agentMessage->wasRecentlyCreated) {
+                    Channel::whereKey($channelId)->update(['last_message_at' => now()]);
+                    safeBroadcast(new MessageSent($agentMessage), 'automation response');
+                }
             }
 
             $metrics = TokenMetrics::fromResponse($response, $generationStartedAt, $generationCompletedAt);
@@ -146,11 +184,13 @@ class ExecutePromptAutomation
                 ['response' => Str::limit($response->text, 500)],
                 $metrics,
             ));
+            $run->markCompleted();
 
             safeBroadcast(new TaskUpdated($task, 'completed'), 'automation task completion');
 
             $automation->recordSuccess([
                 'task_id' => $task->id,
+                'agent_run_id' => $run->id,
                 'response_preview' => Str::limit($response->text, 200),
                 'tokens' => $response->usage->promptTokens + $response->usage->completionTokens,
                 'tool_calls' => $metrics['tool_calls_count'],
@@ -161,25 +201,46 @@ class ExecutePromptAutomation
                 'automation' => $automation->name,
                 'agent' => $agent->name,
                 'task' => $task->id,
+                'run' => $run->id,
             ]);
-        } catch (\Throwable $e) {
-            Log::error('Automation failed', [
+        } catch (AgentRunPaused) {
+            $run->markWaiting();
+            safeBroadcast(new TaskUpdated($task, 'paused'), 'automation task paused');
+        } catch (AgentRunCancelled) {
+            if ($task->isTerminal()) {
+                $run->reconcileFromTerminalTask();
+            } else {
+                $task->cancel();
+                if (! $run->cancellationRequested()) {
+                    $run->requestCancellation();
+                }
+            }
+            $task = $task->fresh() ?? $task;
+            safeBroadcast(new TaskUpdated($task, $task->status), 'automation task stopped during run');
+        } catch (\Throwable $exception) {
+            Log::error('Automation attempt failed', [
                 'automation' => $automation->name,
                 'agent' => $agent->name,
-                'error' => $e->getMessage(),
+                'attempt' => $attempt,
+                'error' => $exception->getMessage(),
             ]);
 
-            if (isset($task)) {
-                $task->fail();
-                $task->update(['result' => ['error' => $e->getMessage()]]);
-                safeBroadcast(new TaskUpdated($task, 'failed'), 'automation task failure');
+            if ($attempt < $maxAttempts && $this->retryableFailures->handle($exception)) {
+                $run->markRetrying($exception);
+                safeBroadcast(new TaskUpdated($task, 'retrying'), 'automation task retry');
+
+                throw $exception;
             }
 
-            $automation->recordFailure($e->getMessage());
-
-            throw $e;
+            if (! $task->isTerminal()) {
+                $task->fail($exception->getMessage());
+            }
+            $run->markFailed($exception);
+            $automation->recordFailure($exception->getMessage());
+            safeBroadcast(new TaskUpdated($task, 'failed'), 'automation task failure');
         } finally {
             $agent->resolveIdleStatus();
+            app()->forgetInstance(ActiveAgentRun::class);
         }
     }
 

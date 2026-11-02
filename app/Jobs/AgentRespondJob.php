@@ -3,8 +3,12 @@
 namespace App\Jobs;
 
 use App\Domain\AgentRuntime\Application\RespondToChatMessage;
+use App\Events\TaskUpdated;
+use App\Jobs\Concerns\SerializesAgentExecution;
 use App\Jobs\Concerns\SetsWorkspaceContext;
+use App\Models\AgentRunRecord;
 use App\Models\Message;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -25,17 +29,24 @@ use Illuminate\Support\Facades\Log;
 class AgentRespondJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-    use SetsWorkspaceContext;
+    use SerializesAgentExecution, SetsWorkspaceContext;
 
     /**
      * The number of times the job may be attempted.
      */
-    public int $tries = 3;
+    /** Overlap releases are bounded by retryUntil(), not an attempt count. */
+    public int $tries = 0;
+
+    /** Semantic provider attempts; overlap releases do not consume these. */
+    public int $maxRunAttempts = 3;
 
     /**
      * The number of seconds the job can run before timing out.
      */
     public int $timeout = 1800;
+
+    /** Hard timeouts cannot safely resume inside a killed PHP process. */
+    public bool $failOnTimeout = true;
 
     /**
      * The number of seconds to wait before retrying the job.
@@ -47,7 +58,7 @@ class AgentRespondJob implements ShouldBeUnique, ShouldQueue
     /**
      * The number of seconds the unique lock should be maintained.
      */
-    public int $uniqueFor = 1800;
+    public int $uniqueFor = 3700;
 
     public function __construct(
         private Message $userMessage,
@@ -61,14 +72,39 @@ class AgentRespondJob implements ShouldBeUnique, ShouldQueue
         return $this->userMessage->id.':'.$this->agent->id;
     }
 
+    public function middleware(): array
+    {
+        return $this->agentExecutionMiddleware($this->agent->id);
+    }
+
     public function failed(\Throwable $exception): void
     {
-        Log::error('AgentRespondJob failed', [
-            'message_id' => $this->userMessage->id ?? null,
-            'agent' => $this->agent->name ?? null,
-            'channel' => $this->channelId,
-            'exception' => $exception->getMessage(),
-        ]);
+        $this->setWorkspaceContext($this->agent->workspace_id);
+
+        try {
+            if ($this->taskId && ($task = Task::query()
+                ->where('workspace_id', $this->agent->workspace_id)
+                ->find($this->taskId))) {
+                $run = AgentRunRecord::ensureForTask($task, AgentRunRecord::KIND_CHAT, $this->maxRunAttempts);
+                if (! $run->isTerminal()) {
+                    $run->markFailed($exception);
+                }
+                if (! $task->isTerminal()) {
+                    $task->fail($exception->getMessage());
+                    safeBroadcast(new TaskUpdated($task, 'failed'), 'terminal chat queue failure');
+                }
+            }
+            $this->agent->resolveIdleStatus();
+
+            Log::error('AgentRespondJob failed', [
+                'message_id' => $this->userMessage->id ?? null,
+                'agent' => $this->agent->name ?? null,
+                'channel' => $this->channelId,
+                'exception' => $exception->getMessage(),
+            ]);
+        } finally {
+            $this->clearWorkspaceContext();
+        }
     }
 
     /**
@@ -79,13 +115,17 @@ class AgentRespondJob implements ShouldBeUnique, ShouldQueue
     {
         $this->setWorkspaceContext($this->agent->workspace_id);
 
-        ($respondToChatMessage ?? app(RespondToChatMessage::class))->handle(
-            $this->userMessage,
-            $this->agent,
-            $this->channelId,
-            $this->taskId,
-            $this->attempts(),
-            $this->tries,
-        );
+        try {
+            ($respondToChatMessage ?? app(RespondToChatMessage::class))->handle(
+                $this->userMessage,
+                $this->agent,
+                $this->channelId,
+                $this->taskId,
+                queueJobUuid: $this->job?->uuid(),
+                maxTries: $this->maxRunAttempts,
+            );
+        } finally {
+            $this->clearWorkspaceContext();
+        }
     }
 }

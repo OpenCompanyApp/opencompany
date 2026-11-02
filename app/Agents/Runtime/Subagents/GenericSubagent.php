@@ -3,14 +3,24 @@
 namespace App\Agents\Runtime\Subagents;
 
 use App\Agents\Conversations\ChannelConversationLoader;
+use App\Agents\Runtime\ActiveAgentRun;
+use App\Agents\Tools\System\RunGuardedTool;
 use App\Agents\Tools\ToolRegistry;
+use App\Events\TaskUpdated;
+use App\Models\AgentRunRecord;
+use App\Models\Channel;
+use App\Models\Task;
 use App\Models\User;
 use App\Services\AgentDocumentService;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\CanActAsTool;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
+use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Promptable;
+use Laravel\Ai\Responses\AgentResponse;
 use Stringable;
 
 /**
@@ -22,7 +32,9 @@ use Stringable;
  */
 class GenericSubagent implements Agent, CanActAsTool, Conversational, HasTools
 {
-    use Promptable;
+    use Promptable {
+        prompt as private promptWithoutRunControl;
+    }
 
     public function __construct(
         private User $agent,
@@ -36,6 +48,97 @@ class GenericSubagent implements Agent, CanActAsTool, Conversational, HasTools
     public static function for(User $agent, string $channelId, ?string $taskId = null): self
     {
         return app(self::class, compact('agent', 'channelId', 'taskId'));
+    }
+
+    /**
+     * Execute a direct SDK subagent under the same per-agent lock as queued
+     * work, and persist a child task/run when invoked from a parent agent run.
+     *
+     * @param  array<int, mixed>  $attachments
+     */
+    public function prompt(
+        string $prompt,
+        array $attachments = [],
+        Lab|array|string|null $provider = null,
+        ?string $model = null,
+        ?int $timeout = null,
+    ): AgentResponse {
+        $this->agent->refresh();
+        if (in_array($this->agent->status, ['paused', 'offline'], true)) {
+            throw new \RuntimeException("Subagent {$this->agent->name} is {$this->agent->status}.");
+        }
+        if (! Channel::query()
+            ->whereKey($this->channelId)
+            ->where('workspace_id', $this->agent->workspace_id)
+            ->exists()) {
+            throw new \DomainException('Subagent channel is outside the target agent workspace.');
+        }
+
+        $lock = Cache::lock("laravel-queue-overlap:agent-execution:{$this->agent->id}", 1900);
+        if (! $lock->get()) {
+            throw new \RuntimeException("Subagent {$this->agent->name} is already executing another run.");
+        }
+
+        $parentRun = app()->bound(ActiveAgentRun::class) ? app(ActiveAgentRun::class) : null;
+        $childTask = null;
+        $childRun = null;
+
+        try {
+            $parentRun?->checkpoint(force: true);
+
+            if ($parentRun) {
+                $parentRecord = $parentRun->record();
+                if ($parentRecord->workspace_id !== $this->agent->workspace_id) {
+                    throw new \DomainException('Subagent target is outside the parent run workspace.');
+                }
+                $childTask = Task::query()->create([
+                    'id' => (string) Str::uuid(),
+                    'workspace_id' => $this->agent->workspace_id,
+                    'title' => Str::limit($prompt, 80),
+                    'description' => $prompt,
+                    'type' => Task::TYPE_CUSTOM,
+                    'status' => Task::STATUS_ACTIVE,
+                    'priority' => Task::PRIORITY_NORMAL,
+                    'source' => Task::SOURCE_AGENT_DELEGATION,
+                    'agent_id' => $this->agent->id,
+                    'requester_id' => $parentRecord->agent_id,
+                    'channel_id' => $this->channelId,
+                    'parent_task_id' => $parentRecord->task_id,
+                    'started_at' => now(),
+                ]);
+                $childRun = AgentRunRecord::ensureForTask($childTask, AgentRunRecord::KIND_SUBAGENT, 1);
+                $childRun->beginAttempt();
+                app()->instance(ActiveAgentRun::class, new ActiveAgentRun($childRun->id));
+                safeBroadcast(new TaskUpdated($childTask, 'started'), 'subagent task started');
+            }
+
+            $this->agent->update(['status' => 'working']);
+            $response = $this->promptWithoutRunControl($prompt, $attachments, $provider, $model, $timeout);
+
+            if ($childTask && $childRun) {
+                $childTask->complete(['response' => $response->text]);
+                $childRun->markCompleted();
+                safeBroadcast(new TaskUpdated($childTask, 'completed'), 'subagent task completed');
+            }
+
+            return $response;
+        } catch (\Throwable $exception) {
+            if ($childTask && ! $childTask->isTerminal()) {
+                $childTask->fail($exception->getMessage());
+                $childRun?->markFailed($exception);
+                safeBroadcast(new TaskUpdated($childTask, 'failed'), 'subagent task failed');
+            }
+
+            throw $exception;
+        } finally {
+            $this->agent->resolveIdleStatus();
+            if ($parentRun) {
+                app()->instance(ActiveAgentRun::class, $parentRun);
+            } else {
+                app()->forgetInstance(ActiveAgentRun::class);
+            }
+            $lock->release();
+        }
     }
 
     public function name(): string
@@ -77,6 +180,12 @@ class GenericSubagent implements Agent, CanActAsTool, Conversational, HasTools
         $this->tools->setChannelContext($this->channelId);
         $this->tools->setTaskContext($this->taskId);
 
-        return $this->tools->getToolsForAgent($this->agent);
+        $tools = $this->tools->getToolsForAgent($this->agent);
+
+        if (! app()->bound(ActiveAgentRun::class)) {
+            return $tools;
+        }
+
+        return array_map(fn ($tool) => new RunGuardedTool($tool), $tools);
     }
 }

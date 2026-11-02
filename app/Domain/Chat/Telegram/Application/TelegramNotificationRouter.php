@@ -4,6 +4,7 @@ namespace App\Domain\Chat\Telegram\Application;
 
 use App\Events\TaskUpdated;
 use App\Jobs\AgentRespondJob;
+use App\Models\AgentRunRecord;
 use App\Models\ApprovalRequest;
 use App\Models\Automation;
 use App\Models\Channel;
@@ -14,6 +15,7 @@ use App\Models\TelegramInteraction;
 use App\Models\TelegramSubscription;
 use App\Models\Workspace;
 use App\Services\TelegramService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -95,42 +97,74 @@ class TelegramNotificationRouter
             return;
         }
 
-        $activeExists = Task::where('workspace_id', $finishedTask->workspace_id)
-            ->where('channel_id', $channel->id)
-            ->where('id', '!=', $finishedTask->id)
-            ->whereIn('status', [Task::STATUS_ACTIVE, Task::STATUS_PAUSED])
-            ->exists();
+        $nextTask = DB::transaction(function () use ($channel, $finishedTask): ?Task {
+            Channel::query()->whereKey($channel->id)->lockForUpdate()->firstOrFail();
 
-        if ($activeExists) {
-            return;
-        }
+            $activeExists = Task::where('workspace_id', $finishedTask->workspace_id)
+                ->where('channel_id', $channel->id)
+                ->where('id', '!=', $finishedTask->id)
+                ->whereIn('status', [Task::STATUS_ACTIVE, Task::STATUS_PAUSED])
+                ->exists();
 
-        $nextTask = Task::with(['agent', 'triggerMessage'])
-            ->where('workspace_id', $finishedTask->workspace_id)
-            ->where('channel_id', $channel->id)
-            ->where('source', Task::SOURCE_CHAT)
-            ->where('status', Task::STATUS_PENDING)
-            ->whereNotNull('trigger_message_id')
-            ->oldest()
-            ->get()
-            ->first(function (Task $task) {
-                $queue = is_array($task->context) ? ($task->context['telegram_lane_queue'] ?? null) : null;
+            if ($activeExists) {
+                return null;
+            }
 
-                return is_array($queue) && empty($queue['dispatched_at']);
-            });
+            $nextTask = Task::with(['agent', 'triggerMessage', 'agentRun'])
+                ->where('workspace_id', $finishedTask->workspace_id)
+                ->where('channel_id', $channel->id)
+                ->where('source', Task::SOURCE_CHAT)
+                ->where('status', Task::STATUS_PENDING)
+                ->whereNotNull('trigger_message_id')
+                ->oldest()
+                ->lockForUpdate()
+                ->get()
+                ->first(function (Task $task) {
+                    $queue = is_array($task->context) ? ($task->context['telegram_lane_queue'] ?? null) : null;
+
+                    return is_array($queue) && empty($queue['dispatched_at']) && empty($queue['dispatching_at']);
+                });
+
+            if (! $nextTask) {
+                return null;
+            }
+
+            $context = $nextTask->context ?? [];
+            $queue = is_array($context['telegram_lane_queue'] ?? null) ? $context['telegram_lane_queue'] : [];
+            $queue['dispatching_at'] = now()->toIso8601String();
+            $queue['dispatched_after_task_id'] = $finishedTask->id;
+            $context['telegram_lane_queue'] = $queue;
+            $nextTask->update(['context' => $context]);
+            AgentRunRecord::ensureForTask($nextTask, AgentRunRecord::KIND_CHAT, 3);
+
+            return $nextTask;
+        });
 
         if (! $nextTask || ! $nextTask->agent || ! $nextTask->triggerMessage) {
             return;
         }
 
-        $context = $nextTask->context ?? [];
-        $queue = is_array($context['telegram_lane_queue'] ?? null) ? $context['telegram_lane_queue'] : [];
-        $queue['dispatched_at'] = now()->toIso8601String();
-        $queue['dispatched_after_task_id'] = $finishedTask->id;
-        $context['telegram_lane_queue'] = $queue;
-        $nextTask->update(['context' => $context]);
+        try {
+            AgentRespondJob::dispatch($nextTask->triggerMessage, $nextTask->agent, $channel->id, $nextTask->id);
 
-        AgentRespondJob::dispatch($nextTask->triggerMessage, $nextTask->agent, $channel->id, $nextTask->id);
+            $context = $nextTask->fresh()->context ?? [];
+            $queue = is_array($context['telegram_lane_queue'] ?? null) ? $context['telegram_lane_queue'] : [];
+            unset($queue['dispatching_at']);
+            $queue['dispatched_at'] = now()->toIso8601String();
+            $context['telegram_lane_queue'] = $queue;
+            $nextTask->update(['context' => $context]);
+        } catch (\Throwable $exception) {
+            // Clear the temporary claim so a later terminal event or the stale
+            // reconciler can safely retry handoff. The logical run prevents a
+            // duplicate visible response if dispatch actually succeeded.
+            $context = $nextTask->fresh()->context ?? [];
+            $queue = is_array($context['telegram_lane_queue'] ?? null) ? $context['telegram_lane_queue'] : [];
+            unset($queue['dispatching_at']);
+            $context['telegram_lane_queue'] = $queue;
+            $nextTask->update(['context' => $context]);
+
+            throw $exception;
+        }
     }
 
     private function refreshTaskStatusCards(Task $task, string $action): void

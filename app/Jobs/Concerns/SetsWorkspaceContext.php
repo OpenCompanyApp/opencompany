@@ -12,12 +12,19 @@ trait SetsWorkspaceContext
      */
     protected function setWorkspaceContext(?string $workspaceId): void
     {
-        if ($workspaceId) {
-            $workspace = Workspace::find($workspaceId);
-
-            if ($workspace) {
-                app()->instance('currentWorkspace', $workspace);
-            }
+        if (! $workspaceId || ! ($workspace = Workspace::find($workspaceId))) {
+            throw new \RuntimeException('Queued agent work has no valid workspace context.');
         }
+
+        app()->instance('currentWorkspace', $workspace);
+    }
+
+    /**
+     * Queue workers reuse the application container across jobs; never leave a
+     * previous tenant bound after this job completes or fails.
+     */
+    protected function clearWorkspaceContext(): void
+    {
+        app()->forgetInstance('currentWorkspace');
     }
 }

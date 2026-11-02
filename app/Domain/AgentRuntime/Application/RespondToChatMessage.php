@@ -2,16 +2,19 @@
 
 namespace App\Domain\AgentRuntime\Application;
 
-use App\Agents\Support\MessageAttachmentContext;
+use App\Agents\Runtime\ActiveAgentRun;
 use App\Agents\Runtime\AgentRunBuilder;
+use App\Agents\Runtime\AgentRunCancelled;
 use App\Agents\Runtime\AgentRunFailed;
 use App\Agents\Runtime\AgentRunOptions;
+use App\Agents\Runtime\AgentRunPaused;
+use App\Agents\Support\MessageAttachmentContext;
 use App\Domain\Ai\Usage\UsageRecorder;
-use App\Domain\Chat\Telegram\Application\TelegramNotificationRouter;
 use App\Events\AgentStatusUpdated;
 use App\Events\MessageSent;
 use App\Events\TaskUpdated;
 use App\Jobs\AgentRespondJob;
+use App\Models\AgentRunRecord;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Task;
@@ -73,6 +76,7 @@ class RespondToChatMessage
         private DetectDeliveredChatResponse $deliveredResponses,
         private DeliverAgentMessage $messageDelivery,
         private MessageAttachmentContext $attachmentContext,
+        private RetryableRunFailure $retryableFailures,
     ) {}
 
     /**
@@ -89,6 +93,7 @@ class RespondToChatMessage
         ?string $taskId = null,
         int $attempts = 1,
         int $maxTries = 3,
+        ?string $queueJobUuid = null,
     ): void {
         $this->userMessage = $userMessage;
         $this->agent = $agent;
@@ -105,12 +110,51 @@ class RespondToChatMessage
             $this->attempts(),
         );
         $this->taskId = $task->id;
+
+        $run = AgentRunRecord::ensureForTask($task, AgentRunRecord::KIND_CHAT, $this->tries);
+
+        // A cancelled/failed/completed logical run must never be resurrected by
+        // a delayed reservation, duplicate job, or an operator replaying the
+        // underlying failed_jobs row.
+        if ($task->isTerminal() || $run->isTerminal()) {
+            if ($task->isTerminal() && ! $run->isTerminal()) {
+                $run->reconcileFromTerminalTask();
+            }
+
+            if (! $task->isTerminal()) {
+                match ($run->status) {
+                    AgentRunRecord::STATUS_COMPLETED => $task->complete(['response' => '(reconciled from run record)']),
+                    AgentRunRecord::STATUS_CANCELLED => $task->cancel(),
+                    AgentRunRecord::STATUS_FAILED => $task->fail($run->last_error),
+                    default => null,
+                };
+                $this->emitTaskUpdated($task, $task->status, 'reconciled terminal task');
+            }
+
+            Log::info('Skipping terminal agent run', [
+                'task' => $task->id,
+                'run' => $run->id,
+                'task_status' => $task->status,
+                'run_status' => $run->status,
+            ]);
+
+            return;
+        }
+
+        $this->agent->refresh();
+        if (in_array($this->agent->status, ['paused', 'offline'], true)) {
+            if ($task->status !== Task::STATUS_PAUSED) {
+                $task->pause();
+            }
+            $run->markWaiting();
+            $this->emitTaskUpdated($task, 'paused', 'agent unavailable');
+
+            return;
+        }
+
         $hasDeliveredResponse = $this->deliveredResponses->handle(
             $task,
-            $this->userMessage,
-            $this->agent,
-            $this->channelId,
-            $this->attempts(),
+            $run,
         );
 
         if ($hasDeliveredResponse) {
@@ -122,9 +166,14 @@ class RespondToChatMessage
             if (! $task->isTerminal()) {
                 $task->complete(['response' => '(completed on previous attempt)']);
             }
+            $run->markCompleted();
+            $this->emitTaskUpdated($task, 'completed', 'repaired delivered task');
 
             return;
         }
+
+        $this->attempts = $run->beginAttempt($queueJobUuid);
+        app()->instance(ActiveAgentRun::class, new ActiveAgentRun($run->id));
 
         $this->emitTaskUpdated($task, 'started', 'task started');
 
@@ -208,6 +257,7 @@ class RespondToChatMessage
             // to guard against a race where the subtask completes (and clears the
             // delegation ID) before we reach this point.
             $this->agent->refresh();
+            app(ActiveAgentRun::class)->checkpoint();
             $hasActiveSubtasks = Task::where('parent_task_id', $task->id)
                 ->whereIn('source', [Task::SOURCE_AGENT_DELEGATION, Task::SOURCE_AGENT_ASK])
                 ->whereNotIn('status', [Task::STATUS_COMPLETED, Task::STATUS_FAILED, Task::STATUS_CANCELLED])
@@ -237,6 +287,8 @@ class RespondToChatMessage
                     'has_active_subtasks' => $hasActiveSubtasks,
                 ]);
 
+                $run->markWaiting();
+
                 // Task stays active, agent goes to awaiting_delegation (in finally block)
                 return;
             }
@@ -245,7 +297,8 @@ class RespondToChatMessage
             $deliveryStep = $task->addStep('Response delivered', 'message');
             $deliveryStep->start();
 
-            $this->messageDelivery->handle($this->agent, $this->userMessage, $this->channelId, $response, $responseText);
+            app(ActiveAgentRun::class)->checkpoint();
+            $this->messageDelivery->handle($this->agent, $this->userMessage, $this->channelId, $run, $response, $responseText);
 
             $deliveryStep->complete();
             $responseDelivered = true;
@@ -344,12 +397,33 @@ class RespondToChatMessage
             }
 
             $this->emitTaskUpdated($task, 'completed', 'task completed');
+            $run->markCompleted();
 
             Log::info('Agent responded', [
                 'agent' => $this->agent->name,
                 'channel' => $this->channelId,
                 'task' => $task->id,
                 'tokens' => ($response->usage->promptTokens ?? 0) + ($response->usage->completionTokens ?? 0),
+            ]);
+        } catch (AgentRunPaused) {
+            $run->markWaiting();
+            $this->emitTaskUpdated($task, 'paused', 'task paused');
+        } catch (AgentRunCancelled $e) {
+            if ($task->isTerminal()) {
+                $run->reconcileFromTerminalTask();
+            } else {
+                $task->cancel();
+                if (! $run->cancellationRequested()) {
+                    $run->requestCancellation();
+                }
+            }
+            $task = $task->fresh() ?? $task;
+            $this->emitTaskUpdated($task, $task->status, 'task stopped during active run');
+
+            Log::info('Agent run stopped after cancellation or external terminal transition', [
+                'agent' => $this->agent->name,
+                'task' => $task->id,
+                'run' => $run->id,
             ]);
         } catch (\Throwable $e) {
             if ($e instanceof AgentRunFailed) {
@@ -382,6 +456,7 @@ class RespondToChatMessage
             }
 
             if ($this->shouldRetryProviderFailure($e)) {
+                $run->markRetrying($e);
                 Log::warning('Agent response attempt failed; retrying', [
                     'agent' => $this->agent->name,
                     'channel' => $this->channelId,
@@ -410,6 +485,7 @@ class RespondToChatMessage
             $errorStep->start();
             $errorStep->complete();
             $task->fail($e->getMessage());
+            $run->markFailed($e);
 
             // If this was a delegated/ask task, send error back to the requesting agent
             if ($task->parent_task_id && in_array($task->source, [Task::SOURCE_AGENT_DELEGATION, Task::SOURCE_AGENT_ASK])) {
@@ -418,15 +494,15 @@ class RespondToChatMessage
 
             $this->emitTaskUpdated($task, 'failed', 'task failed');
 
-            // Only notify user of error on the final attempt (avoid error + retry double message)
-            if ($this->attempts() >= $this->tries) {
-                $this->sendErrorMessage($e);
-            }
+            // This branch is terminal (permanent error or exhausted transient
+            // retries), so deliver one run-correlated error immediately.
+            $this->sendErrorMessage($e, $run);
 
             throw $e;
         } finally {
             $this->stopTypingIndicator();
             $this->agent->resolveIdleStatus();
+            app()->forgetInstance(ActiveAgentRun::class);
         }
     }
 
@@ -465,18 +541,9 @@ class RespondToChatMessage
 
     private function emitTaskUpdated(Task $task, string $action, string $label): void
     {
-        $event = new TaskUpdated($task, $action);
-
-        try {
-            app(TelegramNotificationRouter::class)->handleTaskUpdated($event);
-        } catch (\Throwable $e) {
-            Log::warning("Failed to route {$label}", [
-                'agent' => $this->agent->name,
-                'channel' => $this->channelId,
-                'task' => $task->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        // Dispatch the canonical event once. Its broadcast reaches the task UI
+        // and the registered listener advances Telegram lane work.
+        safeBroadcast(new TaskUpdated($task, $action), $label);
     }
 
     /**
@@ -663,7 +730,7 @@ class RespondToChatMessage
     /**
      * Send a user-friendly error message when the agent fails.
      */
-    private function sendErrorMessage(\Throwable $e): void
+    private function sendErrorMessage(\Throwable $e, AgentRunRecord $run): void
     {
         try {
             $errorMessage = Message::create([
@@ -672,6 +739,7 @@ class RespondToChatMessage
                 'channel_id' => $this->channelId,
                 'author_id' => $this->agent->id,
                 'timestamp' => now(),
+                'agent_run_id' => $run->id,
             ]);
 
             broadcast(new MessageSent($errorMessage));
@@ -699,28 +767,6 @@ class RespondToChatMessage
             return false;
         }
 
-        $message = strtolower($e->getMessage());
-
-        foreach ([
-            'connection refused',
-            'connection timed out',
-            'operation timed out',
-            'timeout',
-            'temporarily unavailable',
-            'too many requests',
-            'rate limit',
-            'status code 429',
-            'status code 500',
-            'status code 502',
-            'status code 503',
-            'status code 504',
-            'server error',
-        ] as $needle) {
-            if (str_contains($message, $needle)) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->retryableFailures->handle($e);
     }
 }

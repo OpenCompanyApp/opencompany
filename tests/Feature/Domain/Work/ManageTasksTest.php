@@ -8,9 +8,12 @@ use App\Models\Channel;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\WorkspaceMember;
+use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Mockery;
 use Tests\TestCase;
 
 class ManageTasksTest extends TestCase
@@ -20,6 +23,11 @@ class ManageTasksTest extends TestCase
     public function test_manual_task_lifecycle_and_steps_are_workspace_scoped(): void
     {
         $requester = User::factory()->create(['type' => 'human']);
+        WorkspaceMember::create([
+            'workspace_id' => $this->workspace->id,
+            'user_id' => $requester->id,
+            'role' => 'member',
+        ]);
         $tasks = app(ManageTasks::class);
 
         $task = $tasks->create([
@@ -58,6 +66,36 @@ class ManageTasksTest extends TestCase
         app(ManageTasks::class)->start($task->id);
 
         Bus::assertDispatched(ExecuteAgentTaskJob::class);
+    }
+
+    public function test_dispatch_failure_returns_claimed_task_to_waiting_state(): void
+    {
+        $requester = User::factory()->create(['type' => 'human']);
+        $agent = User::factory()->agent()->create();
+        $task = Task::create([
+            'id' => 'dispatch-failure-task',
+            'workspace_id' => $this->workspace->id,
+            'title' => 'Queue insert will fail',
+            'type' => Task::TYPE_CUSTOM,
+            'status' => Task::STATUS_PENDING,
+            'priority' => Task::PRIORITY_NORMAL,
+            'requester_id' => $requester->id,
+            'agent_id' => $agent->id,
+        ]);
+        $dispatcher = Mockery::mock(Dispatcher::class);
+        $dispatcher->shouldReceive('dispatch')->once()->andThrow(new \RuntimeException('Queue storage unavailable.'));
+        app()->instance(Dispatcher::class, $dispatcher);
+
+        try {
+            app(ManageTasks::class)->start($task->id);
+            $this->fail('A failed physical dispatch should remain visible to the caller.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Queue storage unavailable.', $exception->getMessage());
+        }
+
+        $this->assertSame(Task::STATUS_PAUSED, $task->fresh()->status);
+        $this->assertSame('waiting', $task->agentRun->fresh()->status);
+        $this->assertSame('Queue storage unavailable.', $task->agentRun->last_error);
     }
 
     public function test_list_can_filter_chat_tasks_by_channel(): void

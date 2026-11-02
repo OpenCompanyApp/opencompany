@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Work\Application\ManageTasks;
 use App\Http\Controllers\Controller;
 use App\Jobs\IndexDocumentJob;
+use App\Jobs\RunAutomationJob;
+use App\Models\AgentRunRecord;
 use App\Models\AppSetting;
 use App\Models\Automation;
 use App\Models\ConversationSummary;
@@ -18,8 +21,7 @@ use App\Services\Memory\DocumentIndexingService;
 use App\Services\TelegramService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -115,7 +117,15 @@ class SettingController extends Controller
             ->whereNotIn('status', ['offline', 'paused'])
             ->update(['status' => 'paused']);
 
-        return response()->json(['message' => "{$count} agent(s) paused."]);
+        $tasks = Task::forWorkspace()
+            ->whereIn('status', [Task::STATUS_PENDING, Task::STATUS_ACTIVE])
+            ->whereNotNull('agent_id')
+            ->get();
+        foreach ($tasks as $task) {
+            app(ManageTasks::class)->transition($task->id, 'pause');
+        }
+
+        return response()->json(['message' => "{$count} agent(s) and {$tasks->count()} task(s) paused."]);
     }
 
     private function actionResumeAgents(): JsonResponse
@@ -125,7 +135,15 @@ class SettingController extends Controller
             ->whereIn('status', ['paused', 'sleeping'])
             ->update(['status' => 'idle']);
 
-        return response()->json(['message' => "{$count} agent(s) resumed."]);
+        $tasks = Task::forWorkspace()
+            ->where('status', Task::STATUS_PAUSED)
+            ->whereNotNull('agent_id')
+            ->get();
+        foreach ($tasks as $task) {
+            app(ManageTasks::class)->transition($task->id, 'resume');
+        }
+
+        return response()->json(['message' => "{$count} agent(s) and {$tasks->count()} task(s) resumed."]);
     }
 
     private function actionResetAgents(): JsonResponse
@@ -145,15 +163,16 @@ class SettingController extends Controller
             ]);
         }
 
-        $taskCount = Task::forWorkspace()
+        $tasks = Task::forWorkspace()
             ->whereIn('agent_id', $agents->pluck('id'))
-            ->whereIn('status', [Task::STATUS_ACTIVE, Task::STATUS_PENDING])
-            ->get()
-            ->each->cancel()
-            ->count();
+            ->whereIn('status', [Task::STATUS_ACTIVE, Task::STATUS_PENDING, Task::STATUS_PAUSED])
+            ->get();
+        foreach ($tasks as $task) {
+            app(ManageTasks::class)->transition($task->id, 'cancel');
+        }
 
         return response()->json([
-            'message' => "{$agents->count()} agent(s) reset to idle, {$taskCount} task(s) cancelled.",
+            'message' => "{$agents->count()} agent(s) reset to idle, {$tasks->count()} task(s) cancelled.",
         ]);
     }
 
@@ -171,22 +190,76 @@ class SettingController extends Controller
 
     private function actionRetryFailedJobs(): JsonResponse
     {
-        $count = DB::table('failed_jobs')->count();
-        if ($count === 0) {
-            return response()->json(['message' => 'No failed jobs to retry.']);
+        $runs = AgentRunRecord::forWorkspace()
+            ->where('status', AgentRunRecord::STATUS_FAILED)
+            ->with('task')
+            ->oldest()
+            ->get()
+            ->filter(fn (AgentRunRecord $run) => empty($run->metadata['operator_dismissed_at']) && empty($run->metadata['retried_at']));
+
+        $retried = 0;
+        foreach ($runs as $run) {
+            $task = $run->task;
+            if (! $task) {
+                continue;
+            }
+
+            try {
+                if (in_array($run->kind, [AgentRunRecord::KIND_PROMPT_AUTOMATION, AgentRunRecord::KIND_SCRIPT_AUTOMATION], true)) {
+                    $automation = Automation::forWorkspace()->find($run->metadata['automation_id'] ?? $task->context['automation_id'] ?? null);
+                    if (! $automation) {
+                        continue;
+                    }
+                    RunAutomationJob::dispatch($automation);
+                    $newTaskId = null;
+                } else {
+                    $retryTask = $task->replicate();
+                    $retryTask->forceFill([
+                        'id' => (string) Str::uuid(),
+                        'status' => Task::STATUS_PENDING,
+                        'started_at' => null,
+                        'completed_at' => null,
+                        'result' => null,
+                        'context' => array_merge($task->context ?? [], [
+                            'retry_of_task_id' => $task->id,
+                            'retry_of_agent_run_id' => $run->id,
+                        ]),
+                    ])->save();
+                    app(ManageTasks::class)->start($retryTask->id);
+                    $newTaskId = $retryTask->id;
+                }
+
+                $run->update(['metadata' => array_merge($run->metadata ?? [], [
+                    'retried_at' => now()->toIso8601String(),
+                    'retry_task_id' => $newTaskId,
+                ])]);
+                $retried++;
+            } catch (\Throwable $exception) {
+                Log::warning('Failed to retry workspace agent run', [
+                    'agent_run_id' => $run->id,
+                    'workspace_id' => $run->workspace_id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         }
 
-        Artisan::call('queue:retry', ['id' => ['all']]);
-
-        return response()->json(['message' => "{$count} failed job(s) queued for retry."]);
+        return response()->json(['message' => "{$retried} failed workspace run(s) queued as new logical runs."]);
     }
 
     private function actionFlushFailedJobs(): JsonResponse
     {
-        $count = DB::table('failed_jobs')->count();
-        DB::table('failed_jobs')->truncate();
+        $runs = AgentRunRecord::forWorkspace()
+            ->where('status', AgentRunRecord::STATUS_FAILED)
+            ->get();
+        foreach ($runs as $run) {
+            $run->update(['metadata' => array_merge($run->metadata ?? [], [
+                'operator_dismissed_at' => now()->toIso8601String(),
+            ])]);
+        }
 
-        return response()->json(['message' => "{$count} failed job(s) cleared."]);
+        return response()->json([
+            'message' => "{$runs->count()} failed workspace run alert(s) dismissed; audit history was retained.",
+        ]);
     }
 
     private function actionRefreshMcpTools(): JsonResponse
@@ -344,29 +417,36 @@ class SettingController extends Controller
     /** @return array<string, mixed> */
     private function getQueueHealth(): array
     {
-        $pending = DB::table('jobs')->count();
-        $failedCount = DB::table('failed_jobs')->count();
-        $recentFailures = DB::table('failed_jobs')
-            ->orderByDesc('failed_at')
-            ->limit(5)
-            ->get(['uuid', 'queue', 'payload', 'exception', 'failed_at'])
-            ->map(function ($job) {
-                $payload = json_decode($job->payload, true);
-                $jobClass = $payload['displayName'] ?? 'Unknown';
-
-                return [
-                    'uuid' => $job->uuid,
-                    'job' => class_basename($jobClass),
-                    'queue' => $job->queue,
-                    'exception' => Str::limit($job->exception, 300),
-                    'failed_at' => $job->failed_at,
-                ];
-            });
+        $runs = AgentRunRecord::forWorkspace()->get();
+        $open = $runs->whereIn('status', [
+            AgentRunRecord::STATUS_QUEUED,
+            AgentRunRecord::STATUS_RUNNING,
+            AgentRunRecord::STATUS_RETRYING,
+            AgentRunRecord::STATUS_WAITING,
+        ]);
+        $failed = $runs
+            ->where('status', AgentRunRecord::STATUS_FAILED)
+            ->filter(fn (AgentRunRecord $run) => empty($run->metadata['operator_dismissed_at']));
+        $recentFailures = $failed
+            ->sortByDesc('finished_at')
+            ->take(5)
+            ->map(fn (AgentRunRecord $run) => [
+                'uuid' => $run->id,
+                'job' => $run->kind,
+                'queue' => 'default',
+                'exception' => Str::limit((string) $run->last_error, 300),
+                'failed_at' => $run->finished_at,
+                'task_id' => $run->task_id,
+                'attempts' => $run->attempt_count,
+            ])->values();
 
         return [
-            'pending_jobs' => $pending,
-            'failed_jobs' => $failedCount,
+            'pending_jobs' => $open->count(),
+            'failed_jobs' => $failed->count(),
             'recent_failures' => $recentFailures,
+            'running_jobs' => $open->where('status', AgentRunRecord::STATUS_RUNNING)->count(),
+            'oldest_open_at' => $open->min('created_at'),
+            'worker_heartbeat' => Cache::get('agent-runtime:queue-worker-heartbeat'),
         ];
     }
 

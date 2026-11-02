@@ -25,6 +25,10 @@ class SubagentOrchestrator
      */
     public function runSequential(array $definitions, string $channelId, ?string $taskId = null): array
     {
+        // Tool instances may be reused within one parent run. Do not leak stats
+        // from a previous plan into a later orchestration result.
+        $this->stats = [];
+
         $runs = array_map(fn (array $definition) => new SubagentRun(
             id: (string) ($definition['id'] ?? Str::uuid()->toString()),
             agentId: $definition['agent']->id,

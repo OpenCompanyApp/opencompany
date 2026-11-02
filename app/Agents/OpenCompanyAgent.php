@@ -4,8 +4,10 @@ namespace App\Agents;
 
 use App\Agents\Conversations\ChannelConversationLoader;
 use App\Agents\Providers\DynamicProviderResolver;
+use App\Agents\Runtime\ActiveAgentRun;
 use App\Agents\Runtime\Subagents\GenericSubagent;
 use App\Agents\Runtime\Subagents\OrchestrateSubagents;
+use App\Agents\Tools\System\RunGuardedTool;
 use App\Agents\Tools\ToolRegistry;
 use App\Ai\Contracts\HasSystemPrompts;
 use App\Models\AppSetting;
@@ -22,6 +24,7 @@ use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
+use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\ToolResultMessage;
 use Laravel\Ai\Promptable;
@@ -50,6 +53,8 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
     private array $resolvedProvider;
 
     private ?string $resumeFromTaskId = null;
+
+    private ?int $runtimeMaxSteps = null;
 
     public function __construct(
         private User $agent,
@@ -96,6 +101,21 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
         $this->resumeFromTaskId = $taskId;
 
         return $this;
+    }
+
+    /**
+     * Apply a run-local tool-turn ceiling without mutating agent configuration.
+     */
+    public function withMaxSteps(?int $maxSteps): static
+    {
+        $this->runtimeMaxSteps = $maxSteps;
+
+        return $this;
+    }
+
+    public function maxSteps(): ?int
+    {
+        return $this->runtimeMaxSteps;
     }
 
     /**
@@ -386,11 +406,22 @@ class OpenCompanyAgent implements Agent, Conversational, HasSystemPrompts, HasTo
         $this->toolRegistry->setChannelContext($this->channelId);
         $this->toolRegistry->setTaskContext($this->taskId);
 
-        return [
+        $tools = [
             ...$this->toolRegistry->getToolsForAgent($this->agent),
             OrchestrateSubagents::for($this->agent, $this->channelId, $this->taskId),
             ...$this->genericSubagents(),
         ];
+
+        // Direct registry consumers (permission screens/tests) receive the
+        // original tool types. Only a bound runtime run adds cancellation.
+        if (! app()->bound(ActiveAgentRun::class)) {
+            return $tools;
+        }
+
+        return array_map(
+            fn ($tool) => $tool instanceof Tool ? new RunGuardedTool($tool) : $tool,
+            $tools,
+        );
     }
 
     /**

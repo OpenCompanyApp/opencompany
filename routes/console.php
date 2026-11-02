@@ -11,7 +11,9 @@ Artisan::command('inspire', function () {
 
 Schedule::command('agent:resume-waiting')->everyMinute();
 
-Schedule::command('automation:run-due')->everyMinute();
+Schedule::command('agent-runs:reconcile')->everyFiveMinutes()->withoutOverlapping();
+
+Schedule::command('automation:run-due')->everyMinute()->withoutOverlapping();
 
 Schedule::command('telegram:send-digests')->everyMinute();
 

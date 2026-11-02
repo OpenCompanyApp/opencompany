@@ -36,12 +36,39 @@ class TaskController extends Controller
 
     public function store(Request $request): Task
     {
-        return $this->tasks->create($request->all());
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'type' => ['nullable', 'string', 'in:ticket,request,analysis,content,research,custom'],
+            'priority' => ['nullable', 'string', 'in:low,normal,high,urgent'],
+            'agentId' => ['nullable', 'string'],
+            'requesterId' => ['nullable', 'string'],
+            'channelId' => ['nullable', 'string'],
+            'listItemId' => ['nullable', 'string'],
+            'parentTaskId' => ['nullable', 'string'],
+            'source' => ['nullable', 'string'],
+            'context' => ['nullable', 'array'],
+            'dueAt' => ['nullable', 'date'],
+        ]);
+
+        return $this->tasks->create($validated);
     }
 
     public function update(Request $request, string $id): Task
     {
-        return $this->tasks->update($id, $request->all());
+        $validated = $request->validate([
+            'title' => ['sometimes', 'string', 'max:255'],
+            'description' => ['sometimes', 'nullable', 'string'],
+            'type' => ['sometimes', 'string', 'in:ticket,request,analysis,content,research,custom'],
+            'priority' => ['sometimes', 'string', 'in:low,normal,high,urgent'],
+            'agentId' => ['sometimes', 'nullable', 'string'],
+            'channelId' => ['sometimes', 'nullable', 'string'],
+            'context' => ['sometimes', 'nullable', 'array'],
+            'result' => ['sometimes', 'nullable', 'array'],
+            'dueAt' => ['sometimes', 'nullable', 'date'],
+        ]);
+
+        return $this->tasks->update($id, $validated);
     }
 
     public function destroy(string $id): JsonResponse
