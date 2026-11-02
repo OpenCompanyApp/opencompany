@@ -1,60 +1,435 @@
 # VFS Runtime Reference
 
-The runtime also exposes this reference at `/tools/vfs.md` and `/tools/vfs/README.md` inside the virtual filesystem.
+The runtime exposes the agent guide at `/tools/vfs.md` (same as `/tools/vfs/README.md`), worked examples at `/tools/vfs/examples.md`, and the generated reference below at `/tools/vfs/reference.md` inside the virtual filesystem.
 
-The VFS is a permission-aware unix-like filesystem over OpenCompany workspace data. Use `vfs_exec` for command-shaped inspection, `vfs_patch` for targeted edits, `vfs_write` for raw `/files` writes, and `app.vfs.*` Lua helpers for structured workflows.
+The VFS is a permission-aware, unix-like filesystem over OpenCompany workspace data. It is an interface over existing OpenCompany permissions, not a second permission system, and it is not a host shell. Every agent-facing contract below is declared once in `app/Domain/Vfs/Spec/VfsOperationSpecRegistry.php`; tool descriptions, schemas, provider metadata, Code Mode aliases, `/tools/vfs/code.json`, `/tools/vfs/openapi.json` and the generated section of this file come from it.
 
-VFS is an interface over existing OpenCompany permissions, not a second permission system. `/docs` patching requires an explicit allowed document-folder scope. Table row patching requires both `vfs_patch` and the normal `update_table_row` tool permission. Agent identity patching requires `vfs_patch` plus the normal `update_agent_identity_file` permission. Agent memory files under `/agents` use relationship-aware rules: agents can patch their own identity and memory files, managers can patch direct report identity files and direct report `memory/MEMORY.md`, and broader memory folders stay self-owned. Read visibility alone does not imply patch capability.
+## Tool surface
 
-If any composed permission requires approval, VFS creates a normal approval request and stores the original VFS operation for approved replay. One approval covers every approval-gated permission the operation needs (for example `vfs_patch` + `update_table_row`, or `vfs_exec` + `vfs_write`), and retrying an identical call while it is pending returns the same approval id. Denied permissions still block immediately, and approved replay revalidates permissions before mutating.
+Five tools are model-visible and stable across runs for the same permissions:
+
+| Tool | Use it for |
+|---|---|
+| `vfs_exec` | Command lines: navigate, search, inspect, `/files` mutations. |
+| `vfs_read` | One text file with line numbers, `offset`/`limit` paging and its `version`; `cursor` for paged collection files. |
+| `vfs_edit` | Exact-text edits of a text file: several edits, all or nothing, `dry_run` diff. |
+| `vfs_write` | Whole-content `create`, `overwrite` (needs `version` when the file exists) or `append`. |
+| `vfs_patch` | Structured records: task/list fields, table rows with `base`; also one text search/replace. |
+
+`vfs_stat`, `vfs_ls`, `vfs_find`, `vfs_rg`, `vfs_exists`, `vfs_mkdir`, `vfs_cp`, `vfs_mv` and `vfs_rm` are Code Mode helpers only (`app.vfs.*`). The former `vfs_search` (= `vfs_rg` with `regex: false`, now `app.vfs.grep`) and `vfs_count` (= a final `vfs_ls` page, which carries `total_count`) were removed.
+
+Permissions: three capability toggles govern every VFS tool. `vfs_exec` covers all reads (`vfs_exec`, `vfs_read` and the read helpers), `vfs_patch` covers `vfs_edit` and `vfs_patch`, and `vfs_write` covers `vfs_write` and file mutations (including shell `mkdir`, `cp`, `mv`, `rm`, `>`). Tools that borrow a permission (`permissionAs` in the provider meta) have no toggle of their own and are hidden from the capabilities list. Domain-backed writes also compose the domain permission: table rows need `update_table_row`, agent identity files need `update_agent_identity_file`, and `/docs` writes need an allowed document-folder scope. Agent memory files under `/agents` follow relationship rules: agents patch their own identity and memory, managers patch direct reports' identity files and `memory/MEMORY.md`. Read visibility alone never implies write capability.
+
+Approvals: if any composed permission requires approval, the VFS creates one normal approval request covering every gated permission of the operation (for example `vfs_patch` + `update_table_row`, or `vfs_exec` + `vfs_write`) and stores the call for approved replay; an identical retry while pending returns the same approval id. Denied permissions block immediately, and approved replay revalidates permissions before mutating. `vfs_edit` is never wrapped in `ApprovalWrappedTool`: its write goes through `OpenCompanyVfs::patch()`, whose policy requests the approval (stored as the equivalent `vfs_patch` call), and its `dry_run` needs no approval at all.
 
 Every entry point requires the bound workspace to be the acting agent's workspace; otherwise it fails with `permission_denied` (`context.reason: workspace_binding_mismatch`).
 
+## Result envelope
+
+All VFS tools return compact JSON (no pretty printing) and never an empty string.
+
+- Success: `{"ok":true,"result":{...}}`.
+- `vfs_exec` is flat: `{"ok","exit_code","stdout","cwd"}` plus `truncated` (with a `hint` on how to continue), `next_cursor`, `output_truncated`, `stderr` when present, `data` only with `responseFormat: "structured"`, and `diagnostics.command_spec` only with `includeCommandSpec`. `stdout` appears exactly once.
+- Failure: `{"ok":false,"error":{"code","message","context"}}`. `error` is the only failure location: a chained failure (`a && b`, `;`, `||`) is reported there too, never as `result.error`. `vfs_exec` failures also carry `exit_code` (2 for `invalid_request`/`unsupported`, else 1) and, with `2>&1`, the merged `stdout`.
+- `internal_error` never contains exception text. The exception is logged with a `correlation_id`, which is the only thing returned in `context`.
+- Invalid UTF-8 is replaced with U+FFFD and the payload gains `encoding_note`; a payload that still cannot be encoded becomes an `internal_error` envelope.
+- Approval outcomes pass through unchanged from the VFS policy and the approval wrapper; tools do not reinterpret them.
+
+## Error codes and contexts
+
+| Code | Typical context | Raised when |
+|---|---|---|
+| `not_found` | `path` | The path does not exist or is not visible. |
+| `not_readable` | `path`, `hint` | Reading a directory as content (`vfs_read` hints `ls`). |
+| `not_writable` | `path` | Generated or read-only paths, unsupported write roots. |
+| `permission_denied` | `path`, reason in message, `reason: workspace_binding_mismatch` | A composed permission or scope is missing. |
+| `unsupported` | `field`, `hint`, `supported_flags`, `text_roots` | Unsupported command, flag or syntax; `vfs_edit` on a record root; `vfs_exec` `cursor` before the executor supports it. |
+| `approval_required` | `approval_id`, `path`, `tool`, `tools`, `required_tools`, `wait_for_approval` | A gated permission created (or reused) an approval. Not a failure. |
+| `invalid_request` | `field`, `path`, `hint`, `edit_index`, `minimum_bytes`, `bytes`, `max_content_bytes` | Missing/invalid input, bad budget or cursor, search text not found, identical edit, binary content, missing `version` for an overwrite, oversized record page. |
+| `conflict` | `path`, `current_version`, `given_version`, `hint`; rows add `changed_fields`, `current` | The object changed since the caller's read. |
+| `ambiguous_match` | `path`, `count`, `lines` (1-based), `hint`, `edit_index` | `old_text`/`search` matched more than once without `replace_all`. |
+| `internal_error` | `correlation_id` | Unexpected failure. |
+
+## Reading
+
+`vfs_read` serves ordinary files from one full content read (never the truncated display read), so `version` describes exactly the bytes returned and `total_lines` is exact. Lines come numbered like `cat -n` (`%6d<TAB>line`); the prefix is not part of the file. `offset` is a 1-based line, `limit` a line count (default 2000), `maxBytes` (default 50,000) caps the page on whole lines; a single longer line is cut UTF-8-safely and flagged `line_cut`. A truncated page returns `next_offset` and a `hint` ("Showing lines 1-200 of 5310. Continue with offset=201."). `raw: true` returns byte-exact text without numbers (`app.vfs.cat` defaults to it). Directories fail with `not_readable`; binary or non-UTF-8 content fails with `invalid_request` and a hint to use `xxd`, `base64` or `iconv`.
+
+Paged collection files (`/tables/{table}/rows.ndjson`, `/channels/{channel}/messages/YYYY-MM-DD.md`, `/workspace/members.json`, stat metadata `paged_collection: true`) page by `cursor` instead: `limit` is a record count, records are returned raw and never split, `next_cursor` is always present (null on the last page). Using `offset` there, or `cursor` on an ordinary file, is `invalid_request`.
+
+## Editing
+
+- `vfs_edit`: `edits: [{old_text, new_text, replace_all?}]` apply in order to the result of the previous edit, all or nothing. Matching is the Phase 1 exact-match engine (`VfsTextPatch`): byte-exact, 0 matches is `invalid_request` ("Patch search text was not found"), more than one without `replace_all` is `ambiguous_match` with 1-based `lines`; failures name `context.edit_index`. With `version` from `vfs_read`, a stale base still applies when every `old_text` still matches exactly once (`stale_base: true`, `note`), else `conflict`. `dry_run: true` returns a unified `diff` and writes nothing. Otherwise the plan is reduced to one search/replace anchored on the smallest unique region covering every change and sent through `OpenCompanyVfs::patch()` with the version of the content the plan was computed on, so the locked compare-and-write, approvals and audit are the `vfs_patch` path. Text roots: `/docs`, `/files`, `/agents` identity and memory (and `/me` once mounted); records go to `vfs_patch`.
+- `vfs_patch`: task and list item fields as flat JSON (`{"status":"completed"}`); table rows as `{"data":{"Column":"value"},"base":{"Column":"value you read"}}` on `/tables/{table}/rows/by-id/{row}.json`, where keys are column names or ids, only supplied columns are written (merged into the row as it is at write time), and `base` turns a concurrent change into `conflict` (`context.changed_fields`, `context.current`). Text paths also accept one `{"search","replace","replace_all"?}` or a `SEARCH/REPLACE` block. `version` is checked atomically; stale record patches are `conflict`.
+- `vfs_write`: `mode` is `create` (default; fails if it exists), `overwrite` or `append`. Overwriting an existing object without `version` is `invalid_request` with the hint to read it first (`vfs_read` with `limit: 1` returns the version). `append` reads the full content and writes `current + content` anchored on the version it read, so a concurrent writer causes `conflict`, never a lost update; a missing file is created. The request is forwarded unchanged as the tool parameters, so approvals replay the same mode and an `idempotency_key` reaches the write path.
+- Patches and appends always use full content reads up to `config('vfs.max_content_bytes')` (20 MB); above it they fail with `invalid_request`. Display reads may end with `[... truncated]`, and a redirect or `tee` that would persist that line fails instead.
+
 ## Commands
 
-- Discover support with `help`, `help <command>`, `man <command>`, `<command> --help`, `which <command>`, `type <command>`, `command -v <command>`, `/tools/vfs/commands.json`, and `/tools/vfs/commands/<command>/<command>.json`.
-- `grep` is literal; `rg` is regex.
-- Unquoted path globs expand with normal `*`, `?`, and character classes against one parent directory. Quoted globs stay literal. `**`, brace expansion, `$VAR`, command substitution, process substitution, and host programs are intentionally unsupported.
-- Redirection support is explicit: `<` reads bounded stdin from a VFS path; `>`, `>>`, `1>`, and `1>>` write stdout to `/files`; `/dev/null` discards stdout; `2>/dev/null` suppresses stderr; `2>&1` merges stderr into stdout with shell-like order sensitivity. Stderr file targets such as `2>/files/error.txt`, heredocs, and process substitution are rejected.
-- `jq` is a safe subset: `.`, `.field`, `.[0]`, `.items[]`, `.items[].name`, `.["key"]`, `length`, sorted `keys`, `has("key")`, `map(.field)`, `select(.field == "value")`, simple numeric arithmetic, stdin, NDJSON, and file arguments. `-r` is accepted; scalar output is raw by default. `-c` emits compact JSON.
-- Safe binary-adjacent inspection is available through bounded text APIs: `xxd` supports hex dump/plain hex/reverse plain hex, `strings` extracts printable runs, `iconv` converts text encodings, and `gzip`/`gunzip`/`zcat`/`zgrep` support compressed-text pipelines.
-- `tar`, `zip`, and `unzip` support bounded archive create/list/print/extract flows. Archive extraction writes only under `/files`, rejects unsafe paths, and requires `vfs_write`.
-- `cp`, `mv`, `rm`, `mkdir`, `touch`, `mktemp`, `tee`, `truncate`, `split`, `csplit`, and non-symlink `ln` mutate `/files` only and require `vfs_write` permission. `ln -s` is recognized but rejected until VFS has first-class symlink entries.
+- Discover support with `help`, `help <command>`, `man <command>`, `<command> --help`, `which <command>`, `type <command>`, `command -v <command>`, `/tools/vfs/commands.json`, `/tools/vfs/commands/<command>.json` (or `/tools/vfs/commands/<command>/<command>.json`).
+- `grep` is literal and `rg` is regex, in the shell and in Code Mode (`app.vfs.grep` defaults `regex: false`).
+- Unquoted path globs expand `*`, `?` and character classes. Quoted globs stay literal. `$VAR`, command substitution, process substitution and host programs are unsupported.
+- Redirection: `<` reads bounded stdin from a VFS path; `>`, `>>`, `1>`, `1>>` write stdout to `/files`; `/dev/null` discards; `2>/dev/null` suppresses stderr; `2>&1` merges stderr into stdout.
+- `jq` is a safe subset; binary-adjacent inspection uses bounded `xxd`, `strings`, `iconv`, `gzip`/`gunzip`/`zcat`/`zgrep`; `tar`, `zip`, `unzip` extract only under `/files` and require `vfs_write`.
+- `cp`, `mv`, `rm`, `mkdir`, `touch`, `mktemp`, `tee`, `truncate`, `split`, `csplit` and non-symlink `ln` mutate `/files` only and compose `vfs_exec` + `vfs_write`. The shell `patch` command is rejected; use `vfs_edit` or `vfs_patch`.
 
-## Patching
+Command semantics are owned by `VfsCommandSpecRegistry` and documented per command in `/tools/vfs/commands*`.
 
-- Use `vfs_patch` for targeted edits; the shell `patch` command is intentionally rejected.
-- Text-backed paths use JSON `{"search":"old","replace":"new"}` (optionally `"replace_all": true`) or a SEARCH/REPLACE block. The search text must match exactly once: no match is `invalid_request` ("Patch search text was not found in {path}"), several matches are `ambiguous_match` with `context.count` and 1-based `context.lines`, unless `replace_all` is set. Patches always edit the full stored content, never a truncated read.
-- `version` is optional; when given it is checked atomically with the write. A stale version is `conflict` (`context.path`, `current_version`, `given_version`, `hint`). For text patches only, a stale version still applies when the search text matches exactly once in the current content; the result then carries `stale_base: true` and a `note`.
-- Table row paths use `{"data": {...}}` on `/tables/{table}/rows/by-id/{row}.json`; keys must be existing column names or UUIDs. Only the supplied columns are written, merged into the row as it is at write time. Add `"base": {"Column": "value you read"}` to reject the patch with `conflict` (`context.changed_fields`, `context.current`) if any of those fields changed.
-- `vfs_stat` and `vfs_read` expose `capabilities` and mutation metadata so agents can see whether a path is patchable, denied, or approval-gated before attempting a write. A mutation capability is present only when the exact path is domain-eligible and its required tools are allowed or approval-gated.
-- `metadata.mutation_actions.{patch|write}` contains action-specific `required_tools`, `permission`, `requires_approval`, `approval_tool` or `denied_tool`, an optional `denied_reason`, and a usage `hint`. This matters for `/files`, where targeted patch and raw write permissions are independent. Single-action entries also retain the flat `mutation_required_tools`, `mutation_permission`, `mutation_approval_tool`, `mutation_denied_tool`, `mutation_denied_reason`, and `mutation_hint` fields.
+## Budgets, truncation and cursors
 
-## Budgets
+`vfs_exec` accepts `maxEntries` (alias `limit`), `maxDepth`, `maxBytes`, `maxFiles`, `maxMatches` and `maxLineLength`; helpers use `limit` for page size. Integers are validated strictly (`invalid_request` names the field). When output is cut, `truncated` is true and the result says how to continue: `next_cursor` (pass it back as `cursor`), `next_offset` for `vfs_read`, or narrow the path. A truncated listing is not a complete count; the final `vfs_ls` page carries `total_count` and `count_is_exact: true`.
 
-`vfs_exec` accepts `maxEntries`, `maxDepth`, `maxBytes`, `maxFiles`, and `maxMatches`. Structured helpers accept camelCase and snake_case aliases. Treat returned counts as sampled unless `count_is_exact` is true; inspect `returned`, `limit`, `truncated`, `skipped`, `count_mode`, `sampled_count`, and `total_count`. `vfs_ls`, `vfs_find`, and `vfs_count` return `next_cursor` when more bounded results are available. `vfs_read` does the same for `/channels/{channel}/messages/YYYY-MM-DD.md`, `/tables/{table}/rows.ndjson`, and `/workspace/members.json`. Pass `next_cursor` back as `cursor` to continue.
+`vfs_exec` accepts `cursor` and forwards it to the command executor once the executor's cursor parameter exists (Phase 2 shell stream); until then a `cursor` fails with `unsupported` rather than silently returning the first page again.
 
-All database-backed listing mounts—`/docs`, `/files`, `/tasks`, `/lists`, `/agents`, `/channels`, `/tables`, `/approvals`, and `/automations`—use mount-owned keyset pages. Documents and files keep folder-first title/name order and authorize each backend row before it consumes the visible `limit`. Tasks, list items, and table rows keep `updated_at DESC, id DESC`; approvals and automations use `created_at DESC, id DESC`; label indexes use `name, id`; saved table views use `created_at, id`; channel day buckets use the distinct day descending. Workspace, permission, relationship, status, agent, assignee, parent, channel, and table predicates remain inside every page query. Only finite synthetic directories retain the bounded compatibility adapter.
+Listing mounts (`/docs`, `/files`, `/tasks`, `/lists`, `/agents`, `/channels`, `/tables`, `/approvals`, `/automations`) use mount-owned keyset pages: authorization happens before an entry consumes the visible `limit`, so a sparse page can be empty with `truncated: true` and a `next_cursor`; continue until it is null. The effective backend scan ceiling is `max(limit, maxFiles)`. Cursors are encrypted and bound to the normalized path, mount adapter, workspace and acting agent. Inserts and deletes before the cursor do not duplicate or skip rows; changes to an active sort field can move a row across the cursor boundary.
 
-The effective backend scan ceiling is `max(limit, maxFiles)`; a sparse permission scope can therefore return zero visible items with `truncated: true` and a non-null `next_cursor`. Continue until `next_cursor` is null. On the final `vfs_count` page, `total_count` is the cumulative visible count and `count_is_exact` is true. Structured `vfs_find` stores resumable depth-first frames and nested mount cursors, so it does not replay prior offsets. One-shot shell traversal, recursive listing, archive, metadata, and glob consumers drain mount pages only up to their explicit operation budgets.
+## Result offloading
 
-Those cursors are encrypted and bound to the normalized path, mount adapter, workspace, and acting agent. They cannot be reused for another path or principal. Inserts and deletes before the current keyset do not cause offset duplication or skipped existing rows. Changes to an active sort field—including document/file names and task/list `updated_at`—can move a row across the cursor boundary; start a new traversal when a strict current-state view is required during concurrent updates.
+Direct (model-facing) VFS results larger than `config('vfs.tool_result_max_bytes')` (100,000 bytes, about 25k tokens) are written in full to `/files/agents/{agent-slug}/.results/{run id or Y-m-d}/{tool}-{uuid}.txt` (`.json` when no single text field dominates) through the normal governed `OpenCompanyVfs::write()` path, and the reply carries a preview (`tool_result_preview_bytes`, 8,000), `offloaded_path`, `offloaded_bytes`, `truncated: true` and a hint to read it with `vfs_read`. If the agent's `vfs_write` is denied or approval-gated, or the write fails, nothing is written and no approval is created: the result is cut to the preview with `truncated: true` and a hint. `vfs_read` is never offloaded (it is the paging tool), and Code Mode callbacks receive full results (`VfsOffloadingTool` decorates only the model-facing tool list). The agent home folder is the existing file-permission convention; `/me/results` aliases the `.results` folder.
 
-The three generated collection files above return independently valid transcript, NDJSON, or JSON chunks, expose `metadata.paged_collection: true`, and never exceed `maxBytes`. Records are admitted whole before their keyset is committed, so a byte boundary cannot corrupt a record or make continuation skip it. If the next complete record cannot fit on an otherwise empty page, `vfs_read` returns `invalid_request` with `context.minimum_bytes`, `context.record_id`, and a retry suggestion. `/workspace/members.json` also reserves the bytes required for its valid JSON envelope. Other budget-limited generated JSON and Markdown can still be truncated at the final returned string boundary; when such a non-paged response reports `truncated`, request a larger `maxBytes` budget before parsing it as a complete machine-readable document.
+## Governance metadata
 
-Write-back paths (`vfs_patch`, `>>`, `tee -a`, archive create/extract, `split`) read full content, never the budgeted display read, up to `config('vfs.max_content_bytes')` (20 MB default); above it they fail with `invalid_request`. Display reads may still end with `[... truncated]`, and a redirect or `tee` that would persist that line fails instead.
+Each operation declares an `effect` (`read`, `write`, or `per_command` for `vfs_exec`, which Code Mode classifies per pipeline) and a governance `actionClass` (`read`, `reversible_edit`, `delete`, `structural`, `governance`; see `docs/architecture/governance-model.md`). `VfsOperationSpecRegistry::actionClassFor($toolSlug, $path, $command)` resolves the per-call class: agent identity and memory paths are `governance`, `rm` is `delete` (deletes move to trash, never purge), other writes are `reversible_edit`. Enforcement is still today's tool permissions and approvals; the class is metadata for the future policy engine.
+
+## Code Mode
+
+`app.vfs.*` in mruby (`code_exec`) calls the same tools with keyword arguments; snake_case keys map to the schema. `exec` is reserved in Ruby, so it is `app.vfs.shell`; `app.vfs.cat` is `read` with `raw: true`; `app.vfs.grep` is `rg` with `regex: false`. A result with `ok: false` raises a typed failure whose type is the VFS error code; an approval created by VFS policy stops the execution as approval-pending. `app.vfs.shell` calls whose pipeline mutates get a durable write receipt. See `resources/code-docs/vfs.md` (served by `code_read_doc("vfs")`).
+
+## Discovery and generated artifacts
+
+- `/tools/index.json` and `/tools/catalog.md`: the agent's effective tool surface (direct tools with approval state, Code Mode groups), from `VfsToolCatalogSource` (today ToolRegistry; later connections, MCP tool definitions and API manifests).
+- `/tools/vfs/code.json`: Code Mode signatures and aliases. `/tools/vfs/openapi.json`: OpenAPI 3.1 description for a future CLI, MCP or HTTP transport (there is no HTTP route yet).
+- `php artisan vfs:spec --format=openapi|markdown|code` prints an artifact; `php artisan vfs:spec --write-docs` regenerates the reference sections of this file and `resources/code-docs/vfs.md`. `VfsToolSurfaceTest` fails when they drift.
+- The agent system prompt carries a short, byte-stable VFS orientation block (`VfsGuide::promptBlock()`) whenever the agent has any VFS tool.
 
 ## Readiness Checklist
 
-- Broad static-analysis gate: `./vendor/bin/phpstan analyse app/Domain/Vfs/OpenCompany app/Agents/Tools/Vfs app/Console/Commands/VfsAtlasCommand.php --memory-limit=1G --no-progress`.
-- Capability-policy gate: `php artisan test tests/Feature/Vfs/VfsCapabilityTruthTest.php`.
-- Permission-correct pagination gate: `php artisan test tests/Feature/Vfs/VfsPaginationTest.php`.
-- Feature gate: `php artisan test tests/Feature/Vfs/VfsFeatureTest.php`.
-- Integrity, approval, isolation and Code Mode gates: `VfsContentIntegrityTest`, `VfsApprovalCoverageTest`, `VfsWorkspaceIsolationTest`, `VfsCodeModeEffectsTest` under `tests/Feature/Vfs/`.
-- Capability-truth gate: representative entries across `/docs`, `/files`, `/agents`, `/tasks`, `/lists`, `/tables`, `/tools`, and `/workspace` assert that advertised `patch` and `write` capabilities execute on the exact visible path, while generated/read-only entries expose `metadata.read_only_reason` and no mutation capabilities.
-- Atlas smoke gate (local/testing only; resolves the agent inside `--workspace` or the bound workspace and dispatches through the runtime's approval wrapping): `php artisan vfs:atlas` covers root browse, command help/specs, primitive stat/read, generated read truncation, display and canonical `/files` writes, read-only write rejection, unsupported-command help, and `&&`/redirection behavior.
-- Intentional limits: generated snapshots are not patchable, stderr redirection to files is rejected, symbolic links are recognized but not created, and extraction/OCR/semantic embeddings remain outside VFS.
+- Static analysis: `./vendor/bin/phpstan analyse app/Domain/Vfs app/Agents/Tools/Vfs app/Console/Commands/VfsAtlasCommand.php --memory-limit=1G --no-progress`.
+- Tool surface, envelopes, read/edit/write semantics, offloading, prompt block and spec drift: `php artisan test tests/Feature/Vfs/VfsToolSurfaceTest.php`.
+- Capability policy, pagination, integrity, approval coverage, isolation and Code Mode: `VfsCapabilityTruthTest`, `VfsPaginationTest`, `VfsContentIntegrityTest`, `VfsApprovalCoverageTest`, `VfsWorkspaceIsolationTest`, `VfsCodeModeEffectsTest`, `VfsFeatureTest` under `tests/Feature/Vfs/`.
+- Atlas smoke (local/testing only): `php artisan vfs:atlas "ls /tools/vfs"`, `php artisan vfs:atlas --primitive=read --arg=path=/tools/vfs.md`.
+- Intentional limits: generated snapshots are not patchable, stderr redirection to files is rejected, symbolic links are recognized but not created, and extraction/OCR/semantic embeddings stay outside the VFS.
 
-## Lua
+<!-- BEGIN GENERATED: php artisan vfs:spec --write-docs -->
 
-Code Mode (`app.vfs.*` in mruby): a helper result with `ok: false` raises a typed failure whose type is the VFS error code (for example `not_found`, `conflict`); an approval created by VFS policy stops the execution as approval-pending, like any gated callback. `app.vfs.shell` calls whose pipeline mutates get a durable write receipt. `app.vfs.grep` is literal (`regex: false` unless passed). The legacy Lua notes below are kept until the docs rewrite: Lua helpers returned `{ ok, result = ... }`, mirror result fields at the top level, and expose list-like results as numeric entries so `#res` works. `app.vfs.exec(command, { response_format = "structured", include_command_spec = true })` keeps stdout text but enriches `data` and diagnostics for programmatic workflows. `app.vfs.write(path, content)` defaults to overwrite for script ergonomics; direct `vfs_write` defaults to create. Generated code should pass `mode = "create"` or `mode = "overwrite"` explicitly.
+## Reference
+
+Generated from `app/Domain/Vfs/Spec/VfsOperationSpecRegistry.php`; edit the spec, then run `php artisan vfs:spec --write-docs`.
+
+| Tool | Model-visible | Ruby | CLI verb | Effect | Action class | Permission |
+|---|---|---|---|---|---|---|
+| `vfs_exec` | yes | `app.vfs.shell` | `exec` | per_command | per_command | `vfs_exec` |
+| `vfs_read` | yes | `app.vfs.read` | `read` | read | read | `vfs_exec` |
+| `vfs_edit` | yes | `app.vfs.edit` | `edit` | write | per_path | `vfs_patch` |
+| `vfs_write` | yes | `app.vfs.write` | `write` | write | per_path | `vfs_write` |
+| `vfs_patch` | yes | `app.vfs.patch` | `patch` | write | per_path | `vfs_patch` |
+| `vfs_stat` | Code Mode only | `app.vfs.stat` | `stat` | read | read | `vfs_exec` |
+| `vfs_ls` | Code Mode only | `app.vfs.ls` | `ls` | read | read | `vfs_exec` |
+| `vfs_find` | Code Mode only | `app.vfs.find` | `find` | read | read | `vfs_exec` |
+| `vfs_rg` | Code Mode only | `app.vfs.rg` | `rg` | read | read | `vfs_exec` |
+| `vfs_exists` | Code Mode only | `app.vfs.exists` | `exists` | read | read | `vfs_exec` |
+| `vfs_mkdir` | Code Mode only | `app.vfs.mkdir` | `mkdir` | write | reversible_edit | `vfs_write` |
+| `vfs_cp` | Code Mode only | `app.vfs.cp` | `cp` | write | reversible_edit | `vfs_write` |
+| `vfs_mv` | Code Mode only | `app.vfs.mv` | `mv` | write | reversible_edit | `vfs_write` |
+| `vfs_rm` | Code Mode only | `app.vfs.rm` | `rm` | write | delete | `vfs_write` |
+
+### `vfs_exec`
+
+Run a unix-like command in the OpenCompany virtual filesystem (not a host shell). Navigate and inspect with ls, tree, find, cat, head, tail, grep (literal), rg (regex), wc, stat, jq, diff and more; pipes, ;, &&, ||, globs and > or >> into /files work. /files mutations (mkdir, touch, tee, cp, mv, rm) also need vfs_write. Returns {ok, exit_code, stdout, cwd}; when truncated is true, hint says how to continue (pass next_cursor as cursor, raise a budget, or narrow the path). Start with `cat /README.md` or `help`. Use vfs_read and vfs_edit for file content.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `command` | string | yes |  | Command line, e.g. `ls /docs`, `rg -n "refund" /docs`, `cat /tasks/counts.json \| jq .open`. |
+| `cwd` | string | no | `/` | Virtual working directory. |
+| `cursor` | string | no |  | next_cursor from a previous truncated result (same command) to continue the listing or paged file. |
+| `responseFormat` | string (default\|structured) | no | `default` | structured adds parsed data (paths, matches, stat) next to stdout. |
+| `maxEntries` | integer | no | `100` | Entries per listing command. Aliases: limit. |
+| `maxDepth` | integer | no | `3` | Recursion depth for tree/find/recursive search. |
+| `maxBytes` | integer | no | `100000` | Bytes read from one file. |
+| `maxFiles` | integer | no | `100` | Files scanned by search commands. |
+| `maxMatches` | integer | no | `100` | Matches returned by search commands. |
+| `maxLineLength` | integer | no | `2000` | Characters per output line before it is shortened. |
+| `includeCommandSpec` | boolean | no | `false` | Add the primary command spec under diagnostics.command_spec. |
+
+Result: `ok` (false when the command line failed (error holds the reason)), `exit_code` (status of the last command (0 success)), `stdout` (command output, once), `cwd` (working directory after the command), `truncated` (present and true when output was cut), `hint` (with truncated: how to continue), `next_cursor` (pass back as cursor to continue), `error` ({code, message, context} when ok is false), `data` (responseFormat=structured only: parsed result), `offloaded_path` (set when the full output was saved to a file (see offloading)).
+
+Permissions: read commands: `vfs_exec`; /files mutations (mkdir, touch, tee, cp, mv, rm, >, >>): `vfs_exec` + `vfs_write`.
+
+Errors: `not_found`, `not_readable`, `not_writable`, `permission_denied`, `unsupported`, `approval_required`, `invalid_request`, `conflict`, `internal_error`.
+
+- grep is literal and rg is regex, in the shell and in Code Mode.
+- No $VAR, command substitution, process substitution or host programs.
+- A command that cannot run fails the whole line with error; a later group after ; or || still runs and exit_code reflects the last command.
+
+```json
+{"command": "ls /"}
+{"command": "rg -n \"refund\" /docs"}
+{"command": "find /docs -name \"*.md\" | head -20"}
+{"command": "ls /tables/customers/rows/by-id", "cursor": "<next_cursor>"}
+```
+
+### `vfs_read`
+
+Read a text file. Lines come numbered like cat -n ("     N<TAB>text"); the prefix is not part of the file. Page with offset (1-based line) and limit (lines, default 2000); paged collection files (rows.ndjson, channel day transcripts, members.json) page with cursor instead. Returns version (pass it to vfs_edit, vfs_patch or vfs_write), total_lines, and truncated with a next_offset hint. raw: true returns the text without line numbers. Directories and binary files fail; use vfs_exec ls or xxd.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `path` | string | yes |  | File path, e.g. /docs/handbook/onboarding or /files/report.md. |
+| `offset` | integer | no | `1` | First line to return (1-based). |
+| `limit` | integer | no | `2000` | Lines to return (records for paged collection files). |
+| `cursor` | string | no |  | next_cursor from the previous page of a paged collection file. |
+| `maxBytes` | integer | no | `50000` | Byte cap for the returned text. |
+| `raw` | boolean | no | `false` | Return text without line numbers. |
+
+Result: `path` (normalized path), `canonical_path` (stable path to reuse (by-id where available)), `content` (the requested lines (numbered unless raw)), `bytes` (byte length of content), `version` (version of exactly these bytes; null for generated files), `offset` (first line returned), `returned_lines` (lines returned), `total_lines` (lines in the whole file (ordinary files)), `truncated` (more content exists), `next_offset` (offset to continue with (ordinary files)), `next_cursor` (cursor to continue with, null on the last page (paged collection files)), `returned` (records returned (paged collection files)), `hint` (how to continue when truncated), `capabilities` (what you may do with the path (read, patch, write, ...)).
+
+Permissions: all paths: `vfs_exec`.
+
+Errors: `not_found`, `not_readable`, `permission_denied`, `invalid_request`, `internal_error`.
+
+- version describes the bytes returned by this same read.
+- Paged collection files return raw records; offset applies to ordinary files only.
+- A line longer than maxBytes is cut at maxBytes (line_cut: true); use vfs_exec head -c or a larger maxBytes.
+
+```json
+{"path": "/docs/handbook/onboarding"}
+{"path": "/files/logs/app.log", "offset": 2001, "limit": 500}
+{"path": "/tables/customers/rows.ndjson", "limit": 100, "cursor": "<next_cursor>"}
+```
+
+### `vfs_edit`
+
+Edit a text file (docs, /files, agent identity and memory) by exact string replacement. edits: [{old_text, new_text, replace_all?}] apply in order, all or nothing. old_text must match exactly once (copy it from vfs_read without the line-number prefix) unless replace_all; otherwise nothing is written and the error is not found or ambiguous_match with line numbers. Pass version from vfs_read: if the file changed since, edits still apply when each old_text still matches exactly once (result.stale_base), else conflict. dry_run: true returns a unified diff without writing. Table rows and task/list fields use vfs_patch.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `path` | string | yes |  | Text file to edit. |
+| `edits` | array | yes |  | Edits applied in order to the result of the previous edit. Items: old_text, new_text, replace_all?. |
+| `version` | string | no |  | version from vfs_read; enables conflict detection. |
+| `dry_run` | boolean | no | `false` | Return the unified diff without writing or requesting approval. |
+
+Result: `status` (updated, unchanged or dry_run), `path` (normalized path), `canonical_path` (stable path), `version` (new version (current version for dry_run)), `edits_applied` (number of edits), `replacements` (total replacements across edits), `stale_base` (true when applied against content newer than your version), `diff` (dry_run only: unified diff).
+
+Permissions: /docs, /files: `vfs_patch`; /agents/{agent}/identity/*: `vfs_patch` + `update_agent_identity_file`; /agents/{agent}/memory/*: `vfs_patch`.
+
+Errors: `not_found`, `not_readable`, `not_writable`, `permission_denied`, `unsupported`, `approval_required`, `invalid_request`, `conflict`, `ambiguous_match`, `internal_error`.
+
+- Line numbers in ambiguous_match are 1-based start lines in the content as it was before that edit.
+- A failing edit reports context.edit_index (0-based); no edit is written.
+- Governed by the vfs_patch permission: vfs_edit has no separate capability toggle.
+
+```json
+{"path": "/docs/handbook/onboarding", "version": "<version>", "edits": [{"old_text": "within 14 days", "new_text": "within 30 days"}]}
+{"path": "/files/notes.md", "edits": [{"old_text": "TODO", "new_text": "DONE", "replace_all": true}], "dry_run": true}
+```
+
+### `vfs_write`
+
+Create, overwrite or append whole text content where the path allows writes (stat lists the write capability; today /files). mode: create (default, fails if the file exists), overwrite (requires version from vfs_read when the file exists), or append (adds to the end, creating the file if missing). For changes inside an existing file use vfs_edit.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `path` | string | yes |  | Path to write, e.g. /files/reports/q3.md. |
+| `content` | string | yes |  | Text to write. |
+| `mode` | string (create\|overwrite\|append) | no | `create` | create, overwrite or append. |
+| `version` | string | no |  | version from vfs_read; required to overwrite an existing file, optional for append. |
+
+Result: `status` (created or updated), `path` (normalized path), `canonical_path` (stable path), `version` (new version), `bytes` (size after the write).
+
+Permissions: /files: `vfs_write`.
+
+Errors: `not_found`, `not_writable`, `permission_denied`, `approval_required`, `invalid_request`, `conflict`, `internal_error`.
+
+- append is version-checked against the content it read, so concurrent appends never lose data (one fails with conflict).
+- An idempotency_key argument is forwarded to the write path unchanged.
+
+```json
+{"path": "/files/reports/q3.md", "content": "# Q3\n"}
+{"path": "/files/reports/q3.md", "mode": "overwrite", "version": "<version>", "content": "# Q3 (final)\n"}
+{"path": "/files/logs/run.log", "mode": "append", "content": "done\n"}
+```
+
+### `vfs_patch`
+
+Patch structured records. Task and list item fields: flat JSON, e.g. {"status":"completed"}. Table rows (/tables/{table}/rows/by-id/{id}.json): {"data":{"Column":"value"},"base":{"Column":"value you read"}}; send only changed columns; base fails the patch with conflict if those fields changed. A single text {"search","replace","replace_all"?} also works, but prefer vfs_edit for text. version (from vfs_read) is checked atomically; stale record patches fail with conflict. Table rows also need update_table_row and agent identity files update_agent_identity_file.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `path` | string | yes |  | Record path, preferably canonical (by-id). |
+| `patch` | string | yes |  | JSON patch as a string: field map, {"data":...,"base":...} for rows, or {"search","replace"} for text. |
+| `version` | string | no |  | version from vfs_read; stale versions fail with conflict for records. |
+
+Result: `status` (updated), `path` (normalized path), `canonical_path` (stable path), `version` (new version), `stale_base` (text patches only: applied against newer content).
+
+Permissions: /tasks, /lists, /docs, /files: `vfs_patch`; /tables/{table}/rows/by-id/*: `vfs_patch` + `update_table_row`; /agents/{agent}/identity/*: `vfs_patch` + `update_agent_identity_file`.
+
+Errors: `not_found`, `not_writable`, `permission_denied`, `unsupported`, `approval_required`, `invalid_request`, `conflict`, `ambiguous_match`, `internal_error`.
+
+- Row keys are column names or column ids; only supplied columns are written, merged into the row as it is at write time.
+- SEARCH/REPLACE blocks (<<<<<<< SEARCH / ======= / >>>>>>> REPLACE) are accepted for text paths.
+
+```json
+{"path": "/tasks/by-id/TASK_ID", "patch": "{\"status\":\"completed\"}", "version": "<version>"}
+{"path": "/tables/customers/rows/by-id/ROW_ID.json", "patch": "{\"data\":{\"Status\":\"active\"},\"base\":{\"Status\":\"lead\"}}"}
+```
+
+### `vfs_stat`
+
+Code Mode helper. Stat a path: type, version, capabilities, canonical path and metadata.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `path` | string | yes |  | Path to inspect. |
+
+Result: `type` (file or directory), `version` (version token), `canonical_path` (stable path), `capabilities` (allowed actions), `metadata` (mutation_actions, mime_type, read_only_reason, ...).
+
+Permissions: all paths: `vfs_exec`.
+
+Errors: `not_found`, `not_readable`, `permission_denied`, `invalid_request`, `internal_error`.
+
+### `vfs_ls`
+
+Code Mode helper. List a directory as structured entries with cursor paging.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `path` | string | no | `/` | Directory to list. |
+| `limit` | integer | no | `100` | Entries per page. Aliases: maxEntries. |
+| `cursor` | string | no |  | next_cursor from the previous page. |
+| `maxFiles` | integer | no | `100` | Backend scan ceiling when permissions hide entries (never below limit). |
+
+Result: `items` (entries (name, path, type, canonical_path, version, capabilities)), `returned` (entries on this page), `truncated` (more pages exist), `next_cursor` (cursor for the next page), `total_count` (exact visible count on the final page, else null), `count_is_exact` (true only when total_count is exact).
+
+Permissions: all paths: `vfs_exec`.
+
+Errors: `not_found`, `not_readable`, `permission_denied`, `invalid_request`, `internal_error`.
+
+- Counting: page until next_cursor is nil; total_count is exact on the final page.
+
+### `vfs_find`
+
+Code Mode helper. Find entries by name and type across bounded directory trees (resumable).
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `paths` | array | no |  | Directories to search. |
+| `name` | string | no | `*` | fnmatch name filter such as *.md. Aliases: glob. |
+| `type` | string (file\|directory) | no |  | file or directory. |
+| `limit` | integer | no | `100` | Entries per page. Aliases: maxEntries. |
+| `cursor` | string | no |  | next_cursor from the previous page. |
+| `maxDepth` | integer | no | `3` | Recursion depth. |
+| `maxFiles` | integer | no | `100` | Entries scanned per page. |
+
+Result: `items` (matching entries), `truncated` (more pages exist), `next_cursor` (cursor for the next page).
+
+Permissions: all paths: `vfs_exec`.
+
+Errors: `not_found`, `not_readable`, `permission_denied`, `invalid_request`, `internal_error`.
+
+### `vfs_rg`
+
+Code Mode helper. Search text across VFS paths (regex by default; app.vfs.grep is literal). Deterministic and permission-filtered, not semantic.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `pattern` | string | yes |  | Regex, or literal text with regex: false. Aliases: query. |
+| `paths` | array | no |  | Paths to search. Aliases: path. |
+| `regex` | boolean | no | `true` | Treat pattern as a regular expression. |
+| `ignoreCase` | boolean | no | `false` | Case-insensitive. Aliases: caseInsensitive. |
+| `maxMatches` | integer | no | `100` | Matches to return. |
+| `maxFiles` | integer | no | `100` | Files to scan. |
+| `maxDepth` | integer | no | `3` | Recursion depth. |
+
+Result: `matches` (list of {path, line, text}), `count` (matches returned), `truncated` (budgets cut the search), `scanned` (files scanned).
+
+Permissions: all paths: `vfs_exec`.
+
+Errors: `not_found`, `not_readable`, `permission_denied`, `invalid_request`, `internal_error`.
+
+### `vfs_exists`
+
+Code Mode helper. Check whether a path exists without raising not_found.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `path` | string | yes |  | Path to check. |
+
+Result: `exists` (boolean), `stat` (stat result when it exists).
+
+Permissions: all paths: `vfs_exec`.
+
+Errors: `not_found`, `not_readable`, `permission_denied`, `invalid_request`, `internal_error`.
+
+### `vfs_mkdir`
+
+Code Mode helper. Create a writable directory (idempotent).
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `path` | string | yes |  | Directory path under /files. |
+
+Result: `status` (operation result), `path` (affected path).
+
+Permissions: /files: `vfs_write`.
+
+Errors: `not_found`, `not_writable`, `permission_denied`, `approval_required`, `invalid_request`, `internal_error`.
+
+### `vfs_cp`
+
+Code Mode helper. Copy a writable file.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `source` | string | yes |  | Source path. Aliases: src. |
+| `destination` | string | yes |  | Destination path or directory. Aliases: dst, dest. |
+
+Result: `status` (operation result), `path` (affected path).
+
+Permissions: /files: `vfs_write`.
+
+Errors: `not_found`, `not_writable`, `permission_denied`, `approval_required`, `invalid_request`, `internal_error`.
+
+### `vfs_mv`
+
+Code Mode helper. Move or rename a writable file.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `source` | string | yes |  | Source path. Aliases: src. |
+| `destination` | string | yes |  | Destination path or directory. Aliases: dst, dest. |
+
+Result: `status` (operation result), `path` (affected path).
+
+Permissions: /files: `vfs_write`.
+
+Errors: `not_found`, `not_writable`, `permission_denied`, `approval_required`, `invalid_request`, `internal_error`.
+
+### `vfs_rm`
+
+Code Mode helper. Delete a writable file.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `path` | string | yes |  | File path. |
+
+Result: `status` (operation result), `path` (affected path).
+
+Permissions: /files: `vfs_write`.
+
+Errors: `not_found`, `not_writable`, `permission_denied`, `approval_required`, `invalid_request`, `internal_error`.
+
+### Error codes
+
+| Code | Meaning and next step |
+|---|---|
+| `not_found` | The path does not exist or is not visible to you. Check the parent with ls; context may carry did_you_mean. |
+| `not_readable` | The path exists but cannot be read as content (for example a directory); list it instead. |
+| `not_writable` | The path is read-only or generated (snapshots, indexes, catalogs); write to a canonical writable path. |
+| `permission_denied` | A required permission or scope is missing; context names it. Do not retry or work around it; tell the user what is needed. |
+| `unsupported` | The command, flag, format or root is not supported; the message names an alternative. |
+| `approval_required` | A gated permission created an approval request (context.approval_id). Not a failure: continue other work; the outcome is posted back when a human decides. Do not retry. |
+| `invalid_request` | Malformed input: missing field, bad budget or cursor, text not found, binary content, or a missing version; context.hint says what to change. |
+| `conflict` | The object changed since your read (context.current_version; rows add changed_fields). Read it again and re-apply your change. |
+| `ambiguous_match` | old_text/search matched more than once (context.count, context.lines). Add surrounding text to make it unique or set replace_all. |
+| `internal_error` | Unexpected server error; context.correlation_id identifies the log entry. Retrying the same call is unlikely to help. |
+
+<!-- END GENERATED: vfs:spec -->

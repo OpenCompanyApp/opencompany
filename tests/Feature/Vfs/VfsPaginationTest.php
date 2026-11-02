@@ -230,9 +230,10 @@ class VfsPaginationTest extends TestCase
             $this->assertSame('invalid_request', $response['error']['code']);
         }
 
-        // Cursors are bound to the listing, not to ls versus count, so the count
-        // helper can finish the same traversal and report the cumulative total.
-        $count = $this->tool('vfs_count', [
+        // Cursors are bound to the listing, so a later vfs_ls call can finish
+        // the same traversal and report the cumulative total (Phase 2 folded
+        // the removed vfs_count helper into vfs_ls).
+        $count = $this->tool('vfs_ls', [
             'path' => '/docs/by-id',
             'limit' => 100,
             'cursor' => $cursor,
@@ -851,7 +852,7 @@ class VfsPaginationTest extends TestCase
         $pageCount = 0;
 
         do {
-            $response = $this->tool('vfs_count', array_filter([
+            $response = $this->tool('vfs_ls', array_filter([
                 'path' => $path,
                 'limit' => $limit,
                 'maxFiles' => $maxFiles,
