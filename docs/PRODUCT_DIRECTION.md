@@ -6,7 +6,7 @@ same day. The UI structure, sidebar, anti-mess rules, the core-primitives-plus-a
 governance presets with gating by reversibility were accepted the same day as well, and so were
 Artifacts as a core primitive and Forms as a Table view type, connected hosts (bring your own machine,
 including over Tailscale), the Rust `oc` CLI, and full data sovereignty (export, backup and portability,
-hosted included).
+hosted included). The product name **Avok** (replacing OpenCompany) was locked the same day.
 Supersedes: earlier positioning ("A Company in a Box", "Slack/Discord where half the team is AI",
 the Reader-first modular company OS, the AI app builder framing) and the earlier integration and
 automation plans, wherever they conflict with this document.
@@ -17,6 +17,30 @@ Evidence: [Agent landscape report (2026-11)](research/2026-11-agent-landscape.md
 This document owns *what OpenCompany is becoming and in what order*. It makes no implementation
 claims. What exists today is in [Current State](CURRENT_STATE.md). Engineering priority and open
 audits are in the [Roadmap](ROADMAP.md), which must follow this document.
+
+## Name: Avok
+
+Locked 2026-11-02. **OpenCompany is being renamed to Avok.** "OpenCompany" is crowded: several
+same-category GitHub projects use it, including one with 1,000+ stars, and most of its domains are
+gone, including `opencompany.si`, which a speculator holds.
+
+- **Brand:** "Avok, by Bowerbird". The *av-* echoes *avis* (bird), keeping the portfolio's bird
+  convention.
+- **Tagline direction:** "Agents, without the havoc." The name's echo of "havoc" names the fear, and
+  governance is the answer.
+- **In-product wording:** "teammates" or "agents", for example "hire an Avok teammate". Individual
+  agents keep their own names.
+- **CLI:** the binary becomes `avok`, replacing `oc`.
+- **Domains:** `avok.si` is primary. `avok.ai` comes next if the budget allows. `opencompany.app` is
+  kept as a redirect. The install line can be `avok.si/install` until a dedicated install domain is
+  worth buying.
+- **Odil** (`odil.si`) is reserved for a possible future product.
+- **Pending before public announcement:** a trademark clearance search (EUIPO/TMview, USPTO, WIPO;
+  classes 9, 38, 42), with the neighbouring AVOKA and AVOKE marks as the specific question, and a
+  quick native-speaker check of "avokado" (avocado) in Slovene and Croatian.
+- **Timing:** the rename runs as its own task **after Phase 0 lands**. It covers the repository, the
+  GitHub org, the Homebrew tap, the website, docs, Linear, the CLI, and in-app and config names.
+  Until then, documents may keep saying OpenCompany.
 
 ## The decision in one sentence
 
@@ -473,7 +497,7 @@ Connections ──produce──▶ Events ──match──▶ Triggers ──st
 - **Outward-facing later:** OpenCompany itself as an MCP server, MCP Apps rendered as messenger
   cards, and A2A Agent Cards per durable agent.
 
-### 10. The `oc` CLI (Rust, agent-first)
+### 10. The `oc` CLI (Rust, agent-first; binary renamed to `avok` with the product rename)
 
 Locked 2026-11-02. Full design: [`oc` CLI and hosts](planning/oc-cli-and-hosts.md).
 
