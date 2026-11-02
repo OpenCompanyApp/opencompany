@@ -4,7 +4,6 @@ namespace App\Events;
 
 use App\Models\ApprovalRequest;
 use App\Models\User;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
@@ -25,7 +24,9 @@ class ApprovalCreated implements ShouldBroadcast
         $workspaceId = User::where('id', $this->approval->requester_id)->value('workspace_id');
 
         return [
-            new Channel('workspace.' . $workspaceId . '.approvals'),
+            // Invariant: private — approval titles/descriptions are workspace
+            // data; routes/channels.php admits workspace members only.
+            new PrivateChannel('workspace.' . $workspaceId . '.approvals'),
         ];
     }
 

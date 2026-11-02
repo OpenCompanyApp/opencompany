@@ -27,6 +27,8 @@ class DocumentResource extends JsonResource
             'icon' => $this->icon,
             'createdAt' => $this->created_at,
             'updatedAt' => $this->updated_at,
+            // Send back as baseVersion / If-Match when updating content.
+            'version' => $this->resource->contentVersion(),
             'author' => $this->whenLoaded('author', fn() => new UserResource($this->author)),
             'parent' => $this->whenLoaded('parent', fn() => new DocumentResource($this->parent)),
             'children' => $this->whenLoaded('children', fn() => DocumentResource::collection($this->children)),

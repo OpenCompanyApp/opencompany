@@ -9,15 +9,15 @@ import { onMounted, watch } from 'vue'
 import { useRealtime } from '@/composables/useRealtime'
 import { useWorkspace } from '@/composables/useWorkspace'
 
-const { connect, isConnected, channel, privateChannel, leaveChannel, emit } = useRealtime()
+const { connect, isConnected, privateChannel, leaveChannel, emit } = useRealtime()
 const { workspace } = useWorkspace()
 
 const subscribeToWorkspaceChannels = (workspaceId: string) => {
   if (!workspaceId) return
 
-  // Public: agent status updates
+  // Private (workspace members only): agent status updates
   const agentsChannelName = `workspace.${workspaceId}.agents`
-  const agentsCh = channel(agentsChannelName)
+  const agentsCh = privateChannel(agentsChannelName)
   console.log('[Realtime] Subscribed to agents channel', agentsChannelName, !!agentsCh)
   agentsCh?.listen('.AgentStatusUpdated', (data: unknown) => {
     console.log('[Realtime] AgentStatusUpdated', data)

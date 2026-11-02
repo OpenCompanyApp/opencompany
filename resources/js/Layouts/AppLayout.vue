@@ -59,7 +59,9 @@ useChannelListener<{ id: string; status: string }>(
     if (agent) {
       agent.status = data.status as AgentStatus
     }
-  }
+  },
+  // Private: routes/channels.php admits workspace members only.
+  { private: true },
 )
 
 // Refresh sidebar data when workspace changes (layout persists across Inertia visits)

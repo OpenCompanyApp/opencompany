@@ -278,6 +278,8 @@ export interface Document {
   content_format?: 'markdown' | 'html'
   updatedAt: Date
   createdAt: Date
+  /** Optimistic-concurrency token; send back as baseVersion when saving content. */
+  version?: string
   author: User
   viewers?: User[]
   editors?: User[]

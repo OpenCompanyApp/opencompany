@@ -3,7 +3,7 @@
 namespace App\Events;
 
 use App\Models\User;
-use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -25,7 +25,10 @@ class AgentStatusUpdated implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new Channel('workspace.' . $this->agent->workspace_id . '.agents'),
+            // Invariant: private — routes/channels.php admits workspace members
+            // only. A public channel would leak agent status to anyone holding
+            // the Reverb key and a workspace id.
+            new PrivateChannel('workspace.' . $this->agent->workspace_id . '.agents'),
         ];
     }
 

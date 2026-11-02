@@ -117,4 +117,16 @@ class Document extends Model
     {
         return $this->hasMany(DocumentAttachment::class);
     }
+
+    /**
+     * Optimistic-concurrency token for this document's content.
+     *
+     * Invariant: identical to the version the VFS reports and checks
+     * (ResolvesVfsEntries::version), so human editors (document API) and
+     * agents (VFS) detect each other's writes with one token.
+     */
+    public function contentVersion(): string
+    {
+        return hash('sha256', ($this->updated_at?->toIso8601String() ?? '').'|'.hash('sha256', (string) ($this->content ?? '')));
+    }
 }

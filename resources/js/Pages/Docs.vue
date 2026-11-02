@@ -317,7 +317,7 @@ const documents = computed<Document[]>(() => documentsData.value ?? [])
 
 // Select the first actual document (not a folder)
 const selectedDoc = ref<Document | null>(null)
-const saveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
+const saveStatus = ref<'idle' | 'saving' | 'saved' | 'error' | 'conflict'>('idle')
 const showVersionHistory = ref(false)
 const showCommentsSidebar = ref(false)
 const showMobileDocList = ref(false)
@@ -507,16 +507,25 @@ const handleDrop = async (event: { item: Document; target: Document; position: s
 }
 
 // Auto-save: debounced content update
+// Optimistic concurrency: every content save names the version it was based
+// on. If an agent (VFS) or another editor changed the document meanwhile, the
+// server answers 409 and we stop autosaving instead of overwriting their work.
+// The unsaved text stays in the editor so nothing is lost.
 const performSave = async (content: string) => {
   if (!selectedDoc.value) return
+  if (saveStatus.value === 'conflict') return
 
   saveStatus.value = 'saving'
   try {
-    await updateDocument(selectedDoc.value.id, {
+    const saved = await updateDocument(selectedDoc.value.id, {
       content,
       content_format: 'html',
       changeDescription: 'Content updated',
+      baseVersion: selectedDoc.value.version,
     })
+    if (selectedDoc.value && saved?.version) {
+      selectedDoc.value = { ...selectedDoc.value, version: saved.version }
+    }
     await refreshDocuments()
     await loadVersions(selectedDoc.value.id)
 
@@ -533,14 +542,16 @@ const performSave = async (content: string) => {
         saveStatus.value = 'idle'
       }
     }, 2000)
-  } catch {
-    saveStatus.value = 'error'
+  } catch (error: unknown) {
+    const status = (error as { response?: { status?: number } })?.response?.status
+    saveStatus.value = status === 409 || status === 428 ? 'conflict' : 'error'
   }
 }
 
 const debouncedSave = useDebounceFn(performSave, 1500)
 
 const handleAutoSave = (content: string) => {
+  if (saveStatus.value === 'conflict') return
   saveStatus.value = 'saving'
   debouncedSave(content)
 }

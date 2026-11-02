@@ -269,7 +269,7 @@ export const useApi = () => {
   const fetchDocument = (id: string) => useFetch<Document>(DocumentApi.show(id))
   const createDocument = (data: { title: string; content?: string; authorId: string; parentId?: string; isFolder?: boolean; viewerIds?: string[]; editorIds?: string[] }) =>
     wayfinderRequest<Document>(DocumentApi.store(), { data }).then(response => response.data)
-  const updateDocument = (id: string, data: Partial<Document> & { saveVersion?: boolean; changeDescription?: string }) =>
+  const updateDocument = (id: string, data: Partial<Document> & { saveVersion?: boolean; changeDescription?: string; baseVersion?: string }) =>
     wayfinderRequest<Document>(DocumentApi.update(id), { data }).then(response => response.data)
   const deleteDocument = (id: string) =>
     wayfinderRequest(DocumentApi.destroy(id))

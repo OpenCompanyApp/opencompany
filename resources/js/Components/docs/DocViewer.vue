@@ -145,7 +145,7 @@ import DocViewerHeader from './doc-viewer/DocViewerHeader.vue'
 import TipTapEditor from './TipTapEditor.vue'
 
 type DocViewerSize = 'sm' | 'md' | 'lg'
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'conflict'
 
 interface Comment {
   id: string

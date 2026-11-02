@@ -316,6 +316,7 @@
               saveStatus === 'saving' && 'text-neutral-500',
               saveStatus === 'saved' && 'text-neutral-600',
               saveStatus === 'error' && 'text-neutral-700',
+              saveStatus === 'conflict' && 'text-amber-600 dark:text-amber-400',
             ]"
           >
             <Icon
@@ -427,7 +428,7 @@ import PresenceRow from '@/Components/shared/PresenceRow.vue'
 // ============================================================================
 
 type HeaderSize = 'sm' | 'md' | 'lg'
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | null
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'conflict' | null
 type DocumentType = 'document' | 'markdown' | 'code' | 'spreadsheet' | 'presentation'
 
 interface Breadcrumb {
@@ -698,6 +699,7 @@ const saveStatusIcon = computed(() => {
     case 'saving': return 'ph:spinner'
     case 'saved': return 'ph:check-circle'
     case 'error': return 'ph:warning-circle'
+    case 'conflict': return 'ph:git-diff'
     default: return ''
   }
 })
@@ -707,6 +709,7 @@ const saveStatusText = computed(() => {
     case 'saving': return 'Saving...'
     case 'saved': return 'Saved'
     case 'error': return 'Error saving'
+    case 'conflict': return 'Changed elsewhere — reload before saving'
     default: return ''
   }
 })

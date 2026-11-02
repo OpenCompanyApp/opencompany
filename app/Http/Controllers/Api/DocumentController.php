@@ -146,9 +146,33 @@ class DocumentController extends Controller
         return new DocumentResource($document->load(['author', 'permissions.user']));
     }
 
-    public function update(Request $request, string $id): DocumentResource
+    public function update(Request $request, string $id): DocumentResource|JsonResponse
     {
         $document = Document::forWorkspace()->findOrFail($id);
+
+        // Invariant: optimistic concurrency for content. Agents edit documents
+        // through the VFS, which checks the same version token; without this
+        // check an open editor's autosave would silently overwrite them. A
+        // content write must name the version it was based on (body
+        // `baseVersion` or an `If-Match` header). Metadata-only updates (title,
+        // icon, colour, parent, publish) are not guarded.
+        if ($request->has('content')) {
+            $baseVersion = (string) ($request->input('baseVersion') ?? trim((string) $request->header('If-Match'), '"'));
+            if ($baseVersion === '') {
+                return response()->json([
+                    'error' => 'version_required',
+                    'message' => 'Content updates must include the document version they are based on (baseVersion or If-Match).',
+                    'currentVersion' => $document->contentVersion(),
+                ], 428);
+            }
+            if (! hash_equals($document->contentVersion(), $baseVersion)) {
+                return response()->json([
+                    'error' => 'version_conflict',
+                    'message' => 'This document changed since you opened it. Reload to see the latest version before saving.',
+                    'document' => new DocumentResource($document->load(['author'])),
+                ], 409);
+            }
+        }
 
         // Version snapshots are explicit so autosaves do not create noisy
         // history. Capture the previous content before applying updates.
