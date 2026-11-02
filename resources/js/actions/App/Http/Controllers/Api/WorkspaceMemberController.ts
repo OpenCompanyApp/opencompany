@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::index
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:14
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:23
 * @route '/api/workspace/members'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::index
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:14
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:23
 * @route '/api/workspace/members'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::index
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:14
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:23
 * @route '/api/workspace/members'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::index
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:14
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:23
 * @route '/api/workspace/members'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::invite
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:41
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:50
 * @route '/api/workspace/members/invite'
 */
 export const invite = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -60,7 +60,7 @@ invite.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::invite
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:41
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:50
 * @route '/api/workspace/members/invite'
 */
 invite.url = (options?: RouteQueryOptions) => {
@@ -69,7 +69,7 @@ invite.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::invite
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:41
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:50
 * @route '/api/workspace/members/invite'
 */
 invite.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -79,7 +79,7 @@ invite.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::updateRole
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:78
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:88
 * @route '/api/workspace/members/{id}/role'
 */
 export const updateRole = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -94,7 +94,7 @@ updateRole.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::updateRole
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:78
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:88
 * @route '/api/workspace/members/{id}/role'
 */
 updateRole.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -121,7 +121,7 @@ updateRole.url = (args: { id: string | number } | [id: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::updateRole
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:78
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:88
 * @route '/api/workspace/members/{id}/role'
 */
 updateRole.patch = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -131,7 +131,7 @@ updateRole.patch = (args: { id: string | number } | [id: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::remove
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:97
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:107
 * @route '/api/workspace/members/{id}'
 */
 export const remove = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -146,7 +146,7 @@ remove.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::remove
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:97
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:107
 * @route '/api/workspace/members/{id}'
 */
 remove.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -173,7 +173,7 @@ remove.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::remove
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:97
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:107
 * @route '/api/workspace/members/{id}'
 */
 remove.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -183,7 +183,7 @@ remove.delete = (args: { id: string | number } | [id: string | number ] | string
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::resendInvite
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:112
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:122
 * @route '/api/workspace/invitations/{id}/resend'
 */
 export const resendInvite = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -198,7 +198,7 @@ resendInvite.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::resendInvite
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:112
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:122
 * @route '/api/workspace/invitations/{id}/resend'
 */
 resendInvite.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -225,7 +225,7 @@ resendInvite.url = (args: { id: string | number } | [id: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::resendInvite
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:112
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:122
 * @route '/api/workspace/invitations/{id}/resend'
 */
 resendInvite.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -235,7 +235,7 @@ resendInvite.post = (args: { id: string | number } | [id: string | number ] | st
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::cancelInvite
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:123
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:133
 * @route '/api/workspace/invitations/{id}'
 */
 export const cancelInvite = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -250,7 +250,7 @@ cancelInvite.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::cancelInvite
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:123
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:133
 * @route '/api/workspace/invitations/{id}'
 */
 cancelInvite.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -277,7 +277,7 @@ cancelInvite.url = (args: { id: string | number } | [id: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Api\WorkspaceMemberController::cancelInvite
-* @see app/Http/Controllers/Api/WorkspaceMemberController.php:123
+* @see app/Http/Controllers/Api/WorkspaceMemberController.php:133
 * @route '/api/workspace/invitations/{id}'
 */
 cancelInvite.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({

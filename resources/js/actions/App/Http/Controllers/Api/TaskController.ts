@@ -141,7 +141,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::update
-* @see app/Http/Controllers/Api/TaskController.php:42
+* @see app/Http/Controllers/Api/TaskController.php:57
 * @route '/api/tasks/{id}'
 */
 export const update = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -156,7 +156,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::update
-* @see app/Http/Controllers/Api/TaskController.php:42
+* @see app/Http/Controllers/Api/TaskController.php:57
 * @route '/api/tasks/{id}'
 */
 update.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -183,7 +183,7 @@ update.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::update
-* @see app/Http/Controllers/Api/TaskController.php:42
+* @see app/Http/Controllers/Api/TaskController.php:57
 * @route '/api/tasks/{id}'
 */
 update.patch = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -193,7 +193,7 @@ update.patch = (args: { id: string | number } | [id: string | number ] | string 
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::destroy
-* @see app/Http/Controllers/Api/TaskController.php:47
+* @see app/Http/Controllers/Api/TaskController.php:74
 * @route '/api/tasks/{id}'
 */
 export const destroy = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -208,7 +208,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::destroy
-* @see app/Http/Controllers/Api/TaskController.php:47
+* @see app/Http/Controllers/Api/TaskController.php:74
 * @route '/api/tasks/{id}'
 */
 destroy.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -235,7 +235,7 @@ destroy.url = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::destroy
-* @see app/Http/Controllers/Api/TaskController.php:47
+* @see app/Http/Controllers/Api/TaskController.php:74
 * @route '/api/tasks/{id}'
 */
 destroy.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -245,7 +245,7 @@ destroy.delete = (args: { id: string | number } | [id: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::start
-* @see app/Http/Controllers/Api/TaskController.php:54
+* @see app/Http/Controllers/Api/TaskController.php:81
 * @route '/api/tasks/{id}/start'
 */
 export const start = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -260,7 +260,7 @@ start.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::start
-* @see app/Http/Controllers/Api/TaskController.php:54
+* @see app/Http/Controllers/Api/TaskController.php:81
 * @route '/api/tasks/{id}/start'
 */
 start.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -287,7 +287,7 @@ start.url = (args: { id: string | number } | [id: string | number ] | string | n
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::start
-* @see app/Http/Controllers/Api/TaskController.php:54
+* @see app/Http/Controllers/Api/TaskController.php:81
 * @route '/api/tasks/{id}/start'
 */
 start.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -297,7 +297,7 @@ start.post = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::pause
-* @see app/Http/Controllers/Api/TaskController.php:59
+* @see app/Http/Controllers/Api/TaskController.php:86
 * @route '/api/tasks/{id}/pause'
 */
 export const pause = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -312,7 +312,7 @@ pause.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::pause
-* @see app/Http/Controllers/Api/TaskController.php:59
+* @see app/Http/Controllers/Api/TaskController.php:86
 * @route '/api/tasks/{id}/pause'
 */
 pause.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -339,7 +339,7 @@ pause.url = (args: { id: string | number } | [id: string | number ] | string | n
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::pause
-* @see app/Http/Controllers/Api/TaskController.php:59
+* @see app/Http/Controllers/Api/TaskController.php:86
 * @route '/api/tasks/{id}/pause'
 */
 pause.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -349,7 +349,7 @@ pause.post = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::resume
-* @see app/Http/Controllers/Api/TaskController.php:64
+* @see app/Http/Controllers/Api/TaskController.php:91
 * @route '/api/tasks/{id}/resume'
 */
 export const resume = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -364,7 +364,7 @@ resume.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::resume
-* @see app/Http/Controllers/Api/TaskController.php:64
+* @see app/Http/Controllers/Api/TaskController.php:91
 * @route '/api/tasks/{id}/resume'
 */
 resume.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -391,7 +391,7 @@ resume.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::resume
-* @see app/Http/Controllers/Api/TaskController.php:64
+* @see app/Http/Controllers/Api/TaskController.php:91
 * @route '/api/tasks/{id}/resume'
 */
 resume.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -401,7 +401,7 @@ resume.post = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::complete
-* @see app/Http/Controllers/Api/TaskController.php:69
+* @see app/Http/Controllers/Api/TaskController.php:96
 * @route '/api/tasks/{id}/complete'
 */
 export const complete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -416,7 +416,7 @@ complete.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::complete
-* @see app/Http/Controllers/Api/TaskController.php:69
+* @see app/Http/Controllers/Api/TaskController.php:96
 * @route '/api/tasks/{id}/complete'
 */
 complete.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -443,7 +443,7 @@ complete.url = (args: { id: string | number } | [id: string | number ] | string 
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::complete
-* @see app/Http/Controllers/Api/TaskController.php:69
+* @see app/Http/Controllers/Api/TaskController.php:96
 * @route '/api/tasks/{id}/complete'
 */
 complete.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -453,7 +453,7 @@ complete.post = (args: { id: string | number } | [id: string | number ] | string
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::fail
-* @see app/Http/Controllers/Api/TaskController.php:74
+* @see app/Http/Controllers/Api/TaskController.php:101
 * @route '/api/tasks/{id}/fail'
 */
 export const fail = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -468,7 +468,7 @@ fail.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::fail
-* @see app/Http/Controllers/Api/TaskController.php:74
+* @see app/Http/Controllers/Api/TaskController.php:101
 * @route '/api/tasks/{id}/fail'
 */
 fail.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -495,7 +495,7 @@ fail.url = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::fail
-* @see app/Http/Controllers/Api/TaskController.php:74
+* @see app/Http/Controllers/Api/TaskController.php:101
 * @route '/api/tasks/{id}/fail'
 */
 fail.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -505,7 +505,7 @@ fail.post = (args: { id: string | number } | [id: string | number ] | string | n
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::cancel
-* @see app/Http/Controllers/Api/TaskController.php:79
+* @see app/Http/Controllers/Api/TaskController.php:106
 * @route '/api/tasks/{id}/cancel'
 */
 export const cancel = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -520,7 +520,7 @@ cancel.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::cancel
-* @see app/Http/Controllers/Api/TaskController.php:79
+* @see app/Http/Controllers/Api/TaskController.php:106
 * @route '/api/tasks/{id}/cancel'
 */
 cancel.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -547,7 +547,7 @@ cancel.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::cancel
-* @see app/Http/Controllers/Api/TaskController.php:79
+* @see app/Http/Controllers/Api/TaskController.php:106
 * @route '/api/tasks/{id}/cancel'
 */
 cancel.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -557,7 +557,7 @@ cancel.post = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::steps
-* @see app/Http/Controllers/Api/TaskController.php:87
+* @see app/Http/Controllers/Api/TaskController.php:114
 * @route '/api/tasks/{id}/steps'
 */
 export const steps = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -572,7 +572,7 @@ steps.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::steps
-* @see app/Http/Controllers/Api/TaskController.php:87
+* @see app/Http/Controllers/Api/TaskController.php:114
 * @route '/api/tasks/{id}/steps'
 */
 steps.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -599,7 +599,7 @@ steps.url = (args: { id: string | number } | [id: string | number ] | string | n
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::steps
-* @see app/Http/Controllers/Api/TaskController.php:87
+* @see app/Http/Controllers/Api/TaskController.php:114
 * @route '/api/tasks/{id}/steps'
 */
 steps.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -609,7 +609,7 @@ steps.get = (args: { id: string | number } | [id: string | number ] | string | n
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::steps
-* @see app/Http/Controllers/Api/TaskController.php:87
+* @see app/Http/Controllers/Api/TaskController.php:114
 * @route '/api/tasks/{id}/steps'
 */
 steps.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -619,7 +619,7 @@ steps.head = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::addStep
-* @see app/Http/Controllers/Api/TaskController.php:92
+* @see app/Http/Controllers/Api/TaskController.php:119
 * @route '/api/tasks/{id}/steps'
 */
 export const addStep = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -634,7 +634,7 @@ addStep.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::addStep
-* @see app/Http/Controllers/Api/TaskController.php:92
+* @see app/Http/Controllers/Api/TaskController.php:119
 * @route '/api/tasks/{id}/steps'
 */
 addStep.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -661,7 +661,7 @@ addStep.url = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::addStep
-* @see app/Http/Controllers/Api/TaskController.php:92
+* @see app/Http/Controllers/Api/TaskController.php:119
 * @route '/api/tasks/{id}/steps'
 */
 addStep.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -671,7 +671,7 @@ addStep.post = (args: { id: string | number } | [id: string | number ] | string 
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::updateStep
-* @see app/Http/Controllers/Api/TaskController.php:97
+* @see app/Http/Controllers/Api/TaskController.php:124
 * @route '/api/tasks/{taskId}/steps/{stepId}'
 */
 export const updateStep = (args: { taskId: string | number, stepId: string | number } | [taskId: string | number, stepId: string | number ], options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -686,7 +686,7 @@ updateStep.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::updateStep
-* @see app/Http/Controllers/Api/TaskController.php:97
+* @see app/Http/Controllers/Api/TaskController.php:124
 * @route '/api/tasks/{taskId}/steps/{stepId}'
 */
 updateStep.url = (args: { taskId: string | number, stepId: string | number } | [taskId: string | number, stepId: string | number ], options?: RouteQueryOptions) => {
@@ -712,7 +712,7 @@ updateStep.url = (args: { taskId: string | number, stepId: string | number } | [
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::updateStep
-* @see app/Http/Controllers/Api/TaskController.php:97
+* @see app/Http/Controllers/Api/TaskController.php:124
 * @route '/api/tasks/{taskId}/steps/{stepId}'
 */
 updateStep.patch = (args: { taskId: string | number, stepId: string | number } | [taskId: string | number, stepId: string | number ], options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -722,7 +722,7 @@ updateStep.patch = (args: { taskId: string | number, stepId: string | number } |
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::completeStep
-* @see app/Http/Controllers/Api/TaskController.php:102
+* @see app/Http/Controllers/Api/TaskController.php:129
 * @route '/api/tasks/{taskId}/steps/{stepId}/complete'
 */
 export const completeStep = (args: { taskId: string | number, stepId: string | number } | [taskId: string | number, stepId: string | number ], options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -737,7 +737,7 @@ completeStep.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::completeStep
-* @see app/Http/Controllers/Api/TaskController.php:102
+* @see app/Http/Controllers/Api/TaskController.php:129
 * @route '/api/tasks/{taskId}/steps/{stepId}/complete'
 */
 completeStep.url = (args: { taskId: string | number, stepId: string | number } | [taskId: string | number, stepId: string | number ], options?: RouteQueryOptions) => {
@@ -763,7 +763,7 @@ completeStep.url = (args: { taskId: string | number, stepId: string | number } |
 
 /**
 * @see \App\Http\Controllers\Api\TaskController::completeStep
-* @see app/Http/Controllers/Api/TaskController.php:102
+* @see app/Http/Controllers/Api/TaskController.php:129
 * @route '/api/tasks/{taskId}/steps/{stepId}/complete'
 */
 completeStep.post = (args: { taskId: string | number, stepId: string | number } | [taskId: string | number, stepId: string | number ], options?: RouteQueryOptions): RouteDefinition<'post'> => ({

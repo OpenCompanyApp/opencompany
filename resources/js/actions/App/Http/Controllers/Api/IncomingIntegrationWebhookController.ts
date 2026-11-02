@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\IncomingIntegrationWebhookController::__invoke
-* @see app/Http/Controllers/Api/IncomingIntegrationWebhookController.php:19
+* @see app/Http/Controllers/Api/IncomingIntegrationWebhookController.php:27
 * @route '/api/webhooks/{webhook}'
 */
 const IncomingIntegrationWebhookController = (args: { webhook: string | number } | [webhook: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ IncomingIntegrationWebhookController.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\IncomingIntegrationWebhookController::__invoke
-* @see app/Http/Controllers/Api/IncomingIntegrationWebhookController.php:19
+* @see app/Http/Controllers/Api/IncomingIntegrationWebhookController.php:27
 * @route '/api/webhooks/{webhook}'
 */
 IncomingIntegrationWebhookController.url = (args: { webhook: string | number } | [webhook: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -43,7 +43,7 @@ IncomingIntegrationWebhookController.url = (args: { webhook: string | number } |
 
 /**
 * @see \App\Http\Controllers\Api\IncomingIntegrationWebhookController::__invoke
-* @see app/Http/Controllers/Api/IncomingIntegrationWebhookController.php:19
+* @see app/Http/Controllers/Api/IncomingIntegrationWebhookController.php:27
 * @route '/api/webhooks/{webhook}'
 */
 IncomingIntegrationWebhookController.post = (args: { webhook: string | number } | [webhook: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({

@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\AutomationRuleController::index
-* @see app/Http/Controllers/Api/AutomationRuleController.php:15
+* @see app/Http/Controllers/Api/AutomationRuleController.php:25
 * @route '/api/automation-rules'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AutomationRuleController::index
-* @see app/Http/Controllers/Api/AutomationRuleController.php:15
+* @see app/Http/Controllers/Api/AutomationRuleController.php:25
 * @route '/api/automation-rules'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\AutomationRuleController::index
-* @see app/Http/Controllers/Api/AutomationRuleController.php:15
+* @see app/Http/Controllers/Api/AutomationRuleController.php:25
 * @route '/api/automation-rules'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\AutomationRuleController::index
-* @see app/Http/Controllers/Api/AutomationRuleController.php:15
+* @see app/Http/Controllers/Api/AutomationRuleController.php:25
 * @route '/api/automation-rules'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\AutomationRuleController::store
-* @see app/Http/Controllers/Api/AutomationRuleController.php:26
+* @see app/Http/Controllers/Api/AutomationRuleController.php:36
 * @route '/api/automation-rules'
 */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -60,7 +60,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AutomationRuleController::store
-* @see app/Http/Controllers/Api/AutomationRuleController.php:26
+* @see app/Http/Controllers/Api/AutomationRuleController.php:36
 * @route '/api/automation-rules'
 */
 store.url = (options?: RouteQueryOptions) => {
@@ -69,7 +69,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\AutomationRuleController::store
-* @see app/Http/Controllers/Api/AutomationRuleController.php:26
+* @see app/Http/Controllers/Api/AutomationRuleController.php:36
 * @route '/api/automation-rules'
 */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -79,7 +79,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\AutomationRuleController::update
-* @see app/Http/Controllers/Api/AutomationRuleController.php:44
+* @see app/Http/Controllers/Api/AutomationRuleController.php:55
 * @route '/api/automation-rules/{id}'
 */
 export const update = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -94,7 +94,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AutomationRuleController::update
-* @see app/Http/Controllers/Api/AutomationRuleController.php:44
+* @see app/Http/Controllers/Api/AutomationRuleController.php:55
 * @route '/api/automation-rules/{id}'
 */
 update.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -121,7 +121,7 @@ update.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\AutomationRuleController::update
-* @see app/Http/Controllers/Api/AutomationRuleController.php:44
+* @see app/Http/Controllers/Api/AutomationRuleController.php:55
 * @route '/api/automation-rules/{id}'
 */
 update.patch = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -131,7 +131,7 @@ update.patch = (args: { id: string | number } | [id: string | number ] | string 
 
 /**
 * @see \App\Http\Controllers\Api\AutomationRuleController::destroy
-* @see app/Http/Controllers/Api/AutomationRuleController.php:77
+* @see app/Http/Controllers/Api/AutomationRuleController.php:88
 * @route '/api/automation-rules/{id}'
 */
 export const destroy = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -146,7 +146,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AutomationRuleController::destroy
-* @see app/Http/Controllers/Api/AutomationRuleController.php:77
+* @see app/Http/Controllers/Api/AutomationRuleController.php:88
 * @route '/api/automation-rules/{id}'
 */
 destroy.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -173,7 +173,7 @@ destroy.url = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\Api\AutomationRuleController::destroy
-* @see app/Http/Controllers/Api/AutomationRuleController.php:77
+* @see app/Http/Controllers/Api/AutomationRuleController.php:88
 * @route '/api/automation-rules/{id}'
 */
 destroy.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
