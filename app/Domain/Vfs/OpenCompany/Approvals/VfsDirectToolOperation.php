@@ -59,7 +59,7 @@ final class VfsDirectToolOperation
         $subject = $toolSlug === 'vfs_exec'
             ? VfsPath::commandSubject((string) ($parameters['command'] ?? ''))
             : VfsPath::normalize((string) ($parameters['path'] ?? $parameters['source'] ?? ''));
-        $requiredTools = self::requiredTools($toolSlug, $subject);
+        $requiredTools = self::requiredTools($toolSlug, $subject, (string) ($parameters['mode'] ?? 'create'));
 
         return new self(
             $toolSlug,
@@ -76,10 +76,35 @@ final class VfsDirectToolOperation
      *
      * @return list<string>
      */
-    public static function requiredTools(string $toolSlug, string $subject): array
+    public static function requiredTools(string $toolSlug, string $subject, string $mode = 'create'): array
     {
         if ($toolSlug === 'vfs_exec') {
             return ['vfs_exec', 'vfs_write'];
+        }
+
+        // Record writes through vfs_write compose the matching domain tool
+        // (see MutatesVfsDocumentRecords / MutatesVfsTableRows /
+        // MutatesVfsListItems). Keep these rows identical to what those
+        // paths pass to the policy, or a wrapper-gated vfs_write replay asks
+        // for a second approval of the backing tool.
+        if ($toolSlug === 'vfs_write') {
+            if (preg_match('#^/docs(?:/|$)#', $subject) === 1 && ! str_starts_with($subject, '/docs/.trash')) {
+                return ['vfs_write', $mode === 'create' ? 'create_document' : 'update_document'];
+            }
+            if (preg_match('#^/tables/.+/rows/new\.json$#', $subject) === 1) {
+                return ['vfs_write', 'add_table_row'];
+            }
+            if (preg_match('#^/tables/.+/rows/#', $subject) === 1) {
+                return ['vfs_write', 'update_table_row'];
+            }
+            if (preg_match('#^/lists/.+/new\.md$#', $subject) === 1) {
+                return ['vfs_write', 'create_list_item'];
+            }
+            if (str_starts_with($subject, '/lists/')) {
+                return ['vfs_write', 'update_list_item'];
+            }
+
+            return ['vfs_write'];
         }
 
         if ($toolSlug !== 'vfs_patch' && $toolSlug !== 'vfs_edit') {
@@ -88,6 +113,9 @@ final class VfsDirectToolOperation
 
         if (str_starts_with($subject, '/tables/') && str_contains($subject, '/rows/')) {
             return ['vfs_patch', 'update_table_row'];
+        }
+        if (str_starts_with($subject, '/lists/')) {
+            return ['vfs_patch', 'update_list_item'];
         }
         if (preg_match('#^/(?:agents/(?:by-id/)?[^/]+|me)/identity/#', $subject) === 1) {
             return ['vfs_patch', 'update_agent_identity_file'];

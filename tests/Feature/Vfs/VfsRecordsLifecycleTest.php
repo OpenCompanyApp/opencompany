@@ -365,6 +365,31 @@ class VfsRecordsLifecycleTest extends TestCase
         }
     }
 
+    // Regression (integration of records with approval replay): when the
+    // vfs_write tool itself is approval-gated (wrapper) AND the backing domain
+    // tool is gated, one approval must cover both. The replay mirror in
+    // VfsDirectToolOperation::requiredTools has to list the record tool, or the
+    // approved replay asks for a second approval.
+    public function test_wrapper_gated_record_writes_apply_after_one_approval(): void
+    {
+        $folder = $this->grantedFolder('Wrapped');
+        [$table] = $this->customersTable();
+        $this->gate('vfs_write');
+        $this->gate('create_document');
+        $this->gate('add_table_row');
+
+        $wrapped = new \App\Agents\Tools\System\ApprovalWrappedTool($this->writeTool(), $this->agent, 'vfs_write');
+        $wrapped->handle(new Request(['path' => "/docs/by-id/{$folder->id}/Wrapped Doc.md", 'content' => 'body', 'mode' => 'create']));
+        app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->sole(), 'approved', $this->approver());
+        $this->assertSame('body', Document::forWorkspace()->where('title', 'Wrapped Doc')->sole()->content);
+        $this->assertSame(1, ApprovalRequest::query()->count());
+
+        $wrapped->handle(new Request(['path' => '/tables/customers/rows/new.json', 'content' => json_encode(['data' => ['Name' => 'Wrapped Co']]), 'mode' => 'create']));
+        app(ApprovalExecutionService::class)->resolve(ApprovalRequest::query()->where('status', 'pending')->sole(), 'approved', $this->approver());
+        $this->assertSame(1, DataTableRow::query()->where('table_id', $table->id)->count());
+        $this->assertSame(2, ApprovalRequest::query()->count());
+    }
+
     private function grantedFolder(string $title): Document
     {
         $folder = Document::factory()->create(['title' => $title, 'is_folder' => true, 'author_id' => $this->agent->id]);
