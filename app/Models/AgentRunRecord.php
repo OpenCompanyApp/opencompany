@@ -69,6 +69,8 @@ class AgentRunRecord extends Model
         'finished_at',
         'last_error',
         'metadata',
+        'causality_id',
+        'causality_depth',
     ];
 
     protected function casts(): array
@@ -126,6 +128,9 @@ class AgentRunRecord extends Model
                 'status' => self::STATUS_QUEUED,
                 'max_attempts' => $maxAttempts,
                 'heartbeat_at' => now(),
+                // Every run carries the causality chain of the work it executes.
+                'causality_id' => $task->causality_id,
+                'causality_depth' => (int) ($task->causality_depth ?? 0),
             ],
         );
 

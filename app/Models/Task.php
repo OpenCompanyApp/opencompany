@@ -23,7 +23,10 @@ use Illuminate\Support\Str;
  * @property array<string, mixed>|null $result
  * @property array<string, mixed>|null $context
  * @property string $status
+ * @property string $workspace_id
  * @property string|null $agent_id
+ * @property string|null $causality_id
+ * @property int $causality_depth
  * @property string|null $channel_id
  * @property string|null $parent_task_id
  * @property Carbon|null $started_at
@@ -101,6 +104,8 @@ class Task extends Model
         'trigger_message_id',
         'list_item_id',
         'parent_task_id',
+        'causality_id',
+        'causality_depth',
         'source',
         'context',
         'result',

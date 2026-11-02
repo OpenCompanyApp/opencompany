@@ -28,6 +28,9 @@ use Laravel\Ai\Tools\Request;
 class ContactAgent implements Tool
 {
 
+    /** @var array{causality_id: string, causality_depth: int}|array{} Causality of the delegated task. */
+    private array $childCausality = [];
+
     public function __construct(
         private User $agent,
         private AgentPermissionService $permissionService,
@@ -137,6 +140,7 @@ class ContactAgent implements Tool
                 return "Error: {$refused->getMessage()}";
             }
             $lineage = app(DelegationGuard::class)->childContext($this->agent, $currentTask);
+            $this->childCausality = app(DelegationGuard::class)->childColumns($currentTask);
 
             // Get or create DM channel
             $channelId = $this->commService->getOrCreateDmChannel($this->agent, $target);
@@ -179,7 +183,7 @@ class ContactAgent implements Tool
     }
 
     /**
-     * @param  array{delegation_depth: int, delegation_chain: list<string>}  $lineage
+     * @param  array{delegation_chain: list<string>}  $lineage
      */
     private function handleAsk(User $target, string $channelId, string $message, string $formattedMessage, ?Task $currentTask, array $lineage): string
     {
@@ -209,7 +213,9 @@ class ContactAgent implements Tool
             'parent_task_id' => $parentTaskId,
             'context' => $lineage,
             'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
+            ...$this->childCausality,
         ]);
+        app(DelegationGuard::class)->recordDelegation($this->agent, $target, $askTask, 'ask');
 
         // Track on parent agent — delegation-hold mechanism will keep parent waiting
         $this->agent->addAwaitingDelegation($askTask->id);
@@ -254,7 +260,9 @@ class ContactAgent implements Tool
             'parent_task_id' => $parentTaskId,
             'context' => array_merge($lineage, $context ? ['delegation_context' => $context] : []),
             'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
+            ...$this->childCausality,
         ]);
+        app(DelegationGuard::class)->recordDelegation($this->agent, $target, $subtask, 'delegate');
 
         // Track delegation on caller
         $this->agent->addAwaitingDelegation($subtask->id);
@@ -275,7 +283,7 @@ class ContactAgent implements Tool
     }
 
     /**
-     * @param  array{delegation_depth: int, delegation_chain: list<string>}  $lineage
+     * @param  array{delegation_chain: list<string>}  $lineage
      */
     private function handleNotify(User $target, string $channelId, string $message, string $formattedMessage, array $lineage): string
     {
@@ -295,7 +303,9 @@ class ContactAgent implements Tool
             // notify chains cannot ping-pong forever.
             'context' => $lineage,
             'workspace_id' => $this->agent->workspace_id ?? workspace()->id,
+            ...$this->childCausality,
         ]);
+        app(DelegationGuard::class)->recordDelegation($this->agent, $target, $task, 'notify');
 
         $triggerMessage = $this->commService->postMessage($channelId, $this->agent, $formattedMessage, 'agent_contact');
         AgentRespondJob::dispatch($triggerMessage, $target, $channelId);

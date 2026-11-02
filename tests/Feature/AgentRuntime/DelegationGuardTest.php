@@ -18,8 +18,9 @@ use Tests\TestCase;
 
 /**
  * Regression for the audit finding that the delegation depth guard was dead,
- * in-process code: depth and the agent chain must be read from persisted tasks
- * so a chain spread across separately queued AgentRespondJobs is still bounded.
+ * in-process code: depth is the persisted causality chain (shared with events
+ * and routines, limit `events.max_depth`), so a chain spread across separately
+ * queued AgentRespondJobs is still bounded.
  */
 class DelegationGuardTest extends TestCase
 {
@@ -31,7 +32,7 @@ class DelegationGuardTest extends TestCase
         parent::setUp();
         Event::fake();
         Bus::fake([AgentRespondJob::class]);
-        config(['agents.delegation.max_depth' => 2]);
+        config(['events.max_depth' => 2]);
     }
 
     private function agent(): User
@@ -68,12 +69,16 @@ class DelegationGuardTest extends TestCase
 
         $this->assertStringContainsString('Delegated to', $this->contact($a, $b, $this->rootTask($a)->id));
         $hop1 = Task::where('agent_id', $b->id)->sole();
-        $this->assertSame(1, $hop1->context['delegation_depth']);
+        $this->assertSame(1, $hop1->causality_depth);
 
         $this->assertStringContainsString('Delegated to', $this->contact($b, $c, $hop1->id));
         $hop2 = Task::where('agent_id', $c->id)->sole();
-        $this->assertSame(2, $hop2->context['delegation_depth']);
+        $this->assertSame(2, $hop2->causality_depth);
+        $this->assertSame($hop1->causality_id, $hop2->causality_id, 'one chain across queued hops');
         $this->assertSame([$a->id, $b->id], $hop2->context['delegation_chain']);
+        // Each hop is recorded on the same chain in the workspace event log.
+        $this->assertSame(2, \App\Models\WorkspaceEvent::query()
+            ->where('type', 'agent.delegated')->where('causality_id', $hop1->causality_id)->count());
 
         $refused = $this->contact($c, $d, $hop2->id);
         $this->assertStringContainsString('Delegation depth limit reached', $refused);

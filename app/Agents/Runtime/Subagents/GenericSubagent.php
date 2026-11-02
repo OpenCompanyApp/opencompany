@@ -284,7 +284,11 @@ class GenericSubagent implements Agent, CanActAsTool, Conversational, HasTools
                 'parent_task_id' => $parent->id,
                 'started_at' => now(),
                 'context' => $delegator instanceof User ? $guard->childContext($delegator, $parent) : null,
+                ...$guard->childColumns($parent),
             ]);
+            if ($delegator instanceof User) {
+                $guard->recordDelegation($delegator, $this->agent, $child, 'subagent');
+            }
 
             return [$parent, $child];
         });

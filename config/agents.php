@@ -18,11 +18,7 @@ return [
         'max_tools' => (int) env('AGENT_SUBAGENT_MAX_TOOLS', 8),
     ],
 
-    'delegation' => [
-        // Maximum number of delegation hops (contact_agent ask/delegate/notify
-        // and synchronous subagent calls) between the originating run and the
-        // agent doing the work. Depth 1 is a direct delegation.
-        'max_depth' => (int) env('AGENT_DELEGATION_MAX_DEPTH', 3),
-    ],
+    // Delegation depth is the workspace causality chain limit:
+    // config/events.php `max_depth` (EVENTS_MAX_DEPTH).
 
 ];
