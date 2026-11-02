@@ -36,7 +36,7 @@ use Laravel\Ai\Tools\Request as ToolRequest;
  * permissions, paths, command coverage, and structured output quickly.
  *
  * Use --primitive when the smoke test needs to hit the same direct VFS tool
- * primitive an agent or Lua helper would use, such as vfs_patch or vfs_read.
+ * primitive an agent or Code Mode helper would use, such as vfs_patch or vfs_read.
  */
 class VfsAtlasCommand extends Command
 {

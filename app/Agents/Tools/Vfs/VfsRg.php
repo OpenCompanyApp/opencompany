@@ -20,7 +20,7 @@ class VfsRg implements Tool
 
     public function description(): string
     {
-        return 'Lua helper for exact or regex text search over VFS paths. Search is deterministic and permission-filtered, not semantic embedding retrieval.';
+        return 'Code Mode helper for exact or regex text search over VFS paths. Search is deterministic and permission-filtered, not semantic embedding retrieval.';
     }
 
     public function handle(Request $request): string

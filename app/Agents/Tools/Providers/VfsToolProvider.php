@@ -26,8 +26,11 @@ use Laravel\Ai\Contracts\Tool;
  * Registers the OpenCompany virtual filesystem primitive tools.
  *
  * The tools are direct model-visible primitives, while the same tool slugs are
- * also available through Lua as the `app.vfs` namespace via the normal tool
- * catalog builder.
+ * also available in mruby Code Mode as the `app.vfs` namespace via the normal
+ * script catalog builder. `scriptOnly` helpers (stat, ls, read, rg, ...) are
+ * never registered as model tools; their permission is evaluated against the
+ * human-visible primitive (`vfs_write` for writes, `vfs_exec` for reads) in
+ * ToolRegistry::evaluateToolPermission().
  */
 class VfsToolProvider implements BuiltInToolProvider
 {
@@ -78,97 +81,97 @@ class VfsToolProvider implements BuiltInToolProvider
                 'class' => VfsStat::class,
                 'type' => 'read',
                 'name' => 'VFS Stat',
-                'description' => 'Lua-only helper for statting a virtual path with version and capabilities.',
+                'description' => 'Code Mode helper for statting a virtual path with version and capabilities.',
                 'icon' => 'ph:info',
-                'luaOnly' => true,
+                'scriptOnly' => true,
             ],
             'vfs_ls' => [
                 'class' => VfsLs::class,
                 'type' => 'read',
                 'name' => 'VFS Ls',
-                'description' => 'Lua-only helper for listing virtual directories as structured entries.',
+                'description' => 'Code Mode helper for listing virtual directories as structured entries.',
                 'icon' => 'ph:list-bullets',
-                'luaOnly' => true,
+                'scriptOnly' => true,
             ],
             'vfs_read' => [
                 'class' => VfsRead::class,
                 'type' => 'read',
                 'name' => 'VFS Read',
-                'description' => 'Lua-only helper for reading virtual text content with metadata.',
+                'description' => 'Code Mode helper for reading virtual text content with metadata.',
                 'icon' => 'ph:file-text',
-                'luaOnly' => true,
+                'scriptOnly' => true,
             ],
             'vfs_rg' => [
                 'class' => VfsRg::class,
                 'type' => 'read',
                 'name' => 'VFS Rg',
-                'description' => 'Lua-only helper for exact or regex text search over VFS paths.',
+                'description' => 'Code Mode helper for exact or regex text search over VFS paths.',
                 'icon' => 'ph:magnifying-glass',
-                'luaOnly' => true,
+                'scriptOnly' => true,
             ],
             'vfs_find' => [
                 'class' => VfsFind::class,
                 'type' => 'read',
                 'name' => 'VFS Find',
-                'description' => 'Lua-only helper for structured find over bounded VFS trees.',
+                'description' => 'Code Mode helper for structured find over bounded VFS trees.',
                 'icon' => 'ph:binoculars',
-                'luaOnly' => true,
+                'scriptOnly' => true,
             ],
             'vfs_search' => [
                 'class' => VfsSearch::class,
                 'type' => 'read',
                 'name' => 'VFS Search',
-                'description' => 'Lua-only helper for deterministic lexical VFS search.',
+                'description' => 'Code Mode helper for deterministic lexical VFS search.',
                 'icon' => 'ph:text-aa',
-                'luaOnly' => true,
+                'scriptOnly' => true,
             ],
             'vfs_exists' => [
                 'class' => VfsExists::class,
                 'type' => 'read',
                 'name' => 'VFS Exists',
-                'description' => 'Lua-only helper for checking whether a VFS path exists.',
+                'description' => 'Code Mode helper for checking whether a VFS path exists.',
                 'icon' => 'ph:check-circle',
-                'luaOnly' => true,
+                'scriptOnly' => true,
             ],
             'vfs_mkdir' => [
                 'class' => VfsMkdir::class,
                 'type' => 'write',
                 'name' => 'VFS Mkdir',
-                'description' => 'Lua-only helper for creating a writable VFS directory.',
+                'description' => 'Code Mode helper for creating a writable VFS directory.',
                 'icon' => 'ph:folder-plus',
-                'luaOnly' => true,
+                'scriptOnly' => true,
             ],
             'vfs_cp' => [
                 'class' => VfsCp::class,
                 'type' => 'write',
                 'name' => 'VFS Cp',
-                'description' => 'Lua-only helper for copying writable VFS files.',
+                'description' => 'Code Mode helper for copying writable VFS files.',
                 'icon' => 'ph:copy',
-                'luaOnly' => true,
+                'scriptOnly' => true,
             ],
             'vfs_mv' => [
                 'class' => VfsMv::class,
                 'type' => 'write',
                 'name' => 'VFS Mv',
-                'description' => 'Lua-only helper for moving writable VFS files.',
+                'description' => 'Code Mode helper for moving writable VFS files.',
                 'icon' => 'ph:arrows-out-line-horizontal',
-                'luaOnly' => true,
+                'scriptOnly' => true,
             ],
             'vfs_rm' => [
                 'class' => VfsRm::class,
                 'type' => 'write',
                 'name' => 'VFS Rm',
-                'description' => 'Lua-only helper for deleting writable VFS files.',
+                'description' => 'Code Mode helper for deleting writable VFS files.',
                 'icon' => 'ph:trash',
-                'luaOnly' => true,
+                'scriptOnly' => true,
             ],
             'vfs_count' => [
                 'class' => VfsCount::class,
                 'type' => 'read',
                 'name' => 'VFS Count',
-                'description' => 'Lua-only helper for counting directory entries with truncation metadata.',
+                'description' => 'Code Mode helper for counting directory entries with truncation metadata.',
                 'icon' => 'ph:number-square-one',
-                'luaOnly' => true,
+                'scriptOnly' => true,
             ],
         ];
     }

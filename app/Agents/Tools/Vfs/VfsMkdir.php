@@ -20,7 +20,7 @@ class VfsMkdir implements Tool
 
     public function description(): string
     {
-        return 'Lua helper for creating a writable /files directory.';
+        return 'Code Mode helper for creating a writable /files directory.';
     }
 
     public function handle(Request $request): string

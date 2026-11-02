@@ -21,7 +21,7 @@ class VfsExists implements Tool
 
     public function description(): string
     {
-        return 'Lua helper for checking whether a VFS path exists without throwing on not_found.';
+        return 'Code Mode helper for checking whether a VFS path exists without throwing on not_found.';
     }
 
     public function handle(Request $request): string

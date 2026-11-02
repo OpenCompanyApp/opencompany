@@ -138,10 +138,16 @@ class AgentRunControlPlaneTest extends TestCase
         ]);
         $channel = Channel::factory()->dm()->create(['workspace_id' => $this->workspace->id]);
 
-        $this->expectException(\DomainException::class);
-        $this->expectExceptionMessage('Subagent channel');
+        // mruby's peer-owned child tasks require an active parent in the
+        // target workspace; a foreign agent fails closed before any provider
+        // call or child task creation.
+        $this->expectException(\RuntimeException::class);
 
-        GenericSubagent::for($foreignAgent, $channel->id)->prompt('Do not execute this.');
+        try {
+            GenericSubagent::for($foreignAgent, $channel->id)->prompt('Do not execute this.');
+        } finally {
+            $this->assertSame(0, Task::query()->where('agent_id', $foreignAgent->id)->count());
+        }
     }
 
     public function test_same_dm_participants_get_distinct_workspace_conversations(): void

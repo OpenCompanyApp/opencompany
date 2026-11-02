@@ -25,7 +25,7 @@ class MrubyAutomationQueueTest extends TestCase
         return Automation::create([
             'id' => 'ruby-queue', 'workspace_id' => $this->workspace->id,
             'name' => 'Ruby queue test', 'execution_type' => 'script',
-            'agent_id' => User::factory()->agent()->create()->id,
+            'agent_id' => User::factory()->agent()->create(['status' => 'idle'])->id,
             'created_by_id' => User::factory()->create()->id,
             'script' => $source, ...app(ScriptAdmission::class)->admit($source),
             'cron_expression' => '0 9 * * *', 'timezone' => 'UTC',
@@ -53,7 +53,9 @@ class MrubyAutomationQueueTest extends TestCase
         $automation = $this->automation();
         $job = new RunAutomationJob($automation);
         $payload = serialize($job);
-        $this->assertSame(1, $job->tries);
+        // Overlap releases are bounded by retryUntil() (tries=0); the single
+        // semantic attempt is enforced by the script AgentRunRecord instead.
+        $this->assertSame(0, $job->tries);
         $this->assertSame(60, $job->timeout);
         $automation->update(['is_active' => false]);
 

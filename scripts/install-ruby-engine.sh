@@ -61,7 +61,10 @@ if [ "${actual_archive_sha256}" != "${archive_sha256}" ]; then
 fi
 
 member="bowerbird-ruby-engine-${VERSION}-${platform}/bin/ruby-engine"
-if ! tar -tzf "${archive_path}" | grep -Fxq "${member}"; then
+# Capture the listing first: with pipefail, `grep -q` exiting early would
+# SIGPIPE tar and make a valid archive look broken.
+archive_listing="$(tar -tzf "${archive_path}")"
+if ! grep -Fxq "${member}" <<<"${archive_listing}"; then
   echo "Verified archive is missing its expected engine path; refusing installation." >&2
   exit 1
 fi

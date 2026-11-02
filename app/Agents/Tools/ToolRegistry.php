@@ -300,7 +300,7 @@ class ToolRegistry
     }
 
     /**
-     * Return the normalized metadata used by permission evaluation and Lua.
+     * Return the normalized metadata used by permission evaluation and Code Mode.
      *
      * This is intentionally read-only metadata; callers still execute through
      * the registry so provider ownership and workspace context stay intact.
@@ -329,7 +329,7 @@ class ToolRegistry
         foreach ($this->getEffectiveToolMap() as $slug => $meta) {
             $app = $appLookup[$slug] ?? 'other';
 
-            if (! empty($meta['luaOnly'])) {
+            if (! empty($meta['scriptOnly'])) {
                 continue;
             }
 
@@ -375,7 +375,7 @@ class ToolRegistry
         foreach ($this->getEffectiveToolMap() as $slug => $meta) {
             $app = $appLookup[$slug] ?? 'other';
 
-            if (! empty($meta['luaOnly'])) {
+            if (! empty($meta['scriptOnly'])) {
                 continue;
             }
 
@@ -415,7 +415,7 @@ class ToolRegistry
             $isIntegration = in_array($app, $this->getEffectiveIntegrationApps());
             $integrationEnabled = ! $isIntegration || in_array($app, $enabledIntegrations);
 
-            if (! empty($meta['luaOnly'])) {
+            if (! empty($meta['scriptOnly'])) {
                 continue;
             }
 
@@ -747,7 +747,7 @@ class ToolRegistry
                 if (! isset($this->getEffectiveToolMap()[$slug])) {
                     continue;
                 }
-                if (! empty($this->getEffectiveToolMap()[$slug]['luaOnly'])) {
+                if (! empty($this->getEffectiveToolMap()[$slug]['scriptOnly'])) {
                     continue;
                 }
                 $result = $this->evaluateToolPermission($agent, $slug, $this->getEffectiveToolMap()[$slug]);
@@ -840,6 +840,14 @@ class ToolRegistry
      */
     private function evaluateToolPermission(User $agent, string $slug, array $meta): PermissionDecision
     {
+        // Invariant: script-only VFS helpers are conveniences over the
+        // primitives. Permission toggles live on the primitives humans see in
+        // the capabilities UI, never on hidden helper slugs.
+        if (! empty($meta['scriptOnly']) && str_starts_with($slug, 'vfs_')) {
+            $slug = ($meta['type'] ?? 'read') === 'write' ? 'vfs_write' : 'vfs_exec';
+            $meta = $this->getEffectiveToolMap()[$slug] ?? $meta;
+        }
+
         return app(OpenCompanyPermissionEvaluator::class)->evaluate($agent, $slug, [
             'channel_id' => $this->currentChannelId,
             'task_id' => $this->currentTaskId,

@@ -6,7 +6,7 @@ namespace App\Domain\Vfs\Core;
  * Domain exception with stable VFS error codes.
  *
  * VFS tools return these codes to agents instead of leaking PHP exception
- * details. Keep codes stable because Lua scripts and future UI diagnostics can
+ * details. Keep codes stable because Code Mode scripts and future UI diagnostics can
  * branch on them.
  */
 class VfsError extends \RuntimeException

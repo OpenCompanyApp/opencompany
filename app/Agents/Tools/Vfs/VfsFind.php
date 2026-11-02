@@ -24,7 +24,7 @@ class VfsFind implements Tool
 
     public function description(): string
     {
-        return 'Lua helper for finding VFS entries by name/type across bounded directory trees.';
+        return 'Code Mode helper for finding VFS entries by name/type across bounded directory trees.';
     }
 
     public function handle(Request $request): string
@@ -88,7 +88,7 @@ class VfsFind implements Tool
         return [
             'paths' => $schema->array()->description('Directory paths to search. Defaults to /.'),
             'name' => $schema->string()->description('fnmatch-style name filter such as *.md. Default: *.'),
-            'glob' => $schema->string()->description('Alias for name, for Lua callers that think in glob filters.'),
+            'glob' => $schema->string()->description('Alias for name, for Code Mode callers that think in glob filters.'),
             'type' => $schema->string()->description('Optional entry type: file or directory.'),
             'limit' => $schema->integer()->description('Maximum entries to return. Default: 100.'),
             'cursor' => $schema->string()->description('Opaque cursor from a previous truncated response.'),

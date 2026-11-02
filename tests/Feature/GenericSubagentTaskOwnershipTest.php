@@ -45,7 +45,7 @@ class GenericSubagentTaskOwnershipTest extends TestCase
         parent::setUp();
 
         $this->parentAgent = User::factory()->agent()->create();
-        $this->peerAgent = User::factory()->agent()->create();
+        $this->peerAgent = User::factory()->agent()->create(['status' => 'idle']);
         app()->instance('currentWorkspace', Workspace::findOrFail($this->peerAgent->workspace_id));
         $this->channel = Channel::factory()->create(['workspace_id' => $this->peerAgent->workspace_id]);
     }

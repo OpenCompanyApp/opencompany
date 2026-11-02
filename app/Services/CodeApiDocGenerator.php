@@ -230,11 +230,20 @@ class CodeApiDocGenerator
             ? $builder->buildFunctionMap($this->buildScriptNamespaces($agent))
             : [];
 
+        // Familiar VFS aliases. `exec` is rejected by the mruby profile
+        // (Kernel#exec), so `vfs.shell` is the callable name for vfs_exec;
+        // `app.call("vfs.exec", ...)` also works.
         if (isset($map['vfs.read'])) {
             $map['vfs.cat'] = $map['vfs.read'];
         }
         if (isset($map['vfs.rg'])) {
             $map['vfs.grep'] = $map['vfs.rg'];
+        }
+        if (isset($map['vfs.exec'])) {
+            $map['vfs.shell'] = $map['vfs.exec'];
+        }
+        if (isset($map['vfs.exec'])) {
+            $map['vfs.shell'] = $map['vfs.exec'];
         }
 
         return $map;

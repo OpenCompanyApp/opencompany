@@ -30,7 +30,7 @@ use Tests\TestCase;
  *
  * These tests call the structured tools rather than private adapter methods so
  * cursor binding, response metadata, authorization, and query ordering are all
- * exercised through the same contract used by Lua and future runtime callers.
+ * exercised through the same contract used by Code Mode and future runtime callers.
  */
 class VfsPaginationTest extends TestCase
 {

@@ -20,7 +20,7 @@ class VfsRead implements Tool
 
     public function description(): string
     {
-        return 'Lua helper for reading a VFS file as text with byte limits, version, and metadata.';
+        return 'Code Mode helper for reading a VFS file as text with byte limits, version, and metadata.';
     }
 
     public function handle(Request $request): string

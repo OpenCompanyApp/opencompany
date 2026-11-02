@@ -20,7 +20,7 @@ class VfsStat implements Tool
 
     public function description(): string
     {
-        return 'Lua helper for statting a VFS path. Returns type, version, capabilities, backend identity, and metadata.';
+        return 'Code Mode helper for statting a VFS path. Returns type, version, capabilities, backend identity, and metadata.';
     }
 
     public function handle(Request $request): string

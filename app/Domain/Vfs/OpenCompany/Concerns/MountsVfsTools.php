@@ -13,7 +13,7 @@ use App\Models\User;
 /**
  * Runtime tool-documentation mount.
  *
- * These files describe callable VFS and Lua surfaces; they do not execute tools
+ * These files describe callable VFS and mruby Code Mode surfaces; they do not execute tools
  * and must stay permission-neutral documentation.
  */
 trait MountsVfsTools
@@ -35,7 +35,7 @@ trait MountsVfsTools
                 new VfsEntry('commands.json', '/tools/vfs/commands.json', 'file', capabilities: ['read', 'search'], metadata: $this->toolDocumentMetadata()),
                 new VfsEntry('commands.md', '/tools/vfs/commands.md', 'file', capabilities: ['read', 'search'], metadata: $this->toolDocumentMetadata()),
                 new VfsEntry('commands', '/tools/vfs/commands', 'directory', capabilities: ['browse', 'read', 'search']),
-                new VfsEntry('lua.json', '/tools/vfs/lua.json', 'file', capabilities: ['read', 'search'], metadata: $this->toolDocumentMetadata()),
+                new VfsEntry('code.json', '/tools/vfs/code.json', 'file', capabilities: ['read', 'search'], metadata: $this->toolDocumentMetadata()),
                 new VfsEntry('examples.md', '/tools/vfs/examples.md', 'file', capabilities: ['read', 'search'], metadata: $this->toolDocumentMetadata()),
                 new VfsEntry('README.md', '/tools/vfs/README.md', 'file', capabilities: ['read', 'search'], metadata: $this->toolDocumentMetadata()),
             ];
@@ -84,7 +84,7 @@ trait MountsVfsTools
         }
 
         if ($content === null && ($path === '/tools/apps' || $path === '/tools/apps/README.md')) {
-            $content = "OpenCompany app tools are exposed through the agent tool registry and Lua docs.\n\nRead `/tools/apps/index.json` for the permission-filtered built-in app/tool groups visible to this agent. Use `/tools/catalog.md`, `/tools/vfs/commands.json`, and `lua_read_doc(\"overview\")` for callable surfaces.";
+            $content = "OpenCompany app tools are exposed through the agent tool registry and Code Mode docs.\n\nRead `/tools/apps/index.json` for the permission-filtered built-in app/tool groups visible to this agent. Use `/tools/catalog.md`, `/tools/vfs/commands.json`, and `code_read_doc(\"overview\")` for callable surfaces.";
         }
 
         if ($content === null && $path === '/tools/apps/index.json') {
@@ -134,33 +134,32 @@ trait MountsVfsTools
             $content = VfsCommandHelp::commandMarkdown($matches[1]);
         }
 
-        if ($content === null && $path === '/tools/vfs/lua.json') {
+        if ($content === null && $path === '/tools/vfs/code.json') {
             $content = json_encode([
                 'namespace' => 'app.vfs',
+                'runtime' => 'mruby Code Mode (code_exec)',
+                'calling_convention' => 'Keyword arguments; snake_case keys map to the tool schema (max_matches -> maxMatches).',
                 'primitive_tools' => ['exec', 'patch', 'write'],
-                'return_envelope' => '{ ok = boolean, result = table, error = table? } with result fields mirrored at top level for VFS helpers.',
-                'sequence_behavior' => 'Helpers with result.items or result.matches expose those rows as numeric entries so #res works.',
+                'return_envelope' => 'Hash with ok (boolean), result (hash) and error (hash, optional).',
                 'exec_options' => ['response_format' => 'default|structured', 'include_command_spec' => 'boolean'],
                 'helpers' => [
-                    'exec(command, opts)',
-                    'stat(path)',
-                    'ls(path, opts)',
-                    'exists(path)',
-                    'read(path, opts)',
-                    'cat(path, opts)',
-                    'rg(pattern, paths, opts)',
-                    'grep(pattern, paths, opts)',
-                    'find(paths, opts)',
-                    'search(query, paths, opts)',
-                    'write(path, content, opts)',
-                    'patch(path, patch, opts)',
-                    'mkdir(path)',
-                    'cp(source, destination)',
-                    'mv(source, destination)',
-                    'rm(path)',
-                    'count(path, opts)',
+                    'shell(command:, response_format:)  # vfs_exec; `exec` is reserved in Ruby',
+                    'stat(path:)',
+                    'ls(path:, limit:, cursor:)',
+                    'exists(path:)',
+                    'read(path:, max_bytes:, cursor:)',
+                    'rg(pattern:, paths:, max_matches:)',
+                    'find(paths:, name:, type:)',
+                    'search(query:, paths:)',
+                    'write(path:, content:, mode:)',
+                    'patch(path:, patch:)',
+                    'mkdir(path:)',
+                    'cp(source:, destination:)',
+                    'mv(source:, destination:)',
+                    'rm(path:)',
+                    'count(path:)',
                 ],
-                'permission_model' => 'Helpers execute through the same primitive VFS permissions and per-path resource checks.',
+                'permission_model' => 'Helpers execute through the same primitive VFS permissions (vfs_exec for reads, vfs_write for writes) and per-path resource checks.',
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         }
 
@@ -192,14 +191,16 @@ trait MountsVfsTools
                 '`vfs_patch(path: "/tables/customers/rows/by-id/{row}.json", patch: \'{"data":{"status":"active"}}\')`',
                 '`vfs_patch(path: "/agents/by-id/{agent}/identity/IDENTITY.md", patch: \'{"search":"old","replace":"new"}\')`',
                 '',
-                '```lua',
-                'local docs = app.vfs.ls("/docs", { limit = 20 })',
-                'local docs_count = #docs',
-                'local exists = app.vfs.exists("/docs")',
-                'local hits = app.vfs.rg("refund", { "/docs", "/files" }, { max_matches = 20 })',
-                'local doc = app.vfs.read(hits.matches[1].path, { max_bytes = 4000 })',
-                'app.vfs.write("/files/generated/note.md", "hello", { mode = "overwrite" })',
-                'app.vfs.patch("/lists/by-id/...", \'{"status":"in_progress"}\')',
+                'In mruby Code Mode (`code_exec`), the same primitives are `app.vfs.*` with keyword arguments:',
+                '',
+                '```ruby',
+                'docs = app.vfs.ls(path: "/docs", limit: 20)',
+                'docs_count = docs[:result][:items].length',
+                'hits = app.vfs.rg(pattern: "refund", paths: ["/docs", "/files"], max_matches: 20)',
+                'first = hits[:result][:matches].first',
+                'doc = app.vfs.read(path: first[:path], max_bytes: 4000) if first',
+                'app.vfs.write(path: "/files/generated/note.md", content: "hello", mode: "overwrite")',
+                '{docs: docs_count, hits: hits[:result][:matches].length}',
                 '```',
             ]);
         }
@@ -207,15 +208,15 @@ trait MountsVfsTools
         if ($content === null && ($path === '/tools/vfs.md' || $path === '/tools/vfs/README.md')) {
             $content = implode("\n\n", [
                 'The VFS is a permission-aware unix-like filesystem over OpenCompany workspace data.',
-                'Use `vfs_exec` for command-shaped inspection, `vfs_patch` for targeted edits, `vfs_write` for raw `/files` writes, and `app.vfs.*` Lua helpers for structured workflows. VFS composes primitive permissions with existing domain permissions instead of creating duplicate VFS-only controls: table row patches require `vfs_patch` plus `update_table_row`; agent identity patches require `vfs_patch` plus `update_agent_identity_file`; memory patches are relationship-scoped. If any required permission needs approval, VFS creates a normal approval request and approved replay revalidates permissions before mutating.',
+                'Use `vfs_exec` for command-shaped inspection, `vfs_patch` for targeted edits, `vfs_write` for raw `/files` writes, and `app.vfs.*` helpers inside mruby Code Mode (`code_exec`) for structured multi-step workflows. VFS composes primitive permissions with existing domain permissions instead of creating duplicate VFS-only controls: table row patches require `vfs_patch` plus `update_table_row`; agent identity patches require `vfs_patch` plus `update_agent_identity_file`; memory patches are relationship-scoped. If any required permission needs approval, VFS creates a normal approval request and approved replay revalidates permissions before mutating.',
                 'Discover command support with `help`, `help <command>`, `man <command>`, `<command> --help`, `which <command>`, `type <command>`, `command -v <command>`, `/tools/vfs/commands.json`, and `/tools/vfs/commands/<command>/<command>.json`.',
                 '`grep` is literal; `rg` is regex. Path globs expand only when unquoted and currently cover normal `*`, `?`, and character-class patterns against one parent directory. No host `$VAR`, command substitution, process substitution, brace expansion, or `**` globstar is supported.',
                 'Redirection support is explicit: `<` reads bounded stdin from a VFS path; `>`, `>>`, `1>`, and `1>>` write stdout to `/files`; `/dev/null` discards stdout; `2>/dev/null` suppresses stderr; `2>&1` merges stderr into stdout with shell-like order sensitivity. Stderr file targets such as `2>/files/error.txt`, heredocs, and process substitution are rejected.',
                 'Budgets are hard limits for returned/scanned work. `vfs_exec` accepts `maxEntries`, `maxDepth`, `maxBytes`, `maxFiles`, and `maxMatches`; structured helpers accept camelCase or snake_case aliases. Directory counts are sampled unless `count_is_exact` is true; inspect `returned`, `limit`, `truncated`, `next_cursor`, `skipped`, `count_mode`, `sampled_count`, and `total_count`. Pass `next_cursor` back as `cursor` to continue `vfs_ls`, `vfs_find`, and `vfs_count`; `vfs_read` also pages channel transcripts, table-row NDJSON, and the workspace roster. Those generated reads emit only complete records within `maxBytes`; an oversized leading record reports `context.minimum_bytes` for a safe retry.',
                 '`jq` is a safe subset for JSON projections: `.`, `.field`, `.[0]`, `.items[]`, `.items[].name`, `.["key"]`, `length`, sorted `keys`, `has("key")`, `map(.field)`, `select(.field == "value")`, simple numeric arithmetic, stdin, NDJSON, and one or more file arguments. `-r` is accepted; scalar output is raw by default. `-c` emits compact JSON.',
                 'Safe binary-adjacent inspection is available through bounded text APIs: `xxd`, `strings`, `iconv`, and gzip text pipelines through `gzip`, `gunzip`, `zcat`, and `zgrep`. `tar`, `zip`, and `unzip` support bounded archive create/list/print/extract flows; extraction writes only under `/files` and requires `vfs_write`. Mutating shell commands through `vfs_exec` compose `vfs_exec` plus `vfs_write`, so approval on either permission is respected. `split`, `csplit`, `mktemp`, and non-symlink `ln` use the same write permission model. `ln -s` is recognized but rejected until VFS has first-class symlink entries.',
-                'Lua helpers keep `{ ok, result = ... }`, mirror result fields at the top level, and expose list-like results as numeric entries so `#res` works. `app.vfs.exec(command, { response_format = "structured", include_command_spec = true })` keeps stdout text but enriches `data` and diagnostics for programmatic workflows.',
-                'Lua `app.vfs.write(path, content)` defaults to overwrite for script ergonomics. Direct `vfs_write` defaults to create. Generated code should pass `mode = "create"` or `mode = "overwrite"` explicitly.',
+                'Code Mode helpers return the same `{ok, result, error}` hash as the direct tools; list-like results live under `result[:items]` or `result[:matches]`. `app.vfs.shell(command: "...", response_format: "structured", include_command_spec: true)` keeps stdout text but enriches `data` and diagnostics for programmatic workflows.',
+                '`vfs_write` defaults to create. Scripts should pass `mode: "create"` or `mode: "overwrite"` explicitly.',
             ]);
         }
 
@@ -223,7 +224,7 @@ trait MountsVfsTools
             throw VfsError::notFound($path);
         }
 
-        $content ??= "Tool catalog is exposed in the agent system prompt and Lua docs.\n\nUse lua_read_doc(\"overview\") and lua_read_doc(\"vfs\") for programmable tool access.";
+        $content ??= "Tool catalog is exposed in the agent system prompt and Code Mode docs.\n\nUse code_read_doc(\"overview\") and code_read_doc(\"vfs\") for programmable tool access.";
 
         return VfsText::truncate($content, $budget->maxBytes);
     }

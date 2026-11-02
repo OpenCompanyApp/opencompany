@@ -8,7 +8,7 @@ use App\Domain\Vfs\Core\VfsError;
 /**
  * Shared JSON response helpers for VFS tools.
  *
- * VFS direct tools and Lua-only helpers all return the same structured shape so
+ * VFS direct tools and Code Mode helpers all return the same structured shape so
  * agents can branch on `ok`, `result`, and stable VFS error codes instead of
  * scraping prose.
  */

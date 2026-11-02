@@ -20,7 +20,7 @@ class VfsRm implements Tool
 
     public function description(): string
     {
-        return 'Lua helper for deleting writable workspace files.';
+        return 'Code Mode helper for deleting writable workspace files.';
     }
 
     public function handle(Request $request): string

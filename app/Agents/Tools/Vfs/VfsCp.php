@@ -20,7 +20,7 @@ class VfsCp implements Tool
 
     public function description(): string
     {
-        return 'Lua helper for copying writable workspace files.';
+        return 'Code Mode helper for copying writable workspace files.';
     }
 
     public function handle(Request $request): string

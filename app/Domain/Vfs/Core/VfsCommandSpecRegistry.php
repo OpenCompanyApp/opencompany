@@ -122,9 +122,9 @@ final class VfsCommandSpecRegistry
         $specs['bc'] = new VfsCommandSpec('bc', 'read-transform', 'Evaluate simple numeric expressions.', shortFlags: ['l', 'q']);
 
         foreach ([
-            'bash' => ['Host shell execution is not supported by VFS.', 'Use VFS commands, Lua helpers, or direct tools.'],
-            'python' => ['Host Python execution is not supported by VFS.', 'Use Lua helpers or direct tools.'],
-            'python3' => ['Host Python execution is not supported by VFS.', 'Use Lua helpers or direct tools.'],
+            'bash' => ['Host shell execution is not supported by VFS.', 'Use VFS commands, Code Mode (code_exec) helpers, or direct tools.'],
+            'python' => ['Host Python execution is not supported by VFS.', 'Use Code Mode (code_exec) helpers or direct tools.'],
+            'python3' => ['Host Python execution is not supported by VFS.', 'Use Code Mode (code_exec) helpers or direct tools.'],
             'curl' => ['Network commands are outside VFS.', 'Use web_fetch, browser tools, or integration tools.'],
             'wget' => ['Network commands are outside VFS.', 'Use web_fetch, browser tools, or integration tools.'],
             'sleep' => ['Blocking sleeps are not supported by bounded VFS exec.', 'Use automations or task scheduling outside the VFS shell.'],
@@ -135,9 +135,9 @@ final class VfsCommandSpecRegistry
         }
         $specs['curl'] = new VfsCommandSpec('curl', 'external', 'Recognized external network command; rejected inside VFS.', $unsupported, shortFlags: ['L', 's', 'S'], valueOptions: ['-H', '-A', '-X', '-d', '-F', '-o'], longFlags: ['--jina'], unsupportedReason: 'Network commands are outside VFS.', suggestion: 'Use web_fetch, browser tools, or integration tools.');
         $specs['wget'] = new VfsCommandSpec('wget', 'external', 'Recognized external network command; rejected inside VFS.', $unsupported, shortFlags: ['q'], valueOptions: ['-O'], longFlags: ['--spider'], unsupportedReason: 'Network commands are outside VFS.', suggestion: 'Use web_fetch, browser tools, or integration tools.');
-        $specs['bash'] = new VfsCommandSpec('bash', 'external', 'Recognized host shell command; rejected inside VFS.', $unsupported, shortFlags: ['s', 'l', 'i', 'e', 'u', 'x'], valueOptions: ['-c'], longFlags: ['--login', '--norc', '--noprofile', '--posix'], unsupportedReason: 'Host shell execution is not supported by VFS.', suggestion: 'Use VFS commands, Lua helpers, or direct tools.');
-        $specs['python'] = new VfsCommandSpec('python', 'external', 'Recognized host Python command; rejected inside VFS.', $unsupported, valueOptions: ['-c'], unsupportedReason: 'Host Python execution is not supported by VFS.', suggestion: 'Use Lua helpers or direct tools.');
-        $specs['python3'] = new VfsCommandSpec('python3', 'external', 'Recognized host Python command; rejected inside VFS.', $unsupported, valueOptions: ['-c'], unsupportedReason: 'Host Python execution is not supported by VFS.', suggestion: 'Use Lua helpers or direct tools.');
+        $specs['bash'] = new VfsCommandSpec('bash', 'external', 'Recognized host shell command; rejected inside VFS.', $unsupported, shortFlags: ['s', 'l', 'i', 'e', 'u', 'x'], valueOptions: ['-c'], longFlags: ['--login', '--norc', '--noprofile', '--posix'], unsupportedReason: 'Host shell execution is not supported by VFS.', suggestion: 'Use VFS commands, Code Mode (code_exec) helpers, or direct tools.');
+        $specs['python'] = new VfsCommandSpec('python', 'external', 'Recognized host Python command; rejected inside VFS.', $unsupported, valueOptions: ['-c'], unsupportedReason: 'Host Python execution is not supported by VFS.', suggestion: 'Use Code Mode (code_exec) helpers or direct tools.');
+        $specs['python3'] = new VfsCommandSpec('python3', 'external', 'Recognized host Python command; rejected inside VFS.', $unsupported, valueOptions: ['-c'], unsupportedReason: 'Host Python execution is not supported by VFS.', suggestion: 'Use Code Mode (code_exec) helpers or direct tools.');
         $specs['patch'] = new VfsCommandSpec('patch', 'external', 'Recognized patch command; use vfs_patch instead.', $unsupported, shortFlags: ['R', 'N'], valueOptions: ['-p', '-i'], unsupportedReason: 'Patch is intentionally a direct permission-aware tool.', suggestion: 'Use vfs_patch for targeted docs, files, tasks, lists, table rows, and scoped agent identity/memory edits.');
 
         $specs['tar'] = new VfsCommandSpec('tar', 'binary-archive', 'Create, list, or extract bounded tar archives.', $implemented, shortFlags: ['c', 'x', 't', 'z', 'j', 'J', 'v'], valueOptions: ['-f', '-C', '--strip-components', '--exclude']);

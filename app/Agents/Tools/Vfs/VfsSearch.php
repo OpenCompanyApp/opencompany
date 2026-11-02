@@ -20,7 +20,7 @@ class VfsSearch implements Tool
 
     public function description(): string
     {
-        return 'Lua helper for lexical VFS search. This is separate from embeddings and returns exact VFS paths/snippets.';
+        return 'Code Mode helper for lexical VFS search. This is separate from embeddings and returns exact VFS paths/snippets.';
     }
 
     public function handle(Request $request): string

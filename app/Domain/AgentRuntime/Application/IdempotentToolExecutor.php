@@ -194,7 +194,7 @@ class IdempotentToolExecutor
     /**
      * The payload is encrypted by the model cast before storage. PHP's native
      * serializer preserves the scalar, array, and Stringable values accepted by
-     * tool and Lua surfaces without lossy type conversion.
+     * tool and Code Mode surfaces without lossy type conversion.
      */
     private function encodeResult(mixed $result): string
     {

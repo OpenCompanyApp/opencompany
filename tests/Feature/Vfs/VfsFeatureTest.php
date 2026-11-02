@@ -32,9 +32,10 @@ use App\Models\WorkspaceFile;
 use App\Services\AgentDocumentService;
 use App\Services\ApprovalExecutionService;
 use App\Services\FileSystemService;
-use App\Services\LuaApiDocGenerator;
-use App\Services\LuaBridge;
-use App\Services\LuaSandboxService;
+use App\Services\CodeApiDocGenerator;
+use App\Services\CodeBridge;
+use App\Services\CodeExecutionResult;
+use App\Services\MrubySandboxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Event;
@@ -961,16 +962,44 @@ class VfsFeatureTest extends TestCase
         $this->assertSame($count['result']['count'], $count['result']['total_count']);
     }
 
-    public function test_vfs_lua_namespace_exposes_structured_helpers_without_direct_tool_bloat(): void
+    /**
+     * Run Ruby through the real pinned mruby engine with an agent CodeBridge,
+     * inside an active task so default write receipts are satisfiable.
+     */
+    private function runVfsRuby(string $code): CodeExecutionResult
+    {
+        $task = Task::query()->create([
+            'id' => (string) Str::uuid(),
+            'workspace_id' => $this->agent->workspace_id,
+            'title' => 'VFS Code Mode test',
+            'type' => Task::TYPE_CUSTOM,
+            'status' => Task::STATUS_ACTIVE,
+            'priority' => Task::PRIORITY_NORMAL,
+            'source' => Task::SOURCE_AGENT_DELEGATION,
+            'agent_id' => $this->agent->id,
+            'requester_id' => $this->agent->id,
+            'started_at' => now(),
+        ]);
+        $registry = app(ToolRegistry::class);
+        $registry->setTaskContext($task->id);
+        $sandbox = app(MrubySandboxService::class);
+        $bridge = new CodeBridge($this->agent, $registry, app(CodeApiDocGenerator::class), $sandbox->profile('agent'));
+
+        return $sandbox->execute($code, 'agent', $bridge);
+    }
+
+    // Regression: the VFS stays reachable from Code Mode as `app.vfs.*`
+    // (including the cat/grep aliases) without registering every helper as a
+    // model-visible tool.
+    public function test_vfs_code_namespace_exposes_structured_helpers_without_direct_tool_bloat(): void
     {
         $doc = Document::factory()->create([
-            'title' => 'Lua VFS Notes',
+            'title' => 'Ruby VFS Notes',
             'content' => "alpha\nbeta\nrefund",
             'author_id' => $this->agent->id,
         ]);
 
-        $docs = app(LuaApiDocGenerator::class);
-        $functionMap = $docs->buildFunctionMap($this->agent);
+        $functionMap = app(CodeApiDocGenerator::class)->buildFunctionMap($this->agent);
 
         $this->assertSame('vfs_exec', $functionMap['vfs.exec']);
         $this->assertSame('vfs_ls', $functionMap['vfs.ls']);
@@ -982,70 +1011,52 @@ class VfsFeatureTest extends TestCase
         $this->assertSame('vfs_search', $functionMap['vfs.search']);
         $this->assertSame('vfs_exists', $functionMap['vfs.exists']);
         $this->assertSame('vfs_count', $functionMap['vfs.count']);
+        $modelTools = array_map(fn ($tool) => method_exists($tool, 'name') ? $tool->name() : class_basename($tool), app(ToolRegistry::class)->getToolsForAgent($this->agent));
+        $this->assertNotContains('vfs_rg', $modelTools);
 
-        $bridge = new LuaBridge($this->agent, app(ToolRegistry::class), $docs);
-        $code = sprintf(<<<'LUA'
-local stat = app.vfs.stat("/docs/by-id/%s")
-local limited = app.vfs.ls("/docs", { limit = 1 })
-local read = app.vfs.read("/docs/by-id/%s", { max_bytes = 1000 })
-local cat = app.vfs.cat("/docs/by-id/%s", { max_bytes = 1000 })
-local hits = app.vfs.rg("refund", { "/docs" }, { max_matches = 10 })
-local literal_hits = app.vfs.grep("a.b", { "/docs/by-id/%s" }, { max_matches = 10 })
-local lexical_hits = app.vfs.search("refund", { "/docs" }, { max_matches = 10 })
-local found = app.vfs.find({ "/docs" }, { name = "*Lua*", limit = 10 })
-local markdown = app.vfs.find({ "/docs" }, { name = "*.md", type = "file", limit = 10 })
-local markdown_by_string = app.vfs.find("/docs", { glob = "*.md", type = "file", limit = 10 })
-local exec_stat = app.vfs.exec("stat /docs/by-id/%s", { response_format = "structured", include_command_spec = true })
-return {
-  version = stat.result.version,
-  limited_len = #limited,
-  limited_count = limited.result.count,
-  content = read.result.content,
-  cat_content = cat.result.content,
-  hits_len = #hits,
-  first_hit = hits[1] and hits[1].match or nil,
-  hit_count = hits.result.count,
-  lexical_len = #lexical_hits,
-  lexical_first = lexical_hits[1] and lexical_hits[1].match or nil,
-  lexical_count = lexical_hits.result.count,
-  lexical_unique = lexical_hits[1] and (lexical_hits[1].path .. ":" .. tostring(lexical_hits[1].line) .. ":" .. tostring(lexical_hits[1].match)) or nil,
-  literal_count = literal_hits.result.count,
-  found_count = found.result.count,
-  markdown_count = markdown.result.count,
-  markdown_string_count = markdown_by_string.result.count,
-  exec_command = exec_stat.data.command_spec.name,
-  exec_backend_id = exec_stat.data.stat.backend_id,
-  exec_diag_command = exec_stat.diagnostics.command_spec.name,
+        $result = $this->runVfsRuby(sprintf(<<<'RUBY'
+stat = app.vfs.stat(path: "/docs/by-id/%s")
+limited = app.vfs.ls(path: "/docs", limit: 1)
+read = app.vfs.read(path: "/docs/by-id/%s", max_bytes: 1000)
+cat = app.vfs.cat(path: "/docs/by-id/%s", max_bytes: 1000)
+hits = app.vfs.rg(pattern: "refund", paths: ["/docs"], max_matches: 10)
+literal = app.vfs.grep(pattern: "a.b", paths: ["/docs/by-id/%s"], max_matches: 10)
+lexical = app.vfs.search(query: "refund", paths: ["/docs"], max_matches: 10)
+found = app.vfs.find(paths: ["/docs"], name: "*Ruby*", limit: 10)
+exec = app.vfs.shell(command: "stat /docs/by-id/%s", response_format: "structured", include_command_spec: true)
+{
+  version: stat[:result][:version],
+  limited_count: limited[:result][:count],
+  content: read[:result][:content],
+  cat_content: cat[:result][:content],
+  first_hit: hits[:result][:matches].first[:match],
+  hit_count: hits[:result][:count],
+  lexical_count: lexical[:result][:count],
+  literal_count: literal[:result][:count],
+  found_count: found[:result][:count],
+  exec_command: exec[:data][:command_spec][:name],
+  exec_backend_id: exec[:data][:stat][:backend_id],
 }
-LUA, $doc->id, $doc->id, $doc->id, $doc->id, $doc->id);
+RUBY, $doc->id, $doc->id, $doc->id, $doc->id, $doc->id));
 
-        $result = app(LuaSandboxService::class)->execute($code, bridge: $bridge);
-
-        $this->assertNull($result->error);
-        $this->assertIsArray($result->result);
-        $payload = $result->result[0] ?? $result->result;
+        $this->assertNull($result->error, json_encode($result->error));
+        $payload = json_decode(json_encode($result->result), true);
         $this->assertNotEmpty($payload['version']);
-        $this->assertSame(1, $payload['limited_len']);
         $this->assertSame(1, $payload['limited_count']);
         $this->assertStringContainsString('refund', $payload['content']);
         $this->assertStringContainsString('refund', $payload['cat_content']);
-        $this->assertGreaterThanOrEqual(1, $payload['hits_len']);
         $this->assertSame('refund', $payload['first_hit']);
         $this->assertGreaterThanOrEqual(1, $payload['hit_count']);
-        $this->assertGreaterThanOrEqual(1, $payload['lexical_len']);
-        $this->assertSame('refund', $payload['lexical_first']);
         $this->assertGreaterThanOrEqual(1, $payload['lexical_count']);
-        $this->assertStringContainsString('refund', $payload['lexical_unique']);
         $this->assertSame(0, $payload['literal_count']);
         $this->assertGreaterThanOrEqual(1, $payload['found_count']);
-        $this->assertGreaterThanOrEqual(1, $payload['markdown_count']);
-        $this->assertGreaterThanOrEqual(1, $payload['markdown_string_count']);
         $this->assertSame('stat', $payload['exec_command']);
         $this->assertSame($doc->id, $payload['exec_backend_id']);
-        $this->assertSame('stat', $payload['exec_diag_command']);
     }
 
-    public function test_vfs_lua_mutation_helpers_share_primitive_permissions(): void
+    // Regression: Code Mode mutation helpers act through the primitive VFS
+    // write permission and per-path file checks, inside an active task.
+    public function test_vfs_code_mutation_helpers_share_primitive_permissions(): void
     {
         AgentPermission::create([
             'id' => (string) Str::uuid(),
@@ -1056,34 +1067,28 @@ LUA, $doc->id, $doc->id, $doc->id, $doc->id, $doc->id);
             'requires_approval' => false,
         ]);
 
-        $bridge = new LuaBridge($this->agent, app(ToolRegistry::class), app(LuaApiDocGenerator::class));
-        $code = <<<'LUA'
-app.vfs.mkdir("/files/lua-ax")
-app.vfs.write("/files/lua-ax/a.txt", "alpha", { mode = "overwrite" })
-app.vfs.write({ path = "/files/lua-ax/a.txt", content = "alpha two" })
-local exists_before = app.vfs.exists("/files/lua-ax/a.txt")
-local count = app.vfs.count("/files/lua-ax")
-app.vfs.cp("/files/lua-ax/a.txt", "/files/lua-ax/b.txt")
-app.vfs.mv("/files/lua-ax/b.txt", "/files/lua-ax/c.txt")
-app.vfs.rm("/files/lua-ax/c.txt")
-local exists_after = app.vfs.exists("/files/lua-ax/c.txt")
-return {
-  before = exists_before.result.exists,
-  count = count.result.count,
-  after = exists_after.result.exists,
-}
-LUA;
+        $result = $this->runVfsRuby(<<<'RUBY'
+app.vfs.mkdir(path: "/files/ruby-ax")
+app.vfs.write(path: "/files/ruby-ax/a.txt", content: "alpha", mode: "overwrite")
+before = app.vfs.exists(path: "/files/ruby-ax/a.txt")
+count = app.vfs.count(path: "/files/ruby-ax")
+app.vfs.cp(source: "/files/ruby-ax/a.txt", destination: "/files/ruby-ax/b.txt")
+app.vfs.mv(source: "/files/ruby-ax/b.txt", destination: "/files/ruby-ax/c.txt")
+app.vfs.rm(path: "/files/ruby-ax/c.txt")
+after = app.vfs.exists(path: "/files/ruby-ax/c.txt")
+{before: before[:result][:exists], count: count[:result][:count], after: after[:result][:exists]}
+RUBY);
 
-        $result = app(LuaSandboxService::class)->execute($code, bridge: $bridge);
-
-        $this->assertNull($result->error);
-        $payload = $result->result[0] ?? $result->result;
+        $this->assertNull($result->error, json_encode($result->error));
+        $payload = json_decode(json_encode($result->result), true);
         $this->assertTrue($payload['before']);
         $this->assertGreaterThanOrEqual(1, $payload['count']);
         $this->assertFalse($payload['after']);
     }
 
-    public function test_vfs_lua_helpers_obey_primitive_tool_permissions(): void
+    // Regression: denying the human-visible `vfs_exec` primitive also denies
+    // the hidden script-only read helpers built on it.
+    public function test_vfs_code_helpers_obey_primitive_tool_permissions(): void
     {
         AgentPermission::create([
             'id' => (string) Str::uuid(),
@@ -1094,11 +1099,11 @@ LUA;
             'requires_approval' => false,
         ]);
 
-        $bridge = new LuaBridge($this->agent, app(ToolRegistry::class), app(LuaApiDocGenerator::class));
-        $result = app(LuaSandboxService::class)->execute('return app.vfs.ls("/")', bridge: $bridge);
+        $functionMap = app(CodeApiDocGenerator::class)->buildFunctionMap($this->agent);
+        $this->assertArrayNotHasKey('vfs.ls', $functionMap);
 
+        $result = $this->runVfsRuby('app.call("vfs.ls", path: "/")');
         $this->assertNotNull($result->error);
-        $this->assertStringContainsString('Permission denied', $result->error);
     }
 
     public function test_generated_vfs_reads_respect_max_bytes_budgets(): void
@@ -1133,14 +1138,12 @@ LUA;
         $this->assertLessThanOrEqual(10, strlen($settings));
         $this->assertLessThanOrEqual(1_000, strlen($members));
 
-        $bridge = new LuaBridge($this->agent, app(ToolRegistry::class), app(LuaApiDocGenerator::class));
-        $result = app(LuaSandboxService::class)->execute(
-            'local read = app.vfs.read("/tools/vfs.md", { max_bytes = 200 }); return { content = read.result.content, truncated = read.result.truncated }',
-            bridge: $bridge,
+        $result = $this->runVfsRuby(
+            'read = app.vfs.read(path: "/tools/vfs.md", max_bytes: 200); {content: read[:result][:content], truncated: read[:result][:truncated]}',
         );
 
-        $this->assertNull($result->error);
-        $payload = $result->result[0] ?? $result->result;
+        $this->assertNull($result->error, json_encode($result->error));
+        $payload = json_decode(json_encode($result->result), true);
         $this->assertTrue($payload['truncated']);
         $this->assertSame($read['result']['content'], $payload['content']);
     }

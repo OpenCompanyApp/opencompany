@@ -20,7 +20,7 @@ class VfsCount implements Tool
 
     public function description(): string
     {
-        return 'Lua helper for counting bounded directory entries with truncation metadata.';
+        return 'Code Mode helper for counting bounded directory entries with truncation metadata.';
     }
 
     public function handle(Request $request): string

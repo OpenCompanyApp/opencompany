@@ -20,7 +20,7 @@ class VfsLs implements Tool
 
     public function description(): string
     {
-        return 'Lua helper for listing a VFS directory. Returns structured entries instead of command text.';
+        return 'Code Mode helper for listing a VFS directory. Returns structured entries instead of command text.';
     }
 
     public function handle(Request $request): string

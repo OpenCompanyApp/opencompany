@@ -24,7 +24,7 @@ use Tests\TestCase;
  *
  * These scenarios intentionally exercise OpenCompanyVfs directly. Tool wrappers
  * remain a second outer boundary, but the domain service must be safe and
- * truthful for Lua, approved replay, background work, and future callers too.
+ * truthful for Code Mode, approved replay, background work, and future callers too.
  */
 class VfsCapabilityTruthTest extends TestCase
 {

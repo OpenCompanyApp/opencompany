@@ -14,6 +14,10 @@ return [
             : null
     ),
 
+    // Queue timeout (seconds) for one script automation job. It must stay above
+    // the automation profile's wall limit plus startup/persistence overhead.
+    'automation_job_timeout' => 60,
+
     // Server-owned budgets. Automation wall time must remain below the current
     // 60-second worker timeout, leaving room for startup, persistence and cleanup.
     'profiles' => [
