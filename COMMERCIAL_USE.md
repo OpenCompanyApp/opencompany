@@ -2,7 +2,7 @@
 
 Status: Prospective commercial-use guidance for a future release distributed with the current root
 `LICENSE.md`; historical releases retain their shipped terms.
-Last verified: 2026-09-01.
+Last verified: 2026-11-02.
 
 OpenCompany's planned `AGPL-3.0-only` release is open source. Commercial use is allowed; a separate
 commercial license is not required merely because an organization uses, modifies, redistributes,
@@ -34,7 +34,8 @@ The exact scope is architecture- and fact-dependent; obtain legal advice for a s
 
 Ginger Media BV or a future publishing entity may sell:
 
-- OpenCompany Cloud and managed infrastructure;
+- OpenCompany Cloud and managed infrastructure, including managed per-agent computers (planned;
+  self-hosters can attach their own computer providers);
 - deployment, migration, operations, security response, and support;
 - service levels, compliance assistance, training, and certification;
 - managed AI inference, storage, automation, and Bowerbird execution; and

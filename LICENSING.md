@@ -2,7 +2,7 @@
 
 Status: Prospective licensing guidance for a future release distributed with the current root
 `LICENSE.md`; historical releases retain the license actually shipped with them.
-Last verified: 2026-09-01.
+Last verified: 2026-11-02.
 
 ## What license does OpenCompany use?
 
@@ -54,6 +54,19 @@ OpenCompany will make reusable protocols, schemas, SDKs, integration/provider ki
 templates available under Apache-2.0 where their path notices explicitly say so. That permissive
 boundary is designed for independent applications and for the shared OpenCompany/Bowerbird
 integration ecosystem.
+
+### Current Apache-2.0 path notices
+
+A path is Apache-2.0 only if it carries its own notice. In this repository today:
+
+| Path | Contents | Notice |
+|---|---|---|
+| `resources/code-docs/` | Code Mode guides and examples for the `opencompany-code-v1` Ruby profile | [`resources/code-docs/LICENSE`](resources/code-docs/LICENSE) |
+
+The Apache-2.0 text is in [`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt). Official SDKs and
+standalone protocol/schema packages do not exist yet; they will carry their own notices when
+published. Integration packages live in the separate `integrations` repository and are licensed by
+that repository's own notices.
 
 ## What remains proprietary?
 
