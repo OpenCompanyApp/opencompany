@@ -184,10 +184,32 @@ class DocumentIndexingService
         }
 
         if ($vectorResults->isEmpty()) {
-            return $ftsResults;
+            // Raw ts_rank values are unbounded and tiny; callers display
+            // similarity as a 0–1 score, so keyword-only results are scaled too.
+            return $this->normalizeScores($ftsResults);
         }
 
         return $this->mergeWithRRF($vectorResults, $ftsResults, $limit);
+    }
+
+    /**
+     * Scale similarity so the best result is 1.0 and order is preserved.
+     *
+     * @param  Collection<int, DocumentChunk>  $results
+     * @return Collection<int, DocumentChunk>
+     */
+    private function normalizeScores(Collection $results): Collection
+    {
+        $maxScore = (float) $results->max('similarity');
+        if ($maxScore <= 0) {
+            return $results;
+        }
+
+        return $results->map(function (DocumentChunk $chunk) use ($maxScore) {
+            $chunk->similarity = (float) $chunk->similarity / $maxScore;
+
+            return $chunk;
+        })->values();
     }
 
     /**
@@ -345,16 +367,7 @@ class DocumentIndexingService
 
         // Normalize to 0-1 after fusion. Raw RRF scores are only meaningful for
         // sorting and are not stable enough to expose directly in UI.
-        $maxScore = $scored->max('similarity');
-        if ($maxScore > 0) {
-            $scored = $scored->map(function (DocumentChunk $chunk) use ($maxScore) {
-                $chunk->similarity = $chunk->similarity / $maxScore;
-
-                return $chunk;
-            });
-        }
-
-        return $scored->sortByDesc('similarity')->take($limit)->values();
+        return $this->normalizeScores($scored->values())->sortByDesc('similarity')->take($limit)->values();
     }
 
     /**
