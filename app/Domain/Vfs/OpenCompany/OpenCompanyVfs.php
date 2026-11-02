@@ -37,6 +37,7 @@ use App\Domain\Vfs\OpenCompany\Concerns\SearchesVfsContent;
 use App\Domain\Vfs\OpenCompany\Concerns\StatsVfsPaths;
 use App\Domain\Vfs\OpenCompany\Policy\VfsMutationPolicy;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\AgentPermissionService;
 use App\Services\FileSystemService;
 
@@ -46,6 +47,15 @@ use App\Services\FileSystemService;
  * This facade owns routing and public VFS operations. Domain-specific mounts and
  * mutation helpers live in traits under OpenCompany\Concerns so new mounts can
  * be added without concentrating every model rule in this one class again.
+ *
+ * Workspace boundary: every public entry point first calls
+ * assertBoundWorkspace(). Mount queries scope through forWorkspace() (the bound
+ * workspace) while some helpers key off $agent->workspace_id; the assertion is
+ * what makes those two equivalent. Do not add a public entry point without it.
+ *
+ * Read modes: read()/readPage() are display reads (budgeted, may end with the
+ * visible truncation line). readContent() is the content read used by every
+ * read-modify-write path; it never truncates. See VfsBudget.
  */
 class OpenCompanyVfs
 {
@@ -85,10 +95,34 @@ class OpenCompanyVfs
     ) {}
 
     /**
+     * Assert that the ambient workspace binding (`currentWorkspace`, used by
+     * forWorkspace()) is the acting agent's workspace.
+     *
+     * Invariant: call this before any query, policy decision, or approval at
+     * every public VFS entry point (and in VfsCommandExecutor::execute, which
+     * evaluates mutation policy before it reaches this facade). A mismatch is a
+     * host wiring bug — e.g. a queue worker that bound the wrong workspace — and
+     * fails closed with permission_denied instead of mixing two tenants.
+     *
+     * @throws VfsError permission_denied (reason workspace_binding_mismatch)
+     */
+    public function assertBoundWorkspace(User $agent): void
+    {
+        $bound = app()->bound('currentWorkspace') ? app('currentWorkspace') : null;
+
+        if (! $bound instanceof Workspace
+            || $agent->workspace_id === null
+            || (string) $bound->getKey() !== (string) $agent->workspace_id) {
+            throw VfsError::workspaceBindingMismatch();
+        }
+    }
+
+    /**
      * @return list<VfsEntry>
      */
     public function list(User $agent, string $path, ?VfsBudget $budget = null): array
     {
+        $this->assertBoundWorkspace($agent);
         $budget ??= new VfsBudget;
         $path = $this->normalizePath($path);
         $segments = $this->segments($path);
@@ -127,6 +161,7 @@ class OpenCompanyVfs
         ?VfsBudget $budget = null,
         ?string $cursor = null,
     ): VfsPage {
+        $this->assertBoundWorkspace($agent);
         $budget ??= new VfsBudget;
         $path = $this->normalizePath($path);
         $segments = $this->segments($path);
@@ -228,6 +263,7 @@ class OpenCompanyVfs
      */
     public function listBounded(User $agent, string $path, VfsBudget $budget): array
     {
+        $this->assertBoundWorkspace($agent);
         $entries = [];
         $cursor = null;
         $scanned = 0;
@@ -265,6 +301,7 @@ class OpenCompanyVfs
         ?VfsBudget $budget = null,
         ?string $cursor = null,
     ): VfsReadPage {
+        $this->assertBoundWorkspace($agent);
         $budget ??= new VfsBudget;
         $path = $this->normalizePath($path);
         $segments = $this->segments($path);
@@ -327,8 +364,14 @@ class OpenCompanyVfs
         return hash('sha256', (string) $agent->workspace_id.'|'.(string) $agent->id);
     }
 
+    /**
+     * Display read: the body is capped at $budget->maxBytes and may end with
+     * the visible "[... truncated]" line. Never write this result back; use
+     * readContent() for read-modify-write.
+     */
     public function read(User $agent, string $path, ?VfsBudget $budget = null): string
     {
+        $this->assertBoundWorkspace($agent);
         $budget ??= new VfsBudget;
         $path = $this->normalizePath($path);
         $segments = $this->segments($path);
@@ -351,5 +394,42 @@ class OpenCompanyVfs
             'workspace' => $this->readWorkspace($agent, $segments, $path, $budget),
             default => throw VfsError::notFound($path),
         };
+    }
+
+    /**
+     * Content read: the full body of one readable path, never truncated and
+     * never carrying the display truncation line.
+     *
+     * Contract for later phases: this is the only read a caller may write
+     * back (patch, append, tee -a, archive create/extract, split). It applies
+     * exactly the same read authorization as read() because it routes through
+     * the same mounts. Bodies above config('vfs.max_content_bytes') fail with
+     * invalid_request (context: path, bytes, max_content_bytes, hint) instead
+     * of returning a prefix. Directories fail with not_readable.
+     *
+     * The version of the served object, when the mount knows it, is available
+     * to callers that pass their own budget via readContentWithVersion().
+     *
+     * @throws VfsError
+     */
+    public function readContent(User $agent, string $path): string
+    {
+        return $this->readContentWithVersion($agent, $path)['content'];
+    }
+
+    /**
+     * Content read that also returns the version token computed from the same
+     * bytes (null for generated paths without a version).
+     *
+     * @return array{content: string, version: string|null}
+     *
+     * @throws VfsError
+     */
+    public function readContentWithVersion(User $agent, string $path): array
+    {
+        $budget = VfsBudget::forContent((int) config('vfs.max_content_bytes', 20 * 1024 * 1024));
+        $content = $this->read($agent, $path, $budget);
+
+        return ['content' => $content, 'version' => $budget->lastReadVersion()];
     }
 }

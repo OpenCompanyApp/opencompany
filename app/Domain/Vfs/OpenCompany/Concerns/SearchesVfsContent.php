@@ -22,6 +22,8 @@ trait SearchesVfsContent
      */
     public function search(User $agent, string $pattern, array $paths, ?VfsBudget $budget = null, bool $regex = false, bool $caseInsensitive = false): array
     {
+        $this->assertBoundWorkspace($agent);
+
         return $this->searchWithMetadata($agent, $pattern, $paths, $budget, $regex, $caseInsensitive)['matches'];
     }
 
@@ -31,6 +33,7 @@ trait SearchesVfsContent
      */
     public function searchWithMetadata(User $agent, string $pattern, array $paths, ?VfsBudget $budget = null, bool $regex = false, bool $caseInsensitive = false): array
     {
+        $this->assertBoundWorkspace($agent);
         $budget ??= new VfsBudget;
         $paths = $paths === [] ? ['/'] : $paths;
         $matches = [];

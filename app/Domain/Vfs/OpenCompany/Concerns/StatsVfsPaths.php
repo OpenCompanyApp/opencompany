@@ -16,6 +16,7 @@ trait StatsVfsPaths
      */
     public function stat(User $agent, string $path): array
     {
+        $this->assertBoundWorkspace($agent);
         $path = $this->normalizePath($path);
 
         $entry = $this->directEntryForPath($agent, $path);

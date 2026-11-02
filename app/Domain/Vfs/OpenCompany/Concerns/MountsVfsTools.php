@@ -226,6 +226,6 @@ trait MountsVfsTools
 
         $content ??= "Tool catalog is exposed in the agent system prompt and Code Mode docs.\n\nUse code_read_doc(\"overview\") and code_read_doc(\"vfs\") for programmable tool access.";
 
-        return VfsText::truncate($content, $budget->maxBytes);
+        return VfsText::fit($content, $budget, $path);
     }
 }

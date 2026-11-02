@@ -14,6 +14,12 @@ use ZipArchive;
  * These commands intentionally operate on bounded in-memory archives instead of
  * delegating to host binaries. Reads still flow through the VFS adapter and
  * writes still require the same vfs_write capability as primitive file tools.
+ *
+ * Invariant: every byte that ends up in a written file (archive members on
+ * create, extracted members, split chunks) comes from a content read, never a
+ * display read. Display truncation would otherwise be persisted as a corrupt
+ * archive or a prefix plus "[... truncated]". Sizes are bounded by the content
+ * ceiling (config vfs.max_content_bytes) per operation instead.
  */
 trait ExecutesVfsArchiveCommands
 {
@@ -52,10 +58,12 @@ trait ExecutesVfsArchiveCommands
 
         $archive = $this->archiveInput($agent, $tokens, $cwd, $budget, $stdin, ['-f', '-C', '--strip-components', '--exclude']);
         if ($flags['z'] ?? false) {
-            $decoded = gzdecode($archive);
+            $ceiling = $this->archiveContentCeiling();
+            $decoded = @gzdecode($archive, $ceiling + 1);
             if ($decoded === false) {
-                throw VfsError::invalid('tar archive is not valid gzip data.');
+                throw VfsError::invalid('tar archive is not valid gzip data, or it expands beyond the content limit.', ['max_content_bytes' => $ceiling]);
             }
+            $this->assertArchiveBytesWithinCeiling(strlen($decoded), 'tar');
             $archive = $decoded;
         }
         $entries = $this->parseTarArchive($archive, $budget);
@@ -129,7 +137,9 @@ trait ExecutesVfsArchiveCommands
             return ['stdout' => implode("\n", array_map(fn (string $name): string => "testing: {$name} OK", array_keys($entries))), 'cwd' => $cwd, 'class' => 'read-transform'];
         }
         if (($flags['l'] ?? false) || ($flags['p'] ?? false)) {
-            return ['stdout' => ($flags['p'] ?? false) ? implode('', $entries) : implode("\n", array_keys($entries)), 'cwd' => $cwd, 'class' => 'read-transform'];
+            // -p prints member bytes: that is display output, so it is
+            // budgeted (and marked) like any other read.
+            return ['stdout' => ($flags['p'] ?? false) ? VfsText::fit(implode('', $entries), $budget, 'unzip -p') : implode("\n", array_keys($entries)), 'cwd' => $cwd, 'class' => 'read-transform'];
         }
 
         $this->assertWriteCommandAllowed($agent, 'vfs_write');
@@ -161,7 +171,7 @@ trait ExecutesVfsArchiveCommands
         $paths = $this->pathArgsWithValueOptions($tokens, $cwd, ['-l', '-b', '-n', '-a']);
         $source = $paths[0] ?? throw VfsError::invalid('split requires an input path.');
         $prefix = $paths[1] ?? $this->path('x', $cwd);
-        $content = $this->vfs->read($agent, $source, $budget);
+        $content = $this->vfs->readContent($agent, $source);
         $suffixLength = $this->integerOptionValue($tokens, ['-a'], 'split', 'suffix length') ?? 2;
         $chunks = $this->splitChunks($content, $tokens);
         $written = [];
@@ -182,7 +192,7 @@ trait ExecutesVfsArchiveCommands
         $args = $this->positionalTokens($tokens, ['-f', '-n', '-b']);
         $source = isset($args[0]) ? $this->path($args[0], $cwd) : throw VfsError::invalid('csplit requires an input path.');
         $spec = $args[1] ?? null;
-        $content = $this->vfs->read($agent, $source, $budget);
+        $content = $this->vfs->readContent($agent, $source);
         $prefix = $this->path($this->optionValue($tokens, ['-f']) ?? 'xx', $cwd);
         $digits = $this->integerOptionValue($tokens, ['-n'], 'csplit', 'suffix digits') ?? 2;
         $chunks = $this->csplitChunks($content, is_string($spec) ? $spec : null);
@@ -239,8 +249,11 @@ trait ExecutesVfsArchiveCommands
     private function archiveEntriesFromTokens(User $agent, array $tokens, string $cwd, VfsBudget $budget, array $valueOptions): array
     {
         $entries = [];
+        $bytes = 0;
         foreach ($this->pathArgsWithValueOptions($tokens, $cwd, $valueOptions) as $path) {
             foreach ($this->archiveEntriesForPath($agent, $path, $budget, basename($path), 0) as $name => $content) {
+                $bytes += strlen($content);
+                $this->assertArchiveBytesWithinCeiling($bytes, 'archive creation');
                 $entries[$name] = $content;
             }
         }
@@ -258,7 +271,7 @@ trait ExecutesVfsArchiveCommands
     {
         $stat = $this->vfs->stat($agent, $path);
         if (($stat['type'] ?? null) !== 'directory') {
-            return [$this->safeArchiveName($name) => $this->vfs->read($agent, $path, $budget)];
+            return [$this->safeArchiveName($name) => $this->vfs->readContent($agent, $path)];
         }
         if ($depth >= $budget->maxDepth) {
             return [];
@@ -328,7 +341,9 @@ trait ExecutesVfsArchiveCommands
             $offset += 512;
             $content = substr($archive, $offset, $size);
             if ($type !== '5' && $name !== '') {
-                $entries[$this->safeArchiveName($name)] = VfsText::truncate($content, $budget->maxBytes);
+                // Full member bytes: extraction writes these back. The archive
+                // itself was already bounded by the content ceiling.
+                $entries[$this->safeArchiveName($name)] = $content;
                 if (count($entries) >= $budget->maxFiles) {
                     break;
                 }
@@ -342,16 +357,25 @@ trait ExecutesVfsArchiveCommands
     private function archiveInput(User $agent, array $tokens, string $cwd, VfsBudget $budget, ?string $stdin, array $valueOptions): string
     {
         if ($stdin !== null) {
-            return VfsText::truncate($stdin, $budget->maxBytes);
+            // Piped archive bytes are only trustworthy if no read upstream in
+            // this command was display-truncated; a cut archive is corrupt.
+            if ($budget->truncations() > 0) {
+                throw VfsError::invalid('Archive input from a pipe was truncated at maxBytes.', [
+                    'hint' => 'Pass the archive path with -f (or as an argument) instead of piping it.',
+                ]);
+            }
+            $this->assertArchiveBytesWithinCeiling(strlen($stdin), 'archive input');
+
+            return $stdin;
         }
         $file = $this->optionValue($tokens, ['-f']);
         if ($file !== null && $file !== '-') {
-            return $this->vfs->read($agent, $this->path($file, $cwd), $budget);
+            return $this->vfs->readContent($agent, $this->path($file, $cwd));
         }
         $paths = $this->pathArgsWithValueOptions($tokens, $cwd, $valueOptions);
         $path = $paths[0] ?? throw VfsError::invalid('archive command requires an archive path or stdin.');
 
-        return $this->vfs->read($agent, $path, $budget);
+        return $this->vfs->readContent($agent, $path);
     }
 
     private function archiveDestination(array $tokens, string $cwd, string $option = '-C'): string
@@ -389,6 +413,26 @@ trait ExecutesVfsArchiveCommands
         $parts = array_slice($parts, $strip);
 
         return $parts === [] ? null : implode('/', $parts);
+    }
+
+    private function archiveContentCeiling(): int
+    {
+        return max(1, (int) config('vfs.max_content_bytes', 20 * 1024 * 1024));
+    }
+
+    /**
+     * Bound the total bytes one archive operation may hold in memory or write.
+     */
+    private function assertArchiveBytesWithinCeiling(int $bytes, string $operation): void
+    {
+        $ceiling = $this->archiveContentCeiling();
+        if ($bytes > $ceiling) {
+            throw VfsError::invalid("{$operation} exceeds the VFS content limit ({$ceiling} bytes).", [
+                'bytes' => $bytes,
+                'max_content_bytes' => $ceiling,
+                'hint' => 'Archive or extract fewer or smaller files per command.',
+            ]);
+        }
     }
 
     private function assertZipExtensionAvailable(): void
@@ -432,19 +476,29 @@ trait ExecutesVfsArchiveCommands
             throw VfsError::invalid('unzip input is not a valid zip archive.');
         }
         $entries = [];
-        for ($i = 0; $i < $zip->numFiles && count($entries) < $budget->maxFiles; $i++) {
-            $name = $zip->getNameIndex($i);
-            if (! is_string($name) || str_ends_with($name, '/')) {
-                continue;
+        $bytes = 0;
+        try {
+            for ($i = 0; $i < $zip->numFiles && count($entries) < $budget->maxFiles; $i++) {
+                $name = $zip->getNameIndex($i);
+                if (! is_string($name) || str_ends_with($name, '/')) {
+                    continue;
+                }
+                // Check the declared size before inflating the member.
+                $declared = $zip->statIndex($i)['size'] ?? 0;
+                $this->assertArchiveBytesWithinCeiling($bytes + (int) $declared, 'unzip');
+                $content = $zip->getFromIndex($i);
+                if ($content === false) {
+                    continue;
+                }
+                $bytes += strlen($content);
+                $this->assertArchiveBytesWithinCeiling($bytes, 'unzip');
+                // Full member bytes: extraction writes these back.
+                $entries[$this->safeArchiveName($name)] = $content;
             }
-            $content = $zip->getFromIndex($i);
-            if ($content === false) {
-                continue;
-            }
-            $entries[$this->safeArchiveName($name)] = VfsText::truncate($content, $budget->maxBytes);
+        } finally {
+            $zip->close();
+            @unlink($tmp);
         }
-        $zip->close();
-        @unlink($tmp);
 
         return $entries;
     }

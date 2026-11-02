@@ -3,37 +3,20 @@
 namespace App\Domain\Vfs\OpenCompany\Concerns;
 
 use App\Domain\Vfs\Core\VfsEntry;
+use App\Domain\Vfs\Core\VfsPath;
 
 /**
  * Path normalization and root mount discovery for OpenCompanyVfs.
  */
 trait ResolvesVfsPaths
 {
+    /**
+     * Normalize a virtual path. Delegates to VfsPath so the approval replay
+     * path (ApprovalExecutionService) normalizes subjects identically.
+     */
     public function normalizePath(string $path, string $cwd = '/'): string
     {
-        $path = trim($path);
-        if ($path === '') {
-            $path = '.';
-        }
-
-        if (! str_starts_with($path, '/')) {
-            $path = rtrim($cwd, '/').'/'.$path;
-        }
-
-        $parts = [];
-        foreach (explode('/', $path) as $part) {
-            if ($part === '' || $part === '.') {
-                continue;
-            }
-            if ($part === '..') {
-                array_pop($parts);
-
-                continue;
-            }
-            $parts[] = $part;
-        }
-
-        return '/'.implode('/', $parts);
+        return VfsPath::normalize($path, $cwd);
     }
 
     /**

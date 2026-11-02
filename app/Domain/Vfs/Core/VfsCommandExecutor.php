@@ -66,6 +66,12 @@ class VfsCommandExecutor
 
     private string $currentCommand = '';
 
+    /**
+     * Budget of the execution in progress. Its truncation counter tells the
+     * write paths whether stdout may carry a display truncation line.
+     */
+    private ?VfsBudget $currentBudget = null;
+
     private function agentForPathExpansion(): User
     {
         return $this->currentAgent ?? throw VfsError::invalid('VFS command has no active agent context.');
@@ -81,7 +87,12 @@ class VfsCommandExecutor
         $this->currentCommand = $command;
         $this->currentToolParameters = $toolParameters ?? ['command' => $command, 'cwd' => $cwd];
         $this->agentForPathExpansion();
+        // Invariant: the executor evaluates mutation policy (and may create
+        // approvals) before it reaches the facade, so it must check the
+        // workspace binding itself.
+        $this->vfs->assertBoundWorkspace($agent);
         $budget ??= new VfsBudget;
+        $this->currentBudget = $budget;
         $cwd = $this->vfs->normalizePath($cwd);
         $stdout = '';
         $result = null;

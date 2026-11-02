@@ -3,49 +3,81 @@
 namespace App\Domain\Vfs\OpenCompany\Concerns;
 
 use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\Core\VfsTextPatch;
 use App\Models\Document;
 use App\Models\DocumentVersion;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Document write helper for VFS document content updates.
+ * Document content mutation for VFS text patches (/docs and agent documents).
+ *
+ * Owns the locked compare-and-write for Document rows: the version check, the
+ * anchor match, the DocumentVersion snapshot numbering, and the content update
+ * all happen inside one transaction holding a row lock on the document, so two
+ * concurrent patches serialize instead of overwriting each other. Authorization
+ * and mutation policy are the caller's job and must run before this.
  */
 trait MutatesVfsDocuments
 {
     /**
-     * @param  list<string>  $segments
-     * @return array<string, mixed>
+     * Apply a text patch to a document under a row lock.
+     *
+     * The patch is re-applied to the locked current content (the caller's
+     * preflight may be stale by now). A supplied $version is checked against
+     * the locked row with content-anchored staleness (VfsTextPatch).
+     *
+     * @return array<string, mixed> result envelope; includes stale_base/note when applicable
+     *
+     * @throws VfsError conflict, ambiguous_match, invalid_request, not_found
      */
-    private function writeDocument(User $agent, array $segments, string $path, string $content, string $mode, ?string $version): array
+    private function patchDocumentContent(User $agent, Document $doc, string $path, VfsTextPatch $patch, ?string $version, string $changeDescription): array
     {
-        $doc = $this->resolvePatchableDocument($agent, $segments, $path);
-        $this->assertVersion($version, $this->version($doc->updated_at?->toIso8601String(), $doc->content ?? ''), $path);
-
-        $previousContent = (string) ($doc->content ?? '');
-
-        if ($previousContent !== $content) {
-            $lastVersion = DocumentVersion::where('document_id', $doc->id)->max('version_number') ?? 0;
-
-            DocumentVersion::create([
-                'id' => Str::uuid()->toString(),
-                'document_id' => $doc->id,
-                'title' => $doc->title,
-                'content' => $previousContent,
-                'author_id' => $agent->id,
-                'version_number' => $lastVersion + 1,
-                'change_description' => 'VFS write snapshot before update',
-            ]);
-        }
-
-        $doc->update(['content' => $content]);
+        [$fresh, $applied] = $this->lockedDocumentPatch($agent, $doc, $path, $patch, $version, $changeDescription);
 
         return [
             'status' => 'updated',
             'path' => $path,
-            'canonical_path' => "/docs/by-id/{$doc->id}",
-            'version' => $this->version($doc->fresh()->updated_at?->toIso8601String(), $content),
+            'canonical_path' => "/docs/by-id/{$fresh->id}",
+            'version' => $this->version($fresh->updated_at?->toIso8601String(), $fresh->content ?? ''),
+            ...$this->textPatchResultFields($applied),
         ];
+    }
+
+    /**
+     * @return array{0: Document, 1: array{content: string, replacements: int, stale_base: bool}}
+     */
+    private function lockedDocumentPatch(User $agent, Document $doc, string $path, VfsTextPatch $patch, ?string $version, string $changeDescription): array
+    {
+        return DB::transaction(function () use ($agent, $doc, $path, $patch, $version, $changeDescription): array {
+            // Invariant: lock, then read, then compare, then write. Snapshot
+            // numbering (max + 1) is only race-free while this lock is held.
+            $locked = Document::forWorkspace()->whereKey($doc->id)->lockForUpdate()->first()
+                ?? throw VfsError::notFound($path);
+
+            $previousContent = (string) ($locked->content ?? '');
+            $currentVersion = $this->version($locked->updated_at?->toIso8601String(), $previousContent);
+            $applied = $patch->applyAgainstBase($previousContent, $path, $currentVersion, $version);
+
+            if ($previousContent !== $applied['content']) {
+                $lastVersion = DocumentVersion::where('document_id', $locked->id)->max('version_number') ?? 0;
+
+                DocumentVersion::create([
+                    'id' => Str::uuid()->toString(),
+                    'document_id' => $locked->id,
+                    'title' => $locked->title,
+                    'content' => $previousContent,
+                    'author_id' => $agent->id,
+                    'version_number' => $lastVersion + 1,
+                    'change_description' => $changeDescription,
+                ]);
+            }
+
+            $locked->update(['content' => $applied['content']]);
+
+            return [$locked->fresh() ?? $locked, $applied];
+        });
     }
 
     /**
