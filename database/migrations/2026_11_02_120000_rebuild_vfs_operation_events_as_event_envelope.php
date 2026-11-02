@@ -10,8 +10,11 @@ use Illuminate\Support\Facades\Schema;
  * No compatibility: OpenCompany has no users and migrations will be squashed,
  * so the old tool-call-only shape is dropped instead of migrated.
  *
- * - `id` is a monotonic surrogate key; the change feed pages on
- *   (occurred_at, id). `event_id` is the envelope id.
+ * - `id` is a ULID primary key (pillar 11 archive invariant: archived tables
+ *   are keyed by a stable string id, never an auto-increment). ULIDs are
+ *   time-ordered and compare correctly as strings on SQLite and PostgreSQL;
+ *   the change feed pages on `id` behind a settle window (see
+ *   MountsVfsWorkspace::pageWorkspaceChanges). `event_id` is the envelope id.
  * - `idempotency_key` is unique: read aggregation (one row per run or
  *   agent-minute and path) and repeated idempotent writes rely on it.
  * - `committed` marks committed writes so the change feed query is one index
@@ -24,7 +27,7 @@ return new class extends Migration
         Schema::dropIfExists('vfs_operation_events');
 
         Schema::create('vfs_operation_events', function (Blueprint $table) {
-            $table->id();
+            $table->ulid('id')->primary();
             $table->uuid('event_id')->unique();
             $table->uuid('workspace_id');
             $table->string('type', 64);

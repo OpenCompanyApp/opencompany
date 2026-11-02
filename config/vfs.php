@@ -34,4 +34,11 @@ return [
     // and xargs runs together). Output beyond it is dropped and replaced by a
     // final "[truncated: ...]" line plus output_truncated: true.
     'max_exec_output_bytes' => (int) env('VFS_MAX_EXEC_OUTPUT_BYTES', 100_000),
+
+    // /workspace/changes.ndjson delivers an event only once its ULID time is
+    // this many seconds old, so rows whose transactions commit late (or come
+    // from a server with a slightly skewed clock) are never skipped by a
+    // saved cursor. Changes appear in the feed up to this long after they
+    // happened. 0 delivers immediately (tests only).
+    'change_feed_settle_seconds' => (int) env('VFS_CHANGE_FEED_SETTLE_SECONDS', 5),
 ];

@@ -25,6 +25,8 @@
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
+        <!-- The VFS change feed settle window is exercised explicitly in VfsChangeFeedSettleTest. -->
+        <env name="VFS_CHANGE_FEED_SETTLE_SECONDS" value="0"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

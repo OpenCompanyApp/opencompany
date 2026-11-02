@@ -35,6 +35,12 @@ class VfsOperationEvent extends Model
 {
     use BelongsToWorkspace;
 
+    // ULID string primary key, assigned by DatabaseVfsEventSink at insert
+    // (archive invariant: no auto-increment keys on archived tables).
+    protected $keyType = 'string';
+
+    public $incrementing = false;
+
     protected $fillable = [
         'event_id',
         'workspace_id',

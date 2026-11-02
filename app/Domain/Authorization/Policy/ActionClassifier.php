@@ -73,11 +73,15 @@ final class ActionClassifier
         'delete_document' => self::DELETE,
         'delete_table_row' => self::DELETE, 'bulk_delete_table_rows' => self::DELETE,
         'delete_list_item' => self::DELETE,
+        // VFS rm moves documents, files, rows and list items to their trash
+        // (restorable; purge is never a VFS operation), so it is a delete.
+        'vfs_rm' => self::DELETE,
 
         // Hard deletes of records that have no trash yet are purges. Move a
         // tool to DELETE only once its model soft-deletes.
-        // Workspace files (delete_file, vfs rm and overwrite) have no trash yet.
-        'delete_file' => self::PURGE, 'vfs_rm' => self::PURGE,
+        // The delete_file domain tool still hard-deletes workspace files
+        // (FileSystemService::deleteFile); VFS rm trashes them instead.
+        'delete_file' => self::PURGE,
         'delete_document_comment' => self::PURGE, 'delete_table_view' => self::PURGE,
         'delete_calendar_event' => self::PURGE, 'delete_list_item_comment' => self::PURGE,
         'delete_message' => self::PURGE, 'forget_memory' => self::PURGE, 'delete_routine' => self::PURGE,

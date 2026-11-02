@@ -391,12 +391,6 @@ parameters:
 			path: app/Agents/Tools/Lists/CreateListStatus.php
 
 		-
-			message: '#^Property App\\Agents\\Tools\\Lists\\DeleteListItem\:\:\$agent is never read, only written\.$#'
-			identifier: property.onlyWritten
-			count: 1
-			path: app/Agents/Tools/Lists/DeleteListItem.php
-
-		-
 			message: '#^Property App\\Agents\\Tools\\Lists\\DeleteListItemComment\:\:\$agent is never read, only written\.$#'
 			identifier: property.onlyWritten
 			count: 1
@@ -931,18 +925,6 @@ parameters:
 			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
 
 		-
-			message: '#^Call to function is_array\(\) with null will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 1
-			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
-
-		-
-			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 1
-			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
-
-		-
 			message: '#^Call to method gather\(\) on an unknown class App\\Domain\\Chat\\Telegram\\Application\\WorkspaceStatusService\.$#'
 			identifier: class.notFound
 			count: 1
@@ -985,21 +967,9 @@ parameters:
 			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
 
 		-
-			message: '#^Offset ''status'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
-
-		-
-			message: '#^Offset ''type'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
-
-		-
 			message: '#^Result of && is always false\.$#'
 			identifier: booleanAnd.alwaysFalse
-			count: 2
+			count: 1
 			path: app/Domain/Chat/Telegram/Application/TelegramCardRenderer.php
 
 		-
@@ -1299,13 +1269,7 @@ parameters:
 		-
 			message: '#^Call to function is_array\(\) with null will always evaluate to false\.$#'
 			identifier: function.impossibleType
-			count: 6
-			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
-
-		-
-			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 1
+			count: 5
 			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
 
 		-
@@ -1322,12 +1286,6 @@ parameters:
 
 		-
 			message: '#^Match arm comparison between '''' and ''/approvals'' is always false\.$#'
-			identifier: match.alwaysFalse
-			count: 1
-			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
-
-		-
-			message: '#^Match arm comparison between '''' and ''/routine'' is always false\.$#'
 			identifier: match.alwaysFalse
 			count: 1
 			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
@@ -1358,6 +1316,12 @@ parameters:
 
 		-
 			message: '#^Match arm comparison between '''' and ''/lists'' is always false\.$#'
+			identifier: match.alwaysFalse
+			count: 1
+			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
+
+		-
+			message: '#^Match arm comparison between '''' and ''/routine'' is always false\.$#'
 			identifier: match.alwaysFalse
 			count: 1
 			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
@@ -1531,12 +1495,6 @@ parameters:
 			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
 
 		-
-			message: '#^Offset ''status'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
-
-		-
 			message: '#^Offset ''table_id'' on array\{\} on left side of \?\? does not exist\.$#'
 			identifier: nullCoalesce.offset
 			count: 1
@@ -1587,7 +1545,7 @@ parameters:
 		-
 			message: '#^Result of \|\| is always true\.$#'
 			identifier: booleanOr.alwaysTrue
-			count: 7
+			count: 6
 			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
 
 		-
@@ -1647,7 +1605,7 @@ parameters:
 		-
 			message: '#^Unreachable statement \- code above always terminates\.$#'
 			identifier: deadCode.unreachable
-			count: 6
+			count: 5
 			path: app/Domain/Chat/Telegram/Application/TelegramWebhookPipeline.php
 
 		-
@@ -1909,12 +1867,6 @@ parameters:
 			path: app/Http/Controllers/Api/TelegramMiniAppController.php
 
 		-
-			message: '#^Offset ''source'' on string\|null on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Http/Controllers/Api/TelegramMiniAppController.php
-
-		-
 			message: '#^Unable to resolve the template type TKey in call to function collect$#'
 			identifier: argument.templateType
 			count: 1
@@ -2063,42 +2015,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Jobs/AgentRespondJob.php
-
-		-
-			message: '#^Call to function is_array\(\) with null will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 3
-			path: app/Jobs/EnrichTelegramMediaJob.php
-
-		-
-			message: '#^Offset ''cache_key'' on null on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Jobs/EnrichTelegramMediaJob.php
-
-		-
-			message: '#^Offset ''telegram_enrichment'' on array\{\}\|string on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Jobs/EnrichTelegramMediaJob.php
-
-		-
-			message: '#^Offset ''type'' does not exist on null\.$#'
-			identifier: offsetAccess.notFound
-			count: 1
-			path: app/Jobs/EnrichTelegramMediaJob.php
-
-		-
-			message: '#^Offset ''type'' on null on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Jobs/EnrichTelegramMediaJob.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between '''' and '''' will always evaluate to false\.$#'
-			identifier: notIdentical.alwaysFalse
-			count: 2
-			path: app/Jobs/EnrichTelegramMediaJob.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>metadata" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'

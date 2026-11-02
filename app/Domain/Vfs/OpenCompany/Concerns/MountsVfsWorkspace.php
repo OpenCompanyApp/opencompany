@@ -2,6 +2,8 @@
 
 namespace App\Domain\Vfs\OpenCompany\Concerns;
 
+use Illuminate\Support\Str;
+
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
@@ -191,17 +193,20 @@ trait MountsVfsWorkspace
      * can refresh copies they pulled earlier without rescanning.
      *
      * - Source: committed write events (`vfs_operation_events.committed`),
-     *   keyset-paged on the database `id` ALONE. `occurred_at` is assigned in
-     *   PHP before the insert, so a writer that pauses between building and
-     *   inserting its event can land a lower timestamp after a later one was
-     *   delivered; a cursor led by the timestamp would skip it forever. The
-     *   auto-increment id is assigned at insert, so a saved next_cursor
-     *   resumes after the last delivered row and can be polled again later
-     *   (cursors are actor-bound). Residual window: on PostgreSQL an id is
-     *   taken at INSERT but visible at COMMIT; write events are inserted by
-     *   the auditor right after the facade call returned (its own
-     *   transaction already committed), so outside an enclosing transaction
-     *   that window is the duration of a single INSERT.
+     *   keyset-paged on the ULID primary key `id` ALONE (assigned at insert
+     *   by DatabaseVfsEventSink; time-ordered, string-comparable on SQLite and
+     *   PostgreSQL; pillar 11 forbids auto-increment keys on archived tables).
+     * - Settle window (`vfs.change_feed_settle_seconds`, default 5): only
+     *   events whose ULID time is at least that old are delivered, and the
+     *   cursor never moves past the settle boundary. Neither an id nor a
+     *   timestamp is commit-ordered under concurrent PostgreSQL transactions
+     *   (or across app servers with slightly skewed clocks), so a row that is
+     *   still in flight when a poll runs could otherwise be skipped forever.
+     *   Contract: an event is delivered exactly once, in id order, provided
+     *   its transaction commits (and clocks agree) within the settle window;
+     *   VFS write events are single short INSERTs after the write committed,
+     *   far inside it. The cost is that a change appears in the feed up to
+     *   the settle window after it happened.
      * - Permission: re-checked per object at read time by stat'ing the
      *   object's canonical path as the agent (unaudited); invisible objects are
      *   skipped, not redacted. Deletes are shown to their actor, or when the
@@ -222,9 +227,14 @@ trait MountsVfsWorkspace
     {
         $path = '/workspace/changes.ndjson';
         $after = $state['after'] ?? null;
-        if ($after !== null && (! is_array($after) || ! is_int($after['id'] ?? null))) {
+        if ($after !== null && (! is_array($after) || ! is_string($after['id'] ?? null) || preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', $after['id']) !== 1)) {
             throw $this->invalidVfsPageCursor();
         }
+
+        // Settle boundary: the smallest ULID of (now - settle window). Rows at
+        // or after it are not delivered yet; see the docblock contract.
+        $settleSeconds = max(0, (int) config('vfs.change_feed_settle_seconds', 5));
+        $boundary = substr((string) Str::ulid(now()->subSeconds($settleSeconds)), 0, 10).str_repeat('0', 16);
 
         $lines = [];
         $usedBytes = 0;
@@ -239,6 +249,7 @@ trait MountsVfsWorkspace
                 ->where('workspace_id', $agent->workspace_id)
                 ->where('committed', true)
                 ->when(is_array($cursor), fn (Builder $query): Builder => $query->where('id', '>', $cursor['id']))
+                ->where('id', '<', $boundary)
                 ->orderBy('id')
                 ->limit(min(200, $budget->maxFiles - $scanned + 1))
                 ->get();
@@ -255,7 +266,7 @@ trait MountsVfsWorkspace
                 }
 
                 $scanned++;
-                $position = ['id' => (int) $event->id];
+                $position = ['id' => (string) $event->id];
 
                 if (! $context->unaudited(fn (): bool => $this->changeIsVisible($agent, $event))) {
                     $skipped++;

@@ -2,6 +2,8 @@
 
 namespace App\Domain\Vfs\Events;
 
+use Illuminate\Support\Str;
+
 use App\Models\VfsOperationEvent;
 use Illuminate\Support\Facades\Log;
 
@@ -101,6 +103,9 @@ class DatabaseVfsEventSink implements VfsEventSink
         $now = now();
 
         return [
+            // Time-ordered ULID primary key; the change feed's delivery
+            // cursor. Generated per row, monotonic within this process.
+            'id' => (string) Str::ulid(),
             'event_id' => $event->id,
             'workspace_id' => $event->workspaceId,
             'type' => $event->type,

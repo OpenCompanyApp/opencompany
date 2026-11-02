@@ -212,6 +212,34 @@ class VfsAuditTest extends TestCase
         );
     }
 
+    // Pillar 11 (archive invariant): vfs_operation_events is keyed by a
+    // stable string id (ULID), never an auto-increment, and the change feed
+    // cursor is that ULID. The feed delivers an event only once it is older
+    // than the settle window, so a row whose transaction commits late is not
+    // skipped by a cursor that already moved on; the cursor never passes the
+    // settle boundary and the event is then delivered exactly once.
+    public function test_change_feed_pages_on_ulids_behind_a_settle_window(): void
+    {
+        config(['vfs.change_feed_settle_seconds' => 5]);
+
+        $this->vfs->write($this->agent, '/files/settle.txt', 'x');
+        $event = VfsOperationEvent::query()->where('committed', true)->where('type', 'vfs.file.created')->sole();
+        $this->assertMatchesRegularExpression('/^[0-9A-HJKMNP-TV-Z]{26}$/', (string) $event->id);
+
+        // Fresh event: inside the settle window, not delivered yet; the
+        // returned cursor must still let a later poll see it.
+        $first = $this->vfs->readPage($this->agent, '/workspace/changes.ndjson');
+        $this->assertSame('', $first->content);
+        $this->assertNotNull($first->nextCursor);
+
+        // After the window the same cursor delivers it, once.
+        $this->travel(10)->seconds();
+        $second = $this->vfs->readPage($this->agent, '/workspace/changes.ndjson', null, $first->nextCursor);
+        $this->assertStringContainsString('vfs.file.created', $second->content);
+        $third = $this->vfs->readPage($this->agent, '/workspace/changes.ndjson', null, $second->nextCursor);
+        $this->assertStringNotContainsString('vfs.file.created', $third->content);
+    }
+
     private function permission(string $scopeType, string $scopeKey, bool $requiresApproval = false, ?User $agent = null): void
     {
         AgentPermission::create([

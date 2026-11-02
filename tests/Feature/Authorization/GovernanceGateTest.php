@@ -101,6 +101,22 @@ class GovernanceGateTest extends TestCase
         $this->assertTrue($this->resolve('delete_document')['requires_approval']);
     }
 
+    // VFS rm moves objects to a restorable trash (purge is not a VFS
+    // operation), so vfs_rm is a delete: auto in Team, a proposal in Company,
+    // while the hard-deleting delete_file tool stays a purge.
+    public function test_vfs_rm_is_a_reversible_delete_not_a_purge(): void
+    {
+        $this->assertSame(ActionClassifier::DELETE, app(ActionClassifier::class)->classify('vfs_rm'));
+        $this->assertSame(ActionClassifier::PURGE, app(ActionClassifier::class)->classify('delete_file'));
+
+        $this->preset('team');
+        $this->assertFalse($this->resolve('vfs_rm')['requires_approval']);
+        $this->assertTrue($this->resolve('delete_file')['requires_approval']);
+
+        $this->preset('company');
+        $this->assertTrue($this->resolve('vfs_rm')['requires_approval']);
+    }
+
     // The floor is denied before exemptions, grants, admin rules or presets.
     public function test_floor_is_denied_even_with_grants_and_admin_rules(): void
     {
