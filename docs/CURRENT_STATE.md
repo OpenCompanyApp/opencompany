@@ -1,8 +1,10 @@
 # OpenCompany Current State
 
 Status: Current implementation inventory.
-Verified: implementation inventory 2026-11-02 against the `feat/vfs` checkout (run control plane,
-VFS, mruby Code Mode and the 2026-11 audit fixes committed locally; not yet on `main`).
+Verified: implementation inventory 2026-11-02. `main` is the only line: on 2026-11-02 the run control
+plane, VFS hardening (phases 1–3), mruby Code Mode and the 2026-11 audit fixes landed on `main`, and
+all feature branches were merged and deleted (the pre-landing `main` is tagged `archive/main-2026-10-28`,
+retired QuickJS is tagged `archive/quickjs`). New work branches from `main`.
 
 This document is the compact product/engineering source of truth. It describes the current checkout, including uncommitted work. It does not claim that a feature is committed to `main`, deployed, configured for every workspace, or live-verified with every external provider.
 
