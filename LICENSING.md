@@ -1,67 +1,112 @@
 # Licensing FAQ
 
+Status: Prospective licensing guidance for a future release distributed with the current root
+`LICENSE.md`; historical releases retain the license actually shipped with them.
+Last verified: 2026-09-01.
+
 ## What license does OpenCompany use?
 
-OpenCompany is source-available under the [Business Source License 1.1](LICENSE.md) with an Additional Use Grant.
+A future OpenCompany release that includes the current [LICENSE.md](LICENSE.md) will distribute the
+complete self-hosted application under **GNU Affero General Public License v3.0 only**
+(`AGPL-3.0-only`). AGPL is an OSI-approved open-source license.
 
-The Additional Use Grant is what makes normal internal production self-hosting possible without a separate commercial agreement.
+This working-tree decision is prospective until reviewed, committed, and released. A tag, archive,
+container, package, or binary remains governed by the license and notices shipped with that exact
+version. The license text controls; this FAQ does not replace or modify it.
 
-## Can my company self-host OpenCompany internally?
+## Can my company self-host OpenCompany?
 
-Yes.
+Yes. AGPL permits commercial and non-commercial use, study, modification, self-hosting,
+redistribution, and operation, subject to its conditions. The source license does not impose user,
+workspace, agent, automation, or Run limits and does not require an OpenCompany Cloud account.
 
-The Additional Use Grant permits production use for your own internal business operations.
+Support, managed infrastructure, service levels, and Cloud consumption may have commercial prices,
+but those prices do not narrow the rights granted by the AGPL-covered source.
 
-## Can subsidiaries or affiliated companies use the same deployment?
+## Can I offer OpenCompany as a hosted service?
 
-Yes.
+Yes. OpenCompany is choosing genuine open source rather than reserving competing hosting rights. If
+you modify the covered Program and users interact with that modified version over a network, AGPL
+section 13 requires you to offer those users the Corresponding Source of that version through the
+network interaction. Conveying copies or combined works also invokes the applicable AGPL source,
+notice, and copyleft requirements.
 
-The Additional Use Grant also permits production use for entities that control, are controlled by, or are under common control with you.
+Whether a particular deployment, plugin, linked module, or combination forms one covered work is a
+legal question. Obtain qualified counsel for a specific architecture.
 
-## Can a consultant or MSP install and operate OpenCompany for us?
+## Can I white-label, embed, or redistribute OpenCompany?
 
-Yes.
+The copyright license does not prohibit white-label, OEM, embedded, competing, or commercial use.
+You must satisfy AGPL obligations for covered and combined works and preserve required notices. The
+AGPL does not grant a general right to use the OpenCompany name, logo, or official-service identity;
+see the [Trademark and Compatibility Policy](TRADEMARKS.md).
 
-The Additional Use Grant permits single-customer managed operation, support, maintenance, and implementation where the deployment is used only for that customer's own internal business operations.
+A fork or hosted service should use its own primary brand and may accurately state that it is based
+on or compatible with OpenCompany.
 
-## Can I offer OpenCompany as a hosted service to many customers?
+## Must I publish all of my surrounding application code?
 
-No, not under the Additional Use Grant.
+Not automatically merely because it communicates with OpenCompany over a documented protocol.
+Independent services, clients, and integrations can remain separate works. Code that modifies,
+copies, embeds, or links with AGPL-covered implementation may have different obligations.
 
-If you want to run OpenCompany as a generally available hosted service, multi-tenant offering, white-labeled product, or embedded/OEM commercial offering, you need a separate commercial agreement.
+OpenCompany will make reusable protocols, schemas, SDKs, integration/provider kits, examples, and
+templates available under Apache-2.0 where their path notices explicitly say so. That permissive
+boundary is designed for independent applications and for the shared OpenCompany/Bowerbird
+integration ecosystem.
 
-## Can I white-label OpenCompany?
+## What remains proprietary?
 
-Not under the Additional Use Grant.
+OpenCompany Cloud operations, billing, metering, abuse prevention, hosted-fleet automation, and
+company-internal systems may remain proprietary when they are separate works across documented
+interfaces. The private Cloud cannot silently patch or copy the AGPL application into a private
+fork or use a feature flag, license key, detached notice, or repository name to remove rights from
+AGPL-covered files.
 
-White-label and branding-removal rights require a separate commercial agreement.
+The accepted default is a complete open-source self-hosted application, not a crippled community
+edition. There is no generic proprietary enterprise notice overriding the root license.
 
-## Can I embed OpenCompany into my own SaaS product?
+## What happened to prior BSL and FSL versions?
 
-Not if the value of your offering derives substantially from OpenCompany itself.
+Nothing changes retroactively:
 
-Embedded or OEM commercialization requires a separate commercial agreement.
+- versions published under Business Source License 1.1 retain their shipped Additional Use Grant,
+  Change Date, and GPL future license;
+- any version actually published under FSL-1.1-ALv2 retains its FSL terms and Apache future-license
+  grant; and
+- AGPL-3.0-only applies only to a version distributed with the reviewed AGPL license and notices.
 
-## Are consulting and implementation services allowed?
+Git history and release artifacts must preserve these distinctions. The current branch's earlier
+FSL preparation was not itself proof that an FSL release was published.
 
-Yes.
+## How are contributions licensed?
 
-You may charge for implementation, support, configuration, and managed operation services for a single customer's internal use.
+The community default is inbound equals outbound. Contributors retain copyright and certify origin
+and authority with the [Developer Certificate of Origin 1.1](https://developercertificate.org/) and
+a Signed-off-by line. Contributions to AGPL paths are accepted under AGPL-3.0-only; contributions to
+explicit Apache-2.0 paths are accepted under Apache-2.0.
 
-## Are premium features under a different repo license?
+OpenCompany is not using a broad copyright-assignment CLA or implied proprietary relicensing grant.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Not by default.
+## References
 
-This repository is licensed under `BSL 1.1`, but some premium capabilities may also require a commercial agreement and valid license key to activate lawfully in production. See [LICENSE_EE.md](LICENSE_EE.md).
+- [GNU Affero General Public License v3](https://www.gnu.org/licenses/agpl-3.0.html)
+- [OSI AGPL-3.0 approval](https://opensource.org/license/agpl-3-0)
+- [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+- [Open Source Definition](https://opensource.org/osd)
+- [Developer Certificate of Origin 1.1](https://developercertificate.org/)
 
-## Will OpenCompany eventually become open source?
+Historical license references:
 
-Each version of the Licensed Work converts to the Change License on the Change Date defined in [LICENSE.md](LICENSE.md).
+- [Business Source License 1.1](https://mariadb.com/bsl11/)
+- [FSL-1.1-ALv2](https://github.com/getsentry/fsl.software/blob/main/FSL-1.1-ALv2.template.md)
 
-For OpenCompany, the Change Date is the fourth anniversary of the first public distribution of that version, and the Change License is `GPL-3.0-or-later`.
+## Who should I contact?
 
-## Who should I contact for commercial use questions?
-
-Contact:
+For official Cloud, support, migration, certification, partnerships, trademark permission, or a
+specific commercial arrangement, contact:
 
 - enterprise@opencompany.app
+
+This FAQ is product guidance, not legal advice.

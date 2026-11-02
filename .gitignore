@@ -47,3 +47,7 @@ components.d.ts
 **/caddy
 frankenphp
 frankenphp-worker.php
+
+# Local agent/browser tooling state
+/.playwright-cli/
+/.claude/settings.local.json
