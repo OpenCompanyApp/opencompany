@@ -4,6 +4,10 @@ namespace App\Domain\Vfs\Core;
 
 /**
  * Small text helpers used by VFS command primitives.
+ *
+ * Also owns the stable, agent-facing truncation line formats. Their text is
+ * a public contract (agents and Stream B's vfs_read parse "pass cursor" and
+ * "[truncated at N bytes of M"), so change them only additively.
  */
 class VfsText
 {
@@ -62,6 +66,48 @@ class VfsText
         }
 
         return substr($content, 0, max(0, $maxBytes - strlen($suffix))).$suffix;
+    }
+
+    /**
+     * Stable last line for a listing cut at a budget. With a cursor the agent
+     * can continue exactly where the listing stopped.
+     */
+    public static function listingTruncationLine(int $shown, string $noun, ?string $cursor, string $budgetName = 'maxEntries'): string
+    {
+        $more = $shown + 1;
+        if ($cursor !== null) {
+            return "[truncated: showed {$shown} of ≥{$more} {$noun} — pass cursor \"{$cursor}\" or raise {$budgetName} / narrow the path]";
+        }
+
+        return "[truncated: showed {$shown} of ≥{$more} {$noun} — raise {$budgetName} or narrow the path]";
+    }
+
+    /**
+     * Stable last line for a display read cut at maxBytes.
+     */
+    public static function readTruncationLine(int $shownBytes, ?int $totalBytes): string
+    {
+        $total = $totalBytes === null ? 'more' : (string) $totalBytes;
+
+        return "[truncated at {$shownBytes} bytes of {$total} — use vfs_read with offset or head/tail/sed -n]";
+    }
+
+    /**
+     * Stable last line when a command line's aggregate stdout hit the cap.
+     */
+    public static function outputTruncationLine(int $shownBytes, int $totalBytes): string
+    {
+        return "[truncated: output exceeded {$shownBytes} bytes ({$totalBytes} total) — narrow the command, pipe through head, or redirect to a /files path]";
+    }
+
+    /**
+     * Whether text contains one of the stable truncation lines above or the
+     * display-read suffix. Used to refuse persisting display output.
+     */
+    public static function hasAnyTruncationLine(string $content): bool
+    {
+        return self::hasTruncationMarker($content)
+            || preg_match('/^\[truncated(?: at \d+ bytes of |: (?:showed|output exceeded) )/m', $content) === 1;
     }
 
     /**

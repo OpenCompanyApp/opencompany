@@ -3,121 +3,216 @@
 namespace App\Domain\Vfs\Core\Concerns;
 
 use App\Domain\Vfs\Core\VfsBudget;
+use App\Domain\Vfs\Core\VfsError;
+use App\Domain\Vfs\Core\VfsText;
 use App\Models\User;
 
 /**
- * Metadata and size commands that inspect readable VFS paths.
+ * Metadata and size commands: stat, file, du.
+ *
+ * du is bounded: it visits at most maxFiles entries to maxDepth levels in
+ * total (not per directory), takes sizes from metadata and only reads
+ * content when a mount reports no size, and ends with a truncation line when
+ * a budget stopped it. Errors on individual entries are counted, not hidden.
  */
 trait ExecutesVfsMetadataCommands
 {
-    private function stat(User $agent, array $tokens, string $cwd): array
+    /**
+     * @param  list<string>  $words
+     * @return array<string, mixed>
+     */
+    private function stat(User $agent, array $words, string $cwd): array
     {
-        $this->assertSupportedOptionsForCommand($tokens, 'stat');
-        $format = $this->optionValue($tokens, ['-c', '-f', '--format']);
+        $args = $this->args('stat', $words);
+        $format = $args->value(['-c', '-f', '--format']);
         $stats = [];
-        foreach ($this->pathArgsWithValueOptions($tokens, $cwd, ['-c', '-f', '--format']) ?: [$cwd] as $path) {
+        foreach ($this->operandPaths($args, $cwd) ?: [$cwd] as $path) {
             $stats[] = $this->vfs->stat($agent, $path);
         }
         if ($format !== null) {
-            $lines = array_map(fn (array $stat): string => $this->formatStat($format, $stat), $stats);
-
-            return ['stdout' => implode("\n", $lines), 'cwd' => $cwd, 'class' => 'browse'];
+            return ['stdout' => $this->linesOut(array_map(fn (array $stat): string => $this->formatStat($format, $stat), $stats)), 'cwd' => $cwd, 'class' => 'browse'];
         }
 
-        return ['stdout' => json_encode(count($stats) === 1 ? $stats[0] : $stats, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), 'cwd' => $cwd, 'class' => 'browse'];
+        return ['stdout' => json_encode(count($stats) === 1 ? $stats[0] : $stats, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n", 'cwd' => $cwd, 'class' => 'browse'];
     }
 
-    private function file(User $agent, array $tokens, string $cwd): array
-    {
-        $this->assertSupportedOptionsForCommand($tokens, 'file');
-        $flags = $this->shortFlags($tokens, ['b', 'i']);
-        $brief = ($flags['b'] ?? false) || in_array('--brief', $tokens, true);
-        $mimeOnly = ($flags['i'] ?? false) || in_array('--mime', $tokens, true);
-        $lines = [];
-        $paths = array_values(array_filter($tokens, fn (string $token): bool => ! in_array($token, ['-b', '-i', '--brief', '--mime'], true) && ! str_starts_with($token, '-')));
-        foreach (array_map(fn (string $path): string => $this->path($path, $cwd), $paths ?: [$cwd]) as $path) {
-            $stat = $this->vfs->stat($agent, $path);
-            $mime = $stat['metadata']['mime_type']
-                ?? $stat['metadata']['content_format']
-                ?? $stat['type']
-                ?? 'virtual';
-            $value = $mimeOnly ? (string) $mime : (string) $mime;
-            $lines[] = $brief ? $value : "{$path}: {$value}";
-        }
-
-        return ['stdout' => implode("\n", $lines), 'cwd' => $cwd, 'class' => 'browse'];
-    }
-
-    private function du(User $agent, array $tokens, string $cwd, VfsBudget $budget): array
-    {
-        $this->assertSupportedOptionsForCommand($tokens, 'du');
-        $flags = $this->shortFlags($tokens, ['h', 's', 'a', 'c']);
-        $maxDepth = $this->integerOptionValue($tokens, ['--max-depth'], 'du', 'max depth');
-        $paths = $this->pathArgsWithValueOptions($tokens, $cwd, ['--max-depth']) ?: [$cwd];
-        $lines = [];
-        $total = 0;
-        foreach ($paths as $path) {
-            [$bytes, $pathLines] = $this->duCollect($agent, $path, $budget, $flags['a'] ?? false, $maxDepth, 0);
-            $total += $bytes;
-            if (($flags['s'] ?? false) || (! ($flags['a'] ?? false) && $maxDepth === null)) {
-                $lines[] = $this->formatDuSize($bytes, $flags['h'] ?? false)."\t{$path}";
-            } else {
-                array_push($lines, ...array_map(fn (array $line): string => $this->formatDuSize($line['bytes'], $flags['h'] ?? false)."\t{$line['path']}", $pathLines));
-            }
-        }
-        if ($flags['c'] ?? false) {
-            $lines[] = $this->formatDuSize($total, $flags['h'] ?? false)."\ttotal";
-        }
-
-        return ['stdout' => implode("\n", $lines), 'cwd' => $cwd, 'class' => 'read'];
-    }
-
+    /**
+     * @param  array<string, mixed>  $stat
+     */
     private function formatStat(string $format, array $stat): string
     {
         return strtr($format, [
             '%n' => (string) ($stat['path'] ?? ''),
+            '%N' => "'".(string) ($stat['path'] ?? '')."'",
             '%s' => (string) ($stat['size'] ?? $stat['metadata']['size'] ?? 0),
             '%F' => (string) ($stat['type'] ?? ''),
-            '%y' => (string) ($stat['updated_at'] ?? $stat['version'] ?? ''),
-            '%m' => '/',
+            '%y' => (string) ($stat['updated_at'] ?? $stat['metadata']['updated_at'] ?? $stat['version'] ?? ''),
             '%i' => (string) ($stat['backend_id'] ?? ''),
+            '%m' => '/',
             '%%' => '%',
         ]);
     }
 
     /**
+     * @param  list<string>  $words
+     * @return array<string, mixed>
+     */
+    private function file(User $agent, array $words, string $cwd): array
+    {
+        $args = $this->args('file', $words);
+        $lines = [];
+        foreach ($this->operandPaths($args, $cwd) ?: [$cwd] as $path) {
+            $stat = $this->vfs->stat($agent, $path);
+            $metadata = is_array($stat['metadata'] ?? null) ? $stat['metadata'] : [];
+            $type = (string) ($stat['type'] ?? 'file');
+            $mime = $type === 'directory' ? 'inode/directory' : (string) ($metadata['mime_type'] ?? match ($metadata['content_format'] ?? null) {
+                'markdown' => 'text/markdown',
+                'json' => 'application/json',
+                'ndjson' => 'application/x-ndjson',
+                default => 'text/plain',
+            });
+            // Default: the VFS content format (markdown, json, ...) or mime
+            // type; -i: a real mime type with charset, like `file -i`.
+            $value = $args->has('i')
+                ? $mime.(str_starts_with($mime, 'text/') || str_contains($mime, 'json') ? '; charset=utf-8' : '')
+                : (string) ($type === 'directory' ? 'directory' : ($metadata['mime_type'] ?? $metadata['content_format'] ?? $this->describeMime($mime, $type)));
+            $lines[] = $args->has('b') ? $value : "{$path}: {$value}";
+        }
+
+        return ['stdout' => $this->linesOut($lines), 'cwd' => $cwd, 'class' => 'browse'];
+    }
+
+    private function describeMime(string $mime, string $type): string
+    {
+        if ($type === 'directory') {
+            return 'directory';
+        }
+
+        return match (true) {
+            $mime === 'text/markdown' => 'Markdown text',
+            $mime === 'application/json' => 'JSON data',
+            $mime === 'application/x-ndjson' => 'NDJSON data',
+            $mime === 'text/csv' => 'CSV text',
+            $mime === 'text/plain' => 'text',
+            str_starts_with($mime, 'text/') => strtoupper(substr($mime, 5)).' text',
+            str_starts_with($mime, 'image/') => strtoupper(substr($mime, 6)).' image data',
+            $mime === 'application/pdf' => 'PDF document',
+            $mime === 'application/zip' => 'Zip archive data',
+            $mime === 'application/gzip', $mime === 'application/x-gzip' => 'gzip compressed data',
+            default => $mime,
+        };
+    }
+
+    /**
+     * @param  list<string>  $words
+     * @return array<string, mixed>
+     */
+    private function du(User $agent, array $words, string $cwd, VfsBudget $budget): array
+    {
+        $args = $this->args('du', $words);
+        $maxDepth = $args->int(['--max-depth', '-d']);
+        $all = $args->has('a');
+        $summary = $args->has('s');
+        $human = $args->has('h');
+        $lines = [];
+        $total = 0;
+        $state = ['visited' => 0, 'truncated' => false, 'skipped' => 0];
+
+        foreach ($this->operandPaths($args, $cwd) ?: [$cwd] as $path) {
+            [$bytes, $pathLines] = $this->duCollect($agent, $path, $budget, $all, $summary ? 0 : $maxDepth, 0, $state);
+            $total += $bytes;
+            if ($summary) {
+                $lines[] = $this->formatDuSize($bytes, $human)."\t{$path}";
+            } else {
+                array_push($lines, ...array_map(fn (array $line): string => $this->formatDuSize($line['bytes'], $human)."\t{$line['path']}", $pathLines));
+            }
+        }
+        if ($args->has('c')) {
+            $lines[] = $this->formatDuSize($total, $human)."\ttotal";
+        }
+        if ($state['truncated']) {
+            $line = VfsText::listingTruncationLine($state['visited'], 'entries (sizes are partial)', null, 'maxFiles/maxDepth');
+            $this->displayingStdout ? $lines[] = $line : $this->noteTruncation('du '.$line);
+        }
+
+        return ['stdout' => $this->linesOut($lines), 'cwd' => $cwd, 'class' => 'read', 'truncated' => $state['truncated'], 'skipped' => $state['skipped']];
+    }
+
+    /**
+     * Post-order size walk. Lines list directories deepest first (GNU order)
+     * and files too when $includeFiles.
+     *
+     * @param  array{visited: int, truncated: bool, skipped: int}  $state
+     * @param  array<string, mixed>|null  $entryStat  Entry metadata from the parent listing (avoids a stat per entry).
      * @return array{0: int, 1: list<array{bytes: int, path: string}>}
      */
-    private function duCollect(User $agent, string $path, VfsBudget $budget, bool $includeFiles, ?int $maxDepth, int $depth): array
+    private function duCollect(User $agent, string $path, VfsBudget $budget, bool $includeFiles, ?int $printDepth, int $depth, array &$state, ?array $entryStat = null): array
     {
-        try {
-            $stat = $this->vfs->stat($agent, $path);
-            if (($stat['type'] ?? null) === 'file') {
-                $bytes = strlen($this->vfs->read($agent, $path, $budget));
-                $lines = $includeFiles ? [['bytes' => $bytes, 'path' => $path]] : [];
+        if ($state['visited'] >= $budget->maxFiles) {
+            $state['truncated'] = true;
 
-                return [$bytes, $lines];
-            }
-            $total = 0;
-            $lines = [];
-            foreach ($this->vfs->listBounded($agent, $path, new VfsBudget(maxEntries: $budget->maxEntries, maxDepth: 1, maxFiles: $budget->maxFiles)) as $entry) {
-                $entryPath = $entry->canonicalPath ?? $entry->path;
-                [$bytes, $childLines] = $this->duCollect($agent, $entryPath, $budget, $includeFiles, $maxDepth, $depth + 1);
-                $total += $bytes;
-                if ($includeFiles && $entry->type === 'file' && $childLines === []) {
-                    $childLines[] = ['bytes' => $bytes, 'path' => $entryPath];
-                }
-                foreach ($childLines as $line) {
-                    $lines[] = $line;
-                }
-            }
-            if ($maxDepth === null || $depth <= $maxDepth) {
-                array_unshift($lines, ['bytes' => $total, 'path' => $path]);
-            }
-
-            return [$total, $lines];
-        } catch (\Throwable) {
             return [0, []];
+        }
+        $state['visited']++;
+        try {
+            $stat = $entryStat ?? $this->vfs->stat($agent, $path);
+        } catch (VfsError $e) {
+            if ($depth === 0) {
+                throw $e;
+            }
+            $state['skipped']++;
+
+            return [0, []];
+        }
+        $printable = $printDepth === null || $depth <= $printDepth;
+        if (($stat['type'] ?? null) !== 'directory') {
+            $bytes = $this->entryBytes($agent, $path, $stat);
+
+            return [$bytes, ($includeFiles || $depth === 0) && $printable ? [['bytes' => $bytes, 'path' => $path]] : []];
+        }
+        if ($depth >= $budget->maxDepth) {
+            $state['truncated'] = true;
+
+            return [0, $printable ? [['bytes' => 0, 'path' => $path]] : []];
+        }
+
+        $total = 0;
+        $lines = [];
+        try {
+            $entries = $this->vfs->listBounded($agent, $path, $budget->with(['maxEntries' => 1_000]));
+        } catch (VfsError) {
+            $state['skipped']++;
+            $entries = [];
+        }
+        foreach ($entries as $entry) {
+            $entryPath = $entry->canonicalPath ?? $entry->path;
+            [$bytes, $childLines] = $this->duCollect($agent, $entryPath, $budget, $includeFiles, $printDepth, $depth + 1, $state, $entry->jsonSerialize());
+            $total += $bytes;
+            array_push($lines, ...$childLines);
+            if ($state['truncated'] && $state['visited'] >= $budget->maxFiles) {
+                break;
+            }
+        }
+        if ($printable) {
+            $lines[] = ['bytes' => $total, 'path' => $path];
+        }
+
+        return [$total, $lines];
+    }
+
+    /**
+     * @param  array<string, mixed>  $stat
+     */
+    private function entryBytes(User $agent, string $path, array $stat): int
+    {
+        $size = $stat['size'] ?? $stat['metadata']['size'] ?? null;
+        if ($size !== null) {
+            return (int) $size;
+        }
+        try {
+            return strlen($this->readFull($agent, $path));
+        } catch (VfsError) {
+            return 0;
         }
     }
 

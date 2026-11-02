@@ -2,204 +2,248 @@
 
 namespace App\Domain\Vfs\Core\Concerns;
 
-use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsError;
 use App\Domain\Vfs\Core\VfsText;
 use App\Models\User;
 
 /**
- * Read-only text commands for the VFS shell executor.
+ * Read-only text commands: cat, head, tail, wc.
  *
- * The trait may inspect stdin or readable virtual paths, but it must not mutate
- * VFS state. Reads remain bounded by VfsBudget and routed through OpenCompanyVfs
- * so agents cannot bypass adapter policy.
+ * Read modes: `cat` whose stdout goes straight to the agent makes a display
+ * read (cut at maxBytes, ending with the stable "[truncated at N bytes of M
+ * ...]" line; paged collections show one page and a cursor line). Every other
+ * read here — cat into a pipe or redirect, head, tail, wc — is a full read, so
+ * `tail` sees the real end of a 150 KB file and `wc -l` counts every line.
+ *
+ * Never mutates; all reads go through OpenCompanyVfs with normal authorization.
  */
 trait ExecutesVfsReadCommands
 {
-    private function cat(User $agent, array $tokens, string $cwd, VfsBudget $budget, ?string $stdin): array
+    /**
+     * @param  list<string>  $words
+     * @return array<string, mixed>
+     */
+    private function cat(User $agent, array $words, string $cwd, \App\Domain\Vfs\Core\VfsBudget $budget, ?string $stdin): array
     {
-        $this->assertSupportedOptionsForCommand($tokens, 'cat');
-        $number = $this->shortFlags($tokens, ['n'])['n'] ?? false;
-        $paths = $this->pathArgsWithValueOptions($tokens, $cwd, []);
-        if ($paths === [] && $stdin !== null) {
-            return ['stdout' => $number ? $this->numberLines($stdin) : $stdin, 'cwd' => $cwd, 'class' => 'read'];
-        }
+        $args = $this->args('cat', $words);
+        $paths = $this->operandPaths($args, $cwd);
+        $truncated = false;
+        $errors = [];
+        if ($paths === []) {
+            $content = $stdin ?? '';
+        } else {
+            $cursor = count($paths) === 1 && $this->displayingStdout ? $this->takeCursor() : null;
+            $chunks = [];
+            foreach ($paths as $path) {
+                if ($path === '-') {
+                    $chunks[] = (string) $stdin;
 
-        $chunks = array_map(fn (string $path): string => $this->vfs->read($agent, $path, $budget), $paths ?: [$cwd]);
-        $stdout = implode("\n", $chunks);
-
-        return ['stdout' => $number ? $this->numberLines($stdout) : $stdout, 'cwd' => $cwd, 'class' => 'read'];
-    }
-
-    private function headTail(User $agent, array $tokens, string $cwd, VfsBudget $budget, ?string $stdin, bool $head): array
-    {
-        $command = $head ? 'head' : 'tail';
-        $this->assertSupportedOptionsForCommand($tokens, $command);
-        if (! $head && (in_array('-f', $tokens, true) || in_array('--follow', $tokens, true))) {
-            throw VfsError::unsupported('tail --follow is not supported by bounded VFS exec.');
-        }
-        $shorthand = $this->headTailShorthand($tokens);
-        $lineOption = $this->headTailOptionValue($tokens, ['-n', '--lines']);
-        $byteOption = $this->headTailOptionValue($tokens, ['-c', '--bytes']);
-        $count = $lineOption !== null
-            ? $this->parseHeadTailLineCount($lineOption, $command)
-            : ['count' => $shorthand['unit'] === 'lines' ? $shorthand['count'] : 10, 'from_start' => false];
-        $byteCount = $byteOption !== null
-            ? $this->parseHeadTailByteCount($byteOption, $command)
-            : ($shorthand['unit'] === 'bytes' ? ['count' => $shorthand['count'], 'from_start' => false] : null);
-        $content = $stdin;
-        $paths = $this->pathArgsWithValueOptions($tokens, $cwd, ['-n', '--lines', '-c', '--bytes']);
-        if ($content === null) {
-            $content = $this->vfs->read($agent, $paths[0] ?? $cwd, $budget);
-        }
-
-        if ($byteCount !== null) {
-            $bytes = max(0, $byteCount['count']);
-            $output = match (true) {
-                ! $head && $byteCount['from_start'] => substr($content, max(0, $bytes - 1)),
-                $bytes === 0 => '',
-                default => $head ? substr($content, 0, $bytes) : substr($content, -$bytes),
-            };
-
-            return [
-                'stdout' => $output,
-                'cwd' => $cwd,
-                'class' => 'read',
-            ];
-        }
-
-        $lines = VfsText::lines($content);
-        $slice = match (true) {
-            ! $head && $count['from_start'] => array_slice($lines, max(0, $count['count'] - 1)),
-            $count['count'] === 0 => [],
-            default => $head ? array_slice($lines, 0, $count['count']) : array_slice($lines, -$count['count']),
-        };
-
-        return ['stdout' => implode("\n", $slice), 'cwd' => $cwd, 'class' => 'read'];
-    }
-
-    private function headTailOptionValue(array $tokens, array $names): ?string
-    {
-        foreach ($tokens as $index => $token) {
-            foreach ($names as $name) {
-                if ($token === $name) {
-                    return isset($tokens[$index + 1]) ? (string) $tokens[$index + 1] : '';
+                    continue;
                 }
-                if (str_starts_with($name, '--') && str_starts_with($token, $name.'=')) {
-                    return substr($token, strlen($name) + 1);
-                }
-                if (str_starts_with($name, '-') && ! str_starts_with($name, '--') && str_starts_with($token, $name) && strlen($token) > strlen($name)) {
-                    return substr($token, strlen($name));
+                // GNU cat: a failing operand is reported and the rest still
+                // print (exit 1); only an all-failing call is an error.
+                try {
+                    if ($this->displayingStdout) {
+                        [$chunk, $wasTruncated] = $this->displayRead($agent, $path, $budget, $cursor);
+                        $truncated = $truncated || $wasTruncated;
+                        $chunks[] = $chunk;
+                    } else {
+                        $chunks[] = $this->readFull($agent, $path);
+                    }
+                } catch (VfsError $e) {
+                    if (count($paths) === 1 || in_array($e->errorCode, ['approval_required', 'unsupported'], true)) {
+                        throw $e;
+                    }
+                    $errors[] = $e;
                 }
             }
+            if ($chunks === [] && $errors !== []) {
+                throw $errors[0];
+            }
+            $content = $this->joinFileContents($chunks);
         }
 
-        return null;
-    }
-
-    /**
-     * @return array{count: int, from_start: bool}
-     */
-    private function parseHeadTailLineCount(string $value, string $command): array
-    {
-        if (preg_match('/^(\+?)(\d+)$/', $value, $matches) !== 1) {
-            throw VfsError::invalid("{$command} line count requires a non-negative integer value.");
-        }
-
-        return ['count' => (int) $matches[2], 'from_start' => $matches[1] === '+'];
-    }
-
-    /**
-     * @return array{count: int, from_start: bool}
-     */
-    private function parseHeadTailByteCount(string $value, string $command): array
-    {
-        if (preg_match('/^(\+?)(\d+)([kKmMgG])?$/', $value, $matches) !== 1) {
-            throw VfsError::invalid("{$command} byte count requires a byte count.");
-        }
-
-        $count = (int) $matches[2];
-        $count = match (strtolower($matches[3] ?? '')) {
-            'k' => $count * 1024,
-            'm' => $count * 1024 * 1024,
-            'g' => $count * 1024 * 1024 * 1024,
-            default => $count,
-        };
-
-        return ['count' => $count, 'from_start' => $matches[1] === '+'];
-    }
-
-    /**
-     * GNU head/tail accept obsolete `-1`-style count syntax only in the first
-     * position. The VFS supports the common line/byte forms while keeping the
-     * safer explicit `-n`/`-c` forms discoverable in docs.
-     *
-     * @return array{count: int, unit: 'lines'|'bytes'|null}
-     */
-    private function headTailShorthand(array $tokens): array
-    {
-        $first = $tokens[0] ?? null;
-        if (! is_string($first) || preg_match('/^-(\d+)([bc])?$/', $first, $matches) !== 1) {
-            return ['count' => 10, 'unit' => null];
+        if ($args->has('n')) {
+            $lines = $this->splitLines($content);
+            $content = $this->linesOut(array_map(fn (string $line, int $index): string => str_pad((string) ($index + 1), 6, ' ', STR_PAD_LEFT)."\t".$line, $lines, array_keys($lines)));
         }
 
         return [
-            'count' => max(0, (int) $matches[1]),
-            'unit' => ($matches[2] ?? '') === 'c' ? 'bytes' : 'lines',
+            'stdout' => $content,
+            'stderr' => implode("\n", array_map(fn (VfsError $e): string => $e->getMessage(), $errors)),
+            'cwd' => $cwd,
+            'class' => 'read',
+            'truncated' => $truncated,
+            'exit_code' => $errors === [] ? 0 : 1,
         ];
     }
 
-    private function wc(User $agent, array $tokens, string $cwd, VfsBudget $budget, ?string $stdin): array
+    /**
+     * One display read: a page of a collection (with cursor line) or a file
+     * body cut at maxBytes (with the read truncation line).
+     *
+     * @return array{0: string, 1: bool}
+     */
+    private function displayRead(User $agent, string $path, \App\Domain\Vfs\Core\VfsBudget $budget, ?string $cursor): array
     {
-        $this->assertSupportedOptionsForCommand($tokens, 'wc');
-        $content = $stdin;
-        $paths = $this->pathArgsWithValueOptions($tokens, $cwd, []);
-        if ($paths !== []) {
-            $content = implode("\n", array_map(fn (string $path): string => $this->vfs->read($agent, $path, $budget), $paths));
+        $before = $budget->truncations();
+        try {
+            $page = $this->vfs->readPage($agent, $path, $budget, $cursor);
+        } catch (VfsError $e) {
+            if ($e->errorCode === 'not_readable') {
+                throw new VfsError('not_readable', "{$path}: Is a directory (or not readable as text).", $e->context + ['path' => $path, 'hint' => "Use ls {$path} to list it."]);
+            }
+            throw $e;
         }
-        if ($content === null && $paths === [] && $tokens !== []) {
-            throw VfsError::invalid('wc requires stdin or a readable VFS path.');
+        $content = $page->content;
+
+        if ($page->nextCursor !== null) {
+            $this->offerNextCursor($page->nextCursor);
+            $separator = $content === '' || str_ends_with($content, "\n") ? '' : "\n";
+
+            return [$content.$separator.VfsText::listingTruncationLine($page->seenBefore + $page->returned, 'records', $page->nextCursor)."\n", true];
         }
-        if ($content === null) {
-            $content = $this->vfs->read($agent, $paths[0] ?? $cwd, $budget);
+        if ($budget->truncations() > $before && str_ends_with($content, VfsText::TRUNCATION_SUFFIX)) {
+            $shown = substr($content, 0, -strlen(VfsText::TRUNCATION_SUFFIX));
+            $size = null;
+            try {
+                $stat = $this->vfs->stat($agent, $path);
+                $size = isset($stat['size']) ? (int) $stat['size'] : (isset($stat['metadata']['size']) ? (int) $stat['metadata']['size'] : null);
+            } catch (VfsError) {
+                // Size is informational only.
+            }
+            $separator = str_ends_with($shown, "\n") ? '' : "\n";
+
+            return [$shown.$separator.VfsText::readTruncationLine(strlen($shown), $size)."\n", true];
         }
 
-        $lines = substr_count($content, "\n");
-        $words = str_word_count($content);
-        $bytes = strlen($content);
-        $chars = mb_strlen($content);
-        $maxLine = max(array_map('strlen', VfsText::lines($content)) ?: [0]);
-        $flags = $this->shortFlags($tokens, ['l', 'w', 'c', 'm', 'L']);
-        if ($flags !== []) {
-            $parts = [];
-            if ($flags['l'] ?? false) {
-                $parts[] = (string) $lines;
-            }
-            if ($flags['w'] ?? false) {
-                $parts[] = (string) $words;
-            }
-            if ($flags['c'] ?? false) {
-                $parts[] = (string) $bytes;
-            }
-            if ($flags['m'] ?? false) {
-                $parts[] = (string) $chars;
-            }
-            if ($flags['L'] ?? false) {
-                $parts[] = (string) $maxLine;
-            }
-
-            return ['stdout' => implode(' ', $parts), 'cwd' => $cwd, 'class' => 'read'];
-        }
-
-        return ['stdout' => "{$lines} {$words} {$bytes}", 'cwd' => $cwd, 'class' => 'read'];
+        return [$content, false];
     }
 
-    private function numberLines(string $content): string
+    /**
+     * head/tail with -n/-c, +N (tail from start), -N (head all but last N),
+     * numeric shorthand, and ==> name <== headers for several files.
+     *
+     * @param  list<string>  $words
+     * @return array<string, mixed>
+     */
+    private function headTail(User $agent, array $words, string $cwd, ?string $stdin, bool $head): array
     {
-        return implode("\n", array_map(
-            fn (string $line, int $index): string => str_pad((string) ($index + 1), 6, ' ', STR_PAD_LEFT)."\t".$line,
-            VfsText::lines($content),
-            array_keys(VfsText::lines($content)),
-        ));
+        $command = $head ? 'head' : 'tail';
+        $args = $this->args($command, $words);
+        $unit = 'lines';
+        $spec = '10';
+        if ($args->numeric !== null) {
+            preg_match('/^(\d+)([a-z]?)$/', $args->numeric, $m);
+            $spec = $m[1];
+            $unit = ($m[2] ?? '') === 'c' ? 'bytes' : 'lines';
+        }
+        if ($args->provided('-n')) {
+            $spec = (string) $args->value('-n');
+            $unit = 'lines';
+        }
+        if ($args->provided('-c')) {
+            $spec = (string) $args->value('-c');
+            $unit = 'bytes';
+        }
+        if (preg_match('/^([+-]?)(\d+)([kKmM]?)$/', $spec, $m) !== 1) {
+            throw VfsError::invalid("{$command}: invalid number of {$unit}: \"{$spec}\".");
+        }
+        $count = (int) $m[2] * match (strtolower($m[3])) {
+            'k' => 1024,
+            'm' => 1024 * 1024,
+            default => 1,
+        };
+        $sign = $m[1];
+
+        $inputs = $this->inputsFrom($agent, $args, $cwd, $stdin);
+        $headers = count($inputs) > 1 ? ! $args->has('q') : $args->has('v');
+        $out = '';
+        foreach ($inputs as $index => $input) {
+            if ($headers) {
+                $out .= ($index > 0 ? "\n" : '').'==> '.($input['name'] === '-' ? 'standard input' : $input['name'])." <==\n";
+            }
+            $out .= $unit === 'bytes'
+                ? $this->sliceBytes($input['content'], $count, $sign, $head)
+                : $this->sliceLines($input['content'], $count, $sign, $head);
+        }
+
+        return ['stdout' => $out, 'cwd' => $cwd, 'class' => 'read'];
+    }
+
+    private function sliceBytes(string $content, int $count, string $sign, bool $head): string
+    {
+        if ($head) {
+            return $sign === '-' ? substr($content, 0, max(0, strlen($content) - $count)) : substr($content, 0, $count);
+        }
+        if ($sign === '+') {
+            return substr($content, max(0, $count - 1));
+        }
+
+        return $count === 0 ? '' : substr($content, -$count);
+    }
+
+    /**
+     * Byte-exact line slicing: kept lines keep their own terminators, so a
+     * file without a final newline is not given one.
+     */
+    private function sliceLines(string $content, int $count, string $sign, bool $head): string
+    {
+        $lines = preg_split('/(?<=\n)/', $content, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $total = count($lines);
+        $slice = match (true) {
+            $head && $sign === '-' => array_slice($lines, 0, max(0, $total - $count)),
+            $head => array_slice($lines, 0, $count),
+            $sign === '+' => array_slice($lines, max(0, $count - 1)),
+            $count === 0 => [],
+            default => array_slice($lines, -$count),
+        };
+
+        return implode('', $slice);
+    }
+
+    /**
+     * @param  list<string>  $words
+     * @return array<string, mixed>
+     */
+    private function wc(User $agent, array $words, string $cwd, ?string $stdin): array
+    {
+        $args = $this->args('wc', $words);
+        $inputs = $this->inputsFrom($agent, $args, $cwd, $stdin);
+        $selected = array_values(array_filter(['l', 'w', 'm', 'c', 'L'], fn (string $flag): bool => $args->has($flag)));
+        if ($selected === []) {
+            $selected = ['l', 'w', 'c'];
+        }
+
+        $rows = [];
+        $totals = array_fill_keys($selected, 0);
+        foreach ($inputs as $input) {
+            $content = $input['content'];
+            $counts = [];
+            foreach ($selected as $flag) {
+                $counts[$flag] = match ($flag) {
+                    'l' => substr_count($content, "\n"),
+                    'w' => preg_match_all('/\S+/u', $content) ?: preg_match_all('/\S+/', $content),
+                    'm' => mb_check_encoding($content, 'UTF-8') ? mb_strlen($content, 'UTF-8') : strlen($content),
+                    'c' => strlen($content),
+                    'L' => max(array_map(fn (string $line): int => mb_strlen($line), $this->splitLines($content)) ?: [0]),
+                };
+                $totals[$flag] = $flag === 'L' ? max($totals[$flag], $counts[$flag]) : $totals[$flag] + $counts[$flag];
+            }
+            $rows[] = [$counts, $input['name'] === '-' ? null : $input['name']];
+        }
+        if (count($inputs) > 1) {
+            $rows[] = [$totals, 'total'];
+        }
+
+        $single = count($rows) === 1 && count($selected) === 1;
+        $width = $single ? 0 : max(array_map(fn (array $row): int => max(array_map(fn (int $n): int => strlen((string) $n), $row[0])), $rows));
+        $lines = array_map(function (array $row) use ($width): string {
+            $numbers = implode(' ', array_map(fn (int $n): string => str_pad((string) $n, $width, ' ', STR_PAD_LEFT), $row[0]));
+
+            return $row[1] === null ? $numbers : $numbers.' '.$row[1];
+        }, $rows);
+
+        return ['stdout' => $this->linesOut($lines), 'cwd' => $cwd, 'class' => 'read'];
     }
 }

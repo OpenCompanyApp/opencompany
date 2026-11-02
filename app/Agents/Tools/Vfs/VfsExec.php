@@ -73,14 +73,18 @@ class VfsExec implements ReturnsVfsEnvelope, Tool
                 return VfsToolEnvelope::encode($payload);
             }
             $errorCode = $payload['error']['code'];
-            // `2>&1` carries the merged output in the error context; surface
-            // it once, at the top level, like a normal result.
-            if (array_key_exists('stdout', $payload['error']['context'])) {
-                $payload = ['ok' => false, 'exit_code' => $this->failureExitCode($errorCode), 'stdout' => (string) $payload['error']['context']['stdout']] + $payload;
-                unset($payload['error']['context']['stdout']);
-            } else {
-                $payload = ['ok' => false, 'exit_code' => $this->failureExitCode($errorCode)] + $payload;
+            // The executor attaches the command line's stdout/stderr so far and
+            // its exit status to the thrown error (earlier output survives a
+            // later failure). Surface them once, at the top level, like a
+            // normal result; the error keeps only diagnostic context.
+            $context = $payload['error']['context'];
+            $exitCode = is_int($context['exit_code'] ?? null) ? $context['exit_code'] : $this->failureExitCode($errorCode);
+            $flat = ['ok' => false, 'exit_code' => $exitCode, 'stdout' => (string) ($context['stdout'] ?? '')];
+            if (is_string($context['stderr'] ?? null) && $context['stderr'] !== '') {
+                $flat['stderr'] = $context['stderr'];
             }
+            unset($payload['error']['context']['stdout'], $payload['error']['context']['stderr'], $payload['error']['context']['exit_code']);
+            $payload = $flat + $payload;
 
             return VfsToolEnvelope::encode($payload);
         } finally {
@@ -99,49 +103,15 @@ class VfsExec implements ReturnsVfsEnvelope, Tool
     }
 
     /**
-     * Run the executor, forwarding `cursor` when the executor supports it.
-     *
-     * Integration seam (Stream A): VfsCommandExecutor::execute() gains an
-     * optional trailing `?string $cursor` parameter in Phase 2. Until it
-     * exists, a cursor fails loudly with `unsupported` instead of silently
-     * returning the first page again. Once Stream A lands, replace this with
-     * a direct named argument.
+     * Run the executor. `cursor` continues a truncated listing/read from the
+     * executor's `next_cursor` (cursors are bound to path, adapter and actor).
      *
      * @param  array<string, mixed>  $toolParameters
      * @return array<string, mixed>
      */
     private function run(string $command, string $cwd, VfsBudget $budget, array $toolParameters, ?string $cursor): array
     {
-        if ($cursor === null) {
-            return $this->executor->execute($this->agent, $command, $cwd, $budget, $toolParameters);
-        }
-
-        if (! $this->executorAcceptsCursor()) {
-            throw VfsError::unsupported('cursor paging for vfs_exec is not available in this build. Narrow the path, raise maxEntries, or use vfs_read with cursor for paged files.', [
-                'field' => 'cursor',
-            ]);
-        }
-
-        /** @var array<string, mixed> */
-        return (new \ReflectionMethod($this->executor, 'execute'))->invokeArgs($this->executor, [
-            'agent' => $this->agent,
-            'command' => $command,
-            'cwd' => $cwd,
-            'budget' => $budget,
-            'toolParameters' => $toolParameters,
-            'cursor' => $cursor,
-        ]);
-    }
-
-    private function executorAcceptsCursor(): bool
-    {
-        foreach ((new \ReflectionMethod($this->executor, 'execute'))->getParameters() as $parameter) {
-            if ($parameter->getName() === 'cursor') {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->executor->execute($this->agent, $command, $cwd, $budget, $toolParameters, $cursor);
     }
 
     /**

@@ -120,7 +120,8 @@ class VfsFeatureTest extends TestCase
         $this->assertStringContainsString('"id": "'.$this->agent->id.'"', $output);
         $this->assertStringContainsString('"name": "Atlas"', $output);
         $this->assertStringContainsString('"command": "pwd"', $output);
-        $this->assertStringContainsString('"stdout": "/"', $output);
+        // POSIX line output: pwd ends with a newline.
+        $this->assertStringContainsString('"stdout": "/\n"', $output);
 
         $primitiveExit = Artisan::call('vfs:atlas', [
             '--primitive' => 'stat',
@@ -513,10 +514,14 @@ class VfsFeatureTest extends TestCase
             'cat --show-all /docs',
             'which -a rg',
             'env -0',
-            'sed -i s/a/b/ /docs',
+            // sed -i is implemented since Phase 2 (governed writes); it stays
+            // refused only for structured record roots.
+            'sed -i s/a/b/ /tasks/by-id/x.json',
             'python -c "print(1)"',
             'curl https://example.com',
-            'tar -tf /files/archive.tar',
+            // `tar -tf` used to "fail" only because -f was mis-parsed; it is a
+            // real command now. bzip2 stays refused.
+            'tar -cjf /files/archive.tar.bz2 /files',
             'find /docs -delete || echo ignored',
             'find /docs -delete; echo ignored',
             'true || find /docs -delete',
@@ -546,7 +551,6 @@ class VfsFeatureTest extends TestCase
             '| cat',
             'echo one ;; echo two',
             'xargs --max-args=abc echo',
-            'which rg definitely_missing',
             'type ll definitely_missing',
             'printenv WORKSPACE_ID EXTRA',
         ] as $command) {
@@ -555,6 +559,13 @@ class VfsFeatureTest extends TestCase
             $this->assertFalse($decoded['ok'], $command);
             $this->assertSame('invalid_request', $decoded['error']['code'], $command);
         }
+
+        // Phase 2: which accepts several names (GNU); an unknown one is a
+        // failed lookup (not_found + "Unknown VFS command"), not a path error.
+        $missing = json_decode($tool->handle(new Request(['command' => 'which rg definitely_missing'])), true);
+        $this->assertFalse($missing['ok']);
+        $this->assertSame('not_found', $missing['error']['code']);
+        $this->assertStringContainsString('Unknown VFS command: definitely_missing. Run `help`', $missing['error']['message']);
     }
 
     public function test_vfs_exec_covers_common_unix_read_commands_and_pipes(): void
@@ -591,7 +602,10 @@ class VfsFeatureTest extends TestCase
         $this->assertStringContainsString('sha256', 'sha256 '.$executor->execute($this->agent, 'sha256sum /docs/by-id/'.$first->id)['stdout']);
         $this->assertStringContainsString('/docs/by-id/'.$first->id, $executor->execute($this->agent, 'sha1sum /docs/by-id/'.$first->id)['stdout']);
         $this->assertStringContainsString('/docs/by-id/'.$first->id, $executor->execute($this->agent, 'md5sum /docs/by-id/'.$first->id)['stdout']);
-        $this->assertStringContainsString('+ gamma', $executor->execute($this->agent, 'diff /docs/by-id/'.$first->id.' /docs/by-id/'.$second->id)['stdout']);
+        // Phase 2: diff is LCS-based in GNU normal format (exit 1 when different).
+        $diff = $executor->execute($this->agent, 'diff /docs/by-id/'.$first->id.' /docs/by-id/'.$second->id);
+        $this->assertStringContainsString('> gamma', $diff['stdout']);
+        $this->assertSame(1, $diff['exit_code']);
         $this->assertStringContainsString('differ', $executor->execute($this->agent, 'cmp /docs/by-id/'.$first->id.' /docs/by-id/'.$second->id)['stdout']);
         $this->assertStringContainsString('alpha', $executor->execute($this->agent, 'comm /docs/by-id/'.$first->id.' /docs/by-id/'.$second->id)['stdout']);
     }
@@ -618,7 +632,7 @@ class VfsFeatureTest extends TestCase
             'bash -c "echo hi"',
             'python -c "print(1)"',
             'curl https://example.com',
-            'tar -tf /files/archive.tar',
+            'tar -cjf /files/archive.tar.bz2 /files',
             'patch -p1',
             'history',
         ] as $command) {
@@ -654,7 +668,10 @@ class VfsFeatureTest extends TestCase
             $executor->execute($this->agent, 'help does-not-exist');
             $this->fail('Unknown command help should fail with a structured VFS error.');
         } catch (VfsError $e) {
+            // Phase 2: a failed lookup keeps not_found but names the command,
+            // never "Path not found".
             $this->assertSame('not_found', $e->errorCode);
+            $this->assertStringContainsString('Unknown VFS command: does-not-exist. Run `help`', $e->getMessage());
         }
 
         $this->assertStringContainsString('status=recognized_unsupported', $executor->execute($this->agent, 'type curl')['stdout']);
@@ -705,21 +722,27 @@ class VfsFeatureTest extends TestCase
         $this->assertStringContainsString('/docs/by-id', $executor->execute($this->agent, 'ls -R /docs')['stdout']);
         $this->assertSame('/docs', trim($executor->execute($this->agent, 'cd /docs && pwd')['stdout']));
         $this->assertSame("first\nsecond\nthird", trim($executor->execute($this->agent, 'echo first; echo second; echo third')['stdout']));
-        $this->assertSame("first\nsecond\nthird", trim((string) $executor->execute($this->agent, 'echo first; echo second; echo third')['result']['stdout']));
+        $this->assertArrayNotHasKey('stdout', $executor->execute($this->agent, 'echo first; echo second; echo third')['result']);
         $this->assertSame('ok', trim($executor->execute($this->agent, 'true && echo ok')['stdout']));
         $this->assertSame('fallback', trim($executor->execute($this->agent, 'false || echo fallback')['stdout']));
         $this->assertSame('OR', trim($executor->execute($this->agent, 'false && echo AND || echo OR')['stdout']));
         $this->assertSame('after', trim($executor->execute($this->agent, 'ls /nonexistent 2>/dev/null; echo after')['stdout']));
-        $this->assertFalse($executor->execute($this->agent, 'ls /nonexistent 2>/dev/null && echo hidden')['ok']);
+        // Phase 2: a failure whose stderr was redirected is not an error
+        // envelope; it is a non-zero exit status (2 = error), like bash.
+        $hidden = $executor->execute($this->agent, 'ls /nonexistent 2>/dev/null && echo hidden');
+        $this->assertSame(2, $hidden['exit_code']);
+        $this->assertSame('', $hidden['stdout']);
         $merged = $executor->execute($this->agent, 'ls /nonexistent 2>&1');
-        $this->assertFalse($merged['ok']);
+        $this->assertSame(2, $merged['exit_code']);
         $this->assertStringContainsString('Path not found', $merged['stdout']);
         $this->assertSame('1', trim($executor->execute($this->agent, 'ls /nonexistent 2>&1 | grep -c "Path not found"')['stdout']));
+        // Phase 2: `2> file` is supported and is a governed write, so an
+        // agent without vfs_write is denied instead of writing the file.
         try {
             $executor->execute($this->agent, 'ls /nonexistent 2>/files/errors.txt');
-            $this->fail('stderr file redirects should fail loudly.');
+            $this->fail('stderr file redirects must pass the write policy.');
         } catch (VfsError $e) {
-            $this->assertSame('unsupported', $e->errorCode);
+            $this->assertSame('permission_denied', $e->errorCode);
         }
         $this->assertSame('', trim($executor->execute($this->agent, 'echo hi 1>&2')['stdout']));
         $this->assertSame('continued', trim($executor->execute($this->agent, 'ls /nonexistent 2>/dev/null; echo continued')['stdout']));
@@ -764,14 +787,15 @@ class VfsFeatureTest extends TestCase
             }
         }
 
-        $this->assertSame("alpha 1\nalpha 2\nzeta 3\nbeta 10", $executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | sort -n -k 2')['stdout']);
-        $this->assertSame("zeta 3\nbeta 10\nalpha 2\nalpha 1", $executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | sort -r')['stdout']);
+        // Phase 2: POSIX line output, every line newline-terminated.
+        $this->assertSame("alpha 1\nalpha 2\nzeta 3\nbeta 10\n", $executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | sort -n -k 2')['stdout']);
+        $this->assertSame("zeta 3\nbeta 10\nalpha 2\nalpha 1\n", $executor->execute($this->agent, 'cat /docs/by-id/'.$first->id.' | sort -r')['stdout']);
         $this->assertStringContainsString('      2 alpha', $executor->execute($this->agent, 'cat /docs/by-id/'.$duplicates->id.' | uniq -c')['stdout']);
         $this->assertSame('alpha', trim($executor->execute($this->agent, 'cat /docs/by-id/'.$duplicates->id.' | uniq -d')['stdout']));
         $this->assertSame('beta', trim($executor->execute($this->agent, 'cat /docs/by-id/'.$duplicates->id.' | uniq -u')['stdout']));
         $this->assertSame('hello world', $executor->execute($this->agent, 'printf "hello %s" world')['stdout']);
         $this->assertSame("alpha\nbeta\n", $executor->execute($this->agent, 'printf "%s\n" alpha beta')['stdout']);
-        $this->assertSame("score\n10\n2", $executor->execute($this->agent, 'cat /docs/by-id/'.$csv->id.' | awk -F , "{print $2}"')['stdout']);
+        $this->assertSame("score\n10\n2\n", $executor->execute($this->agent, 'cat /docs/by-id/'.$csv->id.' | awk -F , "{print $2}"')['stdout']);
         $this->assertSame('cba', trim($executor->execute($this->agent, 'echo abc | rev')['stdout']));
         $this->assertSame('b', trim($executor->execute($this->agent, 'echo "a b c" | cut -d\' \' -f2')['stdout']));
         $this->assertSame('bcd', trim($executor->execute($this->agent, 'echo abcde | cut -c2-4')['stdout']));
@@ -792,7 +816,8 @@ class VfsFeatureTest extends TestCase
         $this->assertStringContainsString(',', $executor->execute($this->agent, 'paste -d, /docs/by-id/'.$first->id.' /docs/by-id/'.$csv->id)['stdout']);
         $this->assertStringContainsString('/docs/by-id/'.$first->id, $executor->execute($this->agent, 'rg alpha /docs --max-count 1')['stdout']);
         $this->assertStringContainsString('/docs/by-id/'.$first->id, $executor->execute($this->agent, 'rg alpha /docs --max-depth 2 --max-count 1')['stdout']);
-        $this->assertSame('/docs/by-id/'.$first->id.':alpha 2', trim($executor->execute($this->agent, 'rg alpha /docs/by-id/'.$first->id.' -m1')['stdout']));
+        // Phase 2: like ripgrep, a single file operand prints no file name.
+        $this->assertSame('alpha 2', trim($executor->execute($this->agent, 'rg alpha /docs/by-id/'.$first->id.' -m1')['stdout']));
         $this->assertSame("alpha\nalpha", trim($executor->execute($this->agent, 'grep -o alpha /docs/by-id/'.$first->id)['stdout']));
         $this->assertSame('2', trim($executor->execute($this->agent, 'grep -c alpha /docs/by-id/'.$first->id)['stdout']));
         $this->assertStringNotContainsString('alpha', $executor->execute($this->agent, 'grep -v alpha /docs/by-id/'.$first->id)['stdout']);
@@ -835,8 +860,10 @@ class VfsFeatureTest extends TestCase
         $this->assertMatchesRegularExpression('/^a\s+1$/m', $executor->execute($this->agent, 'printf "a 1\nbbb 22" | column -t')['stdout']);
         $this->assertStringContainsString("\n", $executor->execute($this->agent, 'printf abcdef | fold -w 3')['stdout']);
         $this->assertSame('a b c', trim($executor->execute($this->agent, 'printf "a    b\nc" | fmt -w 20')['stdout']));
-        $this->assertSame('a    b', trim($executor->execute($this->agent, 'printf "a\tb" | expand -t 4')['stdout']));
-        $this->assertSame("a\tb", trim($executor->execute($this->agent, 'printf "a    b" | unexpand -t 4')['stdout']));
+        // Phase 2: real tab stops (GNU): "a" + 3 spaces reaches column 4.
+        $this->assertSame('a   b', trim($executor->execute($this->agent, 'printf "a\tb" | expand -t 4')['stdout']));
+        // Phase 2: GNU semantics (-t implies -a; the blank after the stop stays).
+        $this->assertSame("a\t b", trim($executor->execute($this->agent, 'printf "a    b" | unexpand -t 4')['stdout']));
         $this->assertSame('3', trim($executor->execute($this->agent, 'printf "1+2" | bc')['stdout']));
         $this->assertSame('14', trim($executor->execute($this->agent, 'printf "2*(3+4)" | bc')['stdout']));
         $this->assertSame('3', trim($executor->execute($this->agent, 'expr 1 + 2')['stdout']));
@@ -880,36 +907,44 @@ class VfsFeatureTest extends TestCase
         $this->assertSame('true', trim($executor->execute($this->agent, 'jq "has(\'items\')" /files/glob-json/a.json')['stdout']));
         $this->assertSame('false', trim($executor->execute($this->agent, 'jq "has(\'missing\')" /files/glob-json/a.json')['stdout']));
         $this->assertStringContainsString('alpha', $executor->execute($this->agent, 'jq ".items[0]" /files/glob-json/a.json')['stdout']);
-        $this->assertSame("alpha\nbeta", trim($executor->execute($this->agent, 'jq ".items[].name" /files/glob-json/a.json')['stdout']));
+        // Phase 2: strings are JSON-quoted unless -r (real jq semantics).
+        $this->assertSame("\"alpha\"\n\"beta\"", trim($executor->execute($this->agent, 'jq ".items[].name" /files/glob-json/a.json')['stdout']));
+        $this->assertSame("alpha\nbeta", trim($executor->execute($this->agent, 'jq -r ".items[].name" /files/glob-json/a.json')['stdout']));
         $this->assertSame('2', trim($executor->execute($this->agent, 'jq ".items | length" /files/glob-json/a.json')['stdout']));
         $this->assertStringContainsString('alpha', $executor->execute($this->agent, 'jq ".[0]" /files/glob-json/list.json')['stdout']);
         $this->assertStringContainsString('alpha', $executor->execute($this->agent, 'jq ".[]" /files/glob-json/list.json')['stdout']);
-        $this->assertSame("alpha\nbeta", trim($executor->execute($this->agent, 'jq ".[] | .name" /files/glob-json/list.json')['stdout']));
+        $this->assertSame("alpha\nbeta", trim($executor->execute($this->agent, 'jq -r ".[] | .name" /files/glob-json/list.json')['stdout']));
         $this->assertSame('["alpha","beta"]', trim($executor->execute($this->agent, 'jq -c "map(.name)" /files/glob-json/list.json')['stdout']));
         $this->assertStringContainsString('alpha', $executor->execute($this->agent, 'jq -c ".[] | select(.name == \'alpha\')" /files/glob-json/list.json')['stdout']);
         $this->assertSame('4', trim($executor->execute($this->agent, 'jq ".n + 2" /files/glob-json/a.json')['stdout']));
         $this->assertSame('5', trim($executor->execute($this->agent, 'jq ".subtotal + .tax" /files/glob-json/price.json')['stdout']));
         $this->assertStringContainsString('gamma', $executor->execute($this->agent, 'jq ".items[0]" /files/glob-json/a.json /files/glob-json/b.json')['stdout']);
         $executor->execute($this->agent, 'printf \'{"data":{"customer-email":"buyer@example.com"},"source":"file"}\' > /files/glob-json/keyed.json');
-        $this->assertSame('buyer@example.com', trim($executor->execute($this->agent, 'jq \'.data["customer-email"]\' /files/glob-json/keyed.json')['stdout']));
-        $this->assertSame('file', trim($executor->execute($this->agent, 'printf \'{"source":"stdin"}\' | jq ".source" /files/glob-json/keyed.json')['stdout']));
+        $this->assertSame('buyer@example.com', trim($executor->execute($this->agent, 'jq -r \'.data["customer-email"]\' /files/glob-json/keyed.json')['stdout']));
+        $this->assertSame('file', trim($executor->execute($this->agent, 'printf \'{"source":"stdin"}\' | jq -r ".source" /files/glob-json/keyed.json')['stdout']));
 
-        foreach (['jq nope /files/glob-json/a.json', 'jq ".items[" /files/glob-json/a.json', 'jq ".." /files/glob-json/a.json'] as $command) {
+        // `..` (recursive descent) is supported since the Phase 2 jq parser.
+        $this->assertStringContainsString('alpha', $executor->execute($this->agent, 'jq -c ".." /files/glob-json/a.json')['stdout']);
+        foreach (['jq nope /files/glob-json/a.json', 'jq ".items[" /files/glob-json/a.json', 'jq ".x = 1" /files/glob-json/a.json'] as $command) {
             try {
                 $executor->execute($this->agent, $command);
                 $this->fail("{$command} should fail.");
             } catch (VfsError $e) {
-                $this->assertContains($e->errorCode, ['invalid', 'unsupported']);
+                // jq syntax errors are invalid_request since the Phase 2 parser
+                // ("invalid" was never a VFS error code).
+                $this->assertContains($e->errorCode, ['invalid_request', 'unsupported']);
             }
         }
 
         $this->assertStringContainsString('continued', $executor->execute($this->agent, 'ls /missing 2>&1 || echo continued')['stdout']);
+        // Phase 2: a failure whose stderr went to a file is exit status 2,
+        // not an error envelope.
         $redirectedError = $executor->execute($this->agent, 'ls /missing > /files/glob-json/errors.txt 2>&1');
-        $this->assertFalse($redirectedError['ok']);
+        $this->assertSame(2, $redirectedError['exit_code']);
         $this->assertSame('', trim($redirectedError['stdout']));
         $this->assertStringContainsString('Path not found', $executor->execute($this->agent, 'cat /files/glob-json/errors.txt')['stdout']);
         $orderedError = $executor->execute($this->agent, 'ls /missing 2>&1 > /files/glob-json/stdout-only.txt');
-        $this->assertFalse($orderedError['ok']);
+        $this->assertSame(2, $orderedError['exit_code']);
         $this->assertStringContainsString('Path not found', $orderedError['stdout']);
 
         $find = app(OpenCompanyVfs::class);
@@ -1160,9 +1195,10 @@ RUBY);
             'maxBytes' => 200,
         ])), true);
 
+        // Phase 2: the shell shows the same prefix and replaces the bare
+        // display suffix with the stable, sized truncation line.
         $this->assertTrue($exec['ok']);
-        $this->assertLessThanOrEqual(200, strlen($exec['stdout']));
-        $this->assertStringEndsWith('[... truncated]', $exec['stdout']);
+        $this->assertStringContainsString('[truncated at ', $exec['stdout']);
 
         $commands = app(OpenCompanyVfs::class)->read($this->agent, '/tools/vfs/commands.json', new VfsBudget(maxBytes: 200));
         $settings = app(OpenCompanyVfs::class)->read($this->agent, '/workspace/settings.json', new VfsBudget(maxBytes: 10));
@@ -1348,16 +1384,20 @@ RUBY);
         $this->assertStringContainsString('created', $executor->execute($this->agent, 'mkdir /files/tmp-vfs')['stdout']);
         $this->assertStringContainsString('created', $executor->execute($this->agent, 'touch /files/tmp-vfs/a.txt')['stdout']);
         $beforeVersion = app(OpenCompanyVfs::class)->stat($this->agent, '/files/tmp-vfs/a.txt')['version'];
-        $this->assertStringContainsString('updated', $executor->execute($this->agent, 'cat /docs | tee /files/tmp-vfs/a.txt')['stdout']);
+        // tee copies its input to stdout (Phase 2), not a write-result JSON.
+        $this->assertSame($executor->execute($this->agent, 'cat /docs')['stdout'], $executor->execute($this->agent, 'cat /docs | tee /files/tmp-vfs/a.txt')['stdout']);
         $afterVersion = app(OpenCompanyVfs::class)->stat($this->agent, '/files/tmp-vfs/a.txt')['version'];
         $this->assertNotSame($beforeVersion, $afterVersion);
-        $this->assertStringContainsString('updated', $executor->execute($this->agent, 'echo appended | tee -a /files/tmp-vfs/a.txt')['stdout']);
+        $this->assertSame("appended\n", $executor->execute($this->agent, 'echo appended | tee -a /files/tmp-vfs/a.txt')['stdout']);
         $this->assertStringContainsString('appended', $executor->execute($this->agent, 'cat /files/tmp-vfs/a.txt')['stdout']);
         $this->assertStringContainsString('copied', $executor->execute($this->agent, 'cp /files/tmp-vfs/a.txt /files/tmp-vfs/b.txt')['stdout']);
         $this->assertStringContainsString('created', $executor->execute($this->agent, 'mkdir /files/tmp-vfs/copies')['stdout']);
         $this->assertStringContainsString('copied', $executor->execute($this->agent, 'cp /files/tmp-vfs/a.txt /files/tmp-vfs/copies')['stdout']);
         $this->assertStringContainsString('appended', $executor->execute($this->agent, 'cat /files/tmp-vfs/copies/a.txt')['stdout']);
-        foreach (['cp /files/tmp-vfs/a.txt /files/tmp-vfs/copies/a.txt', 'mv /files/tmp-vfs/a.txt /files/tmp-vfs/copies/a.txt'] as $command) {
+        // cp overwrites an existing destination with a versioned write (GNU);
+        // mv still refuses without -f because replacing destroys the target.
+        $this->assertStringContainsString('copied', $executor->execute($this->agent, 'cp /files/tmp-vfs/a.txt /files/tmp-vfs/copies/a.txt')['stdout']);
+        foreach (['mv /files/tmp-vfs/a.txt /files/tmp-vfs/copies/a.txt'] as $command) {
             try {
                 $executor->execute($this->agent, $command);
                 $this->fail("{$command} should fail on an existing destination.");
