@@ -89,10 +89,13 @@ class ApprovalResolutionPolicy
         $resource = $facts->approval($approval);
         // A legacy approval with no workspace still needs a request workspace;
         // the engine then answers approval_workspace_unknown from the facts.
-        $workspaceId = $resource['workspace_id'] ?? 'approval-without-workspace';
-        $workspace = Workspace::query()->find($workspaceId);
+        // Never query with the placeholder: workspace ids are uuid columns on
+        // PostgreSQL, and a failed cast would abort the caller's transaction.
+        $knownWorkspaceId = $resource['workspace_id'] ?? null;
+        $workspaceId = $knownWorkspaceId ?? 'approval-without-workspace';
+        $workspace = $knownWorkspaceId !== null ? Workspace::query()->find($knownWorkspaceId) : null;
         $responderId = (string) $responder->id;
-        $role = $responder->type === 'agent' ? null : $this->roleFor($workspaceId, $responderId);
+        $role = $responder->type === 'agent' || $knownWorkspaceId === null ? null : $this->roleFor($knownWorkspaceId, $responderId);
 
         return app(PolicyEngine::class)->decide(
             ['workspace' => $workspaceId, 'actor' => $responderId, 'on_behalf_of' => null, 'action' => 'approval.resolve'],

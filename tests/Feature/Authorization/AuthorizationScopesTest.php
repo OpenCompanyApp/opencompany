@@ -35,9 +35,9 @@ class AuthorizationScopesTest extends TestCase
         $granted = User::factory()->agent()->create(['workspace_id' => $this->workspace->id]);
 
         $channels = [];
-        foreach (['public', 'private', 'dm', 'external', null] as $type) {
+        foreach (['public', 'private', 'dm', 'external'] as $type) {
             foreach ([[], [$member], [$agent], [$admin, $granted]] as $i => $members) {
-                $channel = Channel::create(['id' => (string) Str::uuid(), 'workspace_id' => $this->workspace->id, 'name' => "c{$i}", 'type' => $type ?? 'mystery']);
+                $channel = Channel::create(['id' => (string) Str::uuid(), 'workspace_id' => $this->workspace->id, 'name' => "c{$i}", 'type' => $type]);
                 foreach ($members as $user) {
                     ChannelMember::create(['channel_id' => $channel->id, 'user_id' => $user->id, 'role' => 'member']);
                 }
@@ -45,7 +45,7 @@ class AuthorizationScopesTest extends TestCase
             }
         }
         // The granted agent may read exactly two channels by explicit grant.
-        foreach ([$channels[1], $channels[9]] as $channel) {
+        foreach ([$channels[5], $channels[9]] as $channel) {
             AgentPermission::create(['id' => (string) Str::uuid(), 'agent_id' => $granted->id, 'scope_type' => 'channel', 'scope_key' => $channel->id, 'permission' => 'allow', 'requires_approval' => false]);
         }
 

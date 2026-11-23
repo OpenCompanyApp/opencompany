@@ -22,7 +22,8 @@ return new class extends Migration
     {
         Schema::create('authorization_ledger_entries', function (Blueprint $table) {
             $table->ulid('id')->primary();
-            $table->string('workspace_id');
+            // uuid like workspaces.id (PostgreSQL rejects a varchar foreign key to it).
+            $table->uuid('workspace_id');
             $table->unsignedBigInteger('sequence');
             $table->string('kind', 32);
             $table->string('action', 128);
