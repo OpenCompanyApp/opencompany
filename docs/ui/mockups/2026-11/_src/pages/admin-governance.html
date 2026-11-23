@@ -1,0 +1,138 @@
+<!--meta
+{"title": "Admin · Governance", "area": "Admin", "order": 410, "rail": "admin", "layout": "two",
+ "summary": "Presets (Personal, Team, Company), the reversibility table, hard-deny floor, Space overrides, exceptions and approvers.",
+ "notes": [
+  ["k", "One engine, three presets", "Presets set defaults only. Switching keeps every explicit grant and exception, every preset ships in the self-hosted product, and none is paywalled. Personal hides this screen, not the policy.", "PRODUCT_DIRECTION pillar 5 · governance “Presets”"],
+  ["p", "Gated by reversibility, not by write", "The table is the engine's default gate per action class. Team is highlighted because Acme runs Team; Space overrides can only tighten it.", "governance “Action classes and default gates”"],
+  ["s", "The floor and invariants are locked", "No preset, slider, exception or approval can relax them. A workspace may add floor entries (Acme added DNS changes) but never remove one.", "governance “Hard-deny floor”, “Always-on invariants”"],
+  ["q", "Open: slider bundles and override scope", "Which exceptions each slider position bundles per preset is still open, and so are the Company per-Space proposal defaults. So the slider caps are not shown here; Space overrides are.", "governance “Open questions”"]
+ ]}
+-->
+<main class="main">
+<style>
+.adm{display:flex;flex:1;min-height:0}
+.adm-nav{width:184px;flex:none;border-right:1px solid var(--border);padding:14px 8px;background:var(--card-2);display:flex;flex-direction:column;gap:1px}
+.adm-nav .adm-h{font-weight:700;font-size:14px;padding:2px 8px}
+.adm-nav .adm-s{font-size:11px;color:var(--muted-foreground);padding:0 8px 10px}
+.adm-nav .adm-i{white-space:nowrap;display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;font-size:12.5px;color:var(--muted-foreground)}
+.adm-nav .adm-i.on{background:var(--secondary);color:var(--foreground);font-weight:600}
+.adm-nav .adm-i .ic{width:16px;text-align:center;flex:none}
+.adm-nav .adm-g{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--subtle-foreground);padding:12px 8px 3px}
+.adm-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.gov-preset{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--card);position:relative}
+.gov-preset.on{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.gov-preset ul{margin:6px 0 0;padding-left:16px;font-size:12px;color:var(--muted-foreground);line-height:1.6}
+.gov-t td,.gov-t th{vertical-align:top;font-size:12px}
+.gov-t td.hl,.gov-t th.hl{background:var(--primary-soft)}
+.gov-t th.hl{color:var(--primary-text)}
+.gov-t td:first-child{white-space:nowrap}
+</style>
+<div class="adm">
+  <nav class="adm-nav">
+    <div class="adm-h">Admin</div><div class="adm-s">Acme · Team preset · self-hosted</div>
+    <div class="adm-g">Workspace</div>
+    <a class="adm-i"><span class="ic">⌁</span>Connections</a>
+    <a class="adm-i"><span class="ic">$</span>Skills &amp; plugins</a>
+    <a class="adm-i on"><span class="ic">⚖</span>Governance</a>
+    <a class="adm-i"><span class="ic">☰</span>Audit</a>
+    <a class="adm-i"><span class="ic">◍</span>Members &amp; roles</a>
+    <a class="adm-i"><span class="ic">▣</span>Hosts</a>
+    <a class="adm-i"><span class="ic">€</span>Budgets</a>
+    <a class="adm-i"><span class="ic">◩</span>Published surfaces</a>
+    <a class="adm-i"><span class="ic">⇩</span>Export &amp; backups</a>
+    <a class="adm-i"><span class="ic">⚙</span>Workspace</a>
+  </nav>
+  <div class="adm-main">
+    <div class="pane-head"><div class="title">Governance</div><span class="pill info">Team preset</span><span class="muted small">one policy engine · every change here is a governance event</span>
+      <div class="acts"><span class="btn sm ghost">Why can't Ada see…?</span><span class="btn sm">Policy history</span></div></div>
+    <div class="tabs"><span class="tab on">Overview</span><span class="tab">Exceptions · 9</span><span class="tab">Approvers</span><span class="tab">Field rules · 2</span><span class="tab">Space overrides</span></div>
+    <div class="pane-body pad">
+
+      <div class="section-t">Preset <span class="r muted">defaults only · everything below stays tunable</span></div>
+      <div class="grid3 mb8">
+        <div class="gov-preset"><div class="flex"><span class="radio"></span><b>Personal</b><span class="muted xs right">solo</span></div>
+          <ul><li>Owner is the only approver</li><li>Cards in DM, Home, Telegram</li><li>No role or policy screens</li></ul></div>
+        <div class="gov-preset on"><div class="flex"><span class="radio on"></span><b>Team</b><span class="pill info right">current</span></div>
+          <ul><li>Owner, Admin, Member; Spaces carry access</li><li>Each agent's manager approves by default</li><li>Budget per agent; shared connections need an admin</li></ul></div>
+        <div class="gov-preset"><div class="flex"><span class="radio"></span><b>Company</b><span class="muted xs right">larger or regulated</span></div>
+          <ul><li>Approver policies; two approvers on high-risk</li><li>Allowlists, skill approval, computer-attach policy</li><li>Audit export and retention</li></ul></div>
+      </div>
+      <div class="callout info mb16"><span>ⓘ</span><span>Switching preset keeps all 9 explicit exceptions and every agent grant. All three presets are in the AGPL self-hosted product; security is never a paid tier.</span></div>
+
+      <div class="section-t">Default gate per action class <span class="r muted">reversible things need no approval</span></div>
+      <div class="card mb16">
+        <table class="list gov-t">
+          <tr><th>Class</th><th>Personal</th><th class="hl">Team (Acme)</th><th>Company</th></tr>
+          <tr><td><b>read</b></td><td>Allowed</td><td class="hl">Allowed within Space access</td><td>Allowed within Space access</td></tr>
+          <tr><td><b>reversible_edit</b></td><td>Auto-apply, visible in activity</td><td class="hl">Auto-apply; bulk over <b>50 rows</b> and schema changes are proposals</td><td>Small edits auto-apply; proposals per Space policy</td></tr>
+          <tr><td><b>delete</b></td><td>30-day trash, auto</td><td class="hl">Trash auto; <b>purge needs approval</b></td><td>Trash is a proposal; purge needs two approvers</td></tr>
+          <tr><td><b>external_draft</b></td><td>Auto-apply</td><td class="hl">Auto-apply</td><td>Auto-apply</td></tr>
+          <tr><td><b>external_send</b></td><td>Ask first time per target, then “always”</td><td class="hl">Same; the <b>agent's manager</b> approves</td><td>Same; routine runs only to allowlisted targets</td></tr>
+          <tr><td><b>agent_delegation</b></td><td>Ask first time per provider + repo</td><td class="hl">Manager approves; admin-allowlisted providers only</td><td>Allowlist restricts by default</td></tr>
+          <tr><td><b>spend</b></td><td>Ask, or a per-agent cap</td><td class="hl">Budget per agent</td><td>Budget + two approvers above threshold</td></tr>
+          <tr><td><b>exposure_widening</b></td><td>Ask</td><td class="hl"><b>Admin</b></td><td>Admin + second approver</td></tr>
+          <tr><td><b>structural</b></td><td>Proposal (owner)</td><td class="hl">Proposal</td><td>Proposal per Space policy</td></tr>
+          <tr><td><b>governance</b></td><td>Owner</td><td class="hl">Admin</td><td>Admin per approver policy</td></tr>
+          <tr><td><b>floor</b></td><td class="bad-t">Never</td><td class="hl bad-t"><b>Never</b></td><td class="bad-t">Never</td></tr>
+        </table>
+        <div class="card-f small muted">Tainted or trigger-started runs always ask for external actions, even with an “always” exception. “Always” is never offered for purge, exposure or structural proposals.</div>
+      </div>
+
+      <div class="grid2 mb16">
+        <div class="card floor">
+          <div class="card-h"><span>🔒</span><b>Hard-deny floor</b><span class="pill bad right">never relaxable</span></div>
+          <div class="card-b small">
+            <div class="list-row" style="padding:5px 0"><span class="bad-t">✕</span>Money transfers between accounts</div>
+            <div class="list-row" style="padding:5px 0"><span class="bad-t">✕</span>Password, 2FA or recovery changes</div>
+            <div class="list-row" style="padding:5px 0"><span class="bad-t">✕</span>Credential export by an agent</div>
+            <div class="list-row" style="padding:5px 0"><span class="bad-t">✕</span>An agent changing its own grants, budget or policy</div>
+            <div class="list-row" style="padding:5px 0"><span class="bad-t">✕</span>DNS record changes <span class="pill outline">added by Acme</span></div>
+            <div class="list-row" style="padding:5px 0;color:var(--muted-foreground)"><span>◌</span>Proposed: securities trading, impersonating a human, editing the event log</div>
+          </div>
+          <div class="card-f"><span class="btn sm">＋ Add workspace entry</span><span class="muted xs right">Entries can be added, never removed</span></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><b>Always on</b><span class="muted xs right">every preset, self-hosted included</span></div>
+          <div class="card-b small" style="columns:2;column-gap:16px;line-height:1.75">
+            ✓ Workspace isolation<br>✓ Vault + credential broker<br>✓ Untrusted-content labelling<br>✓ A trigger is never consent<br>✓ Pinned MCP definitions<br>✓ Egress allowlist on computers<br>✓ Signed webhooks, rate limits<br>✓ Event and audit log<br>✓ An agent never approves<br>✓ On-behalf-of access<br>✓ No phone-home<br>✓ Model routing is visible
+          </div>
+        </div>
+      </div>
+
+      <div class="section-t">Exceptions <span class="r"><span class="chip">All</span> <span class="chip">Learned</span> <span class="chip">Expiring</span></span></div>
+      <div class="card mb16">
+        <table class="list">
+          <tr><th>Exception</th><th>Scope</th><th>Source</th><th>Accepted by</th><th class="num">Used</th><th>Expires</th><th></th></tr>
+          <tr><td><span class="av agent ada">A</span> Ada may email <b>@northwind.example</b></td><td><span class="pill">always</span></td><td><span class="pill ada">learned (3×)</span></td><td>Sanne</td><td class="num">6</td><td class="muted">never</td><td><span class="btn sm ghost">Revoke</span></td></tr>
+          <tr><td><span class="av agent bram">B</span> Bram may create folders under <span class="mono">/files/drive/Clients/</span></td><td><span class="pill">always · routine</span></td><td>card</td><td>Sanne</td><td class="num">3</td><td class="muted">never</td><td><span class="btn sm ghost">Revoke</span></td></tr>
+          <tr><td><span class="av agent ada">A</span> Ada may email <b>@orbit-coffee.example</b></td><td><span class="pill">this task</span></td><td>card</td><td>Rutger</td><td class="num">1</td><td>task SAL-92 done</td><td><span class="btn sm ghost">Revoke</span></td></tr>
+          <tr><td><span class="av agent finn">F</span> Finn may delegate to Copilot on <span class="mono">acme/web</span></td><td><span class="pill">always · provider+repo</span></td><td>card</td><td>Sanne</td><td class="num">4</td><td class="muted">never</td><td><span class="btn sm ghost">Revoke</span></td></tr>
+          <tr><td><span class="av agent cleo">C</span> Cleo may send invoice reminders to existing clients</td><td><span class="pill">time-limited</span></td><td>card</td><td>Rutger</td><td class="num">9</td><td class="warn-t">in 3 days</td><td><span class="btn sm ghost">Revoke</span></td></tr>
+        </table>
+        <div class="card-f small"><span class="muted">Learned exceptions are offered after 3 identical approvals. Who may accept them:</span><span class="seg"><span>Admins only</span><span class="on">Managers and admins</span></span></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-h"><b>Space overrides</b><span class="muted xs right">may only tighten the preset</span></div>
+          <table class="list">
+            <tr><th>Space</th><th>Bulk-edit threshold</th><th>Extra</th></tr>
+            <tr><td>Sales</td><td>50 rows <span class="muted">(default)</span></td><td class="muted">—</td></tr>
+            <tr><td>Engineering</td><td>100 rows</td><td class="muted">Issue close needs a human</td></tr>
+            <tr><td>Operations</td><td>25 rows</td><td>Expenses: schema changes need 2 admins</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-h"><b>Approvers</b><span class="muted xs right">server computes eligibility</span></div>
+          <table class="list">
+            <tr><td>External sends, spend, delegation</td><td>Agent's manager <span class="muted">(Ada, Cleo → Rutger · Bram, Finn → Sanne)</span></td></tr>
+            <tr><td>Exposure, shared connections, hosts</td><td>Admins: Rutger, Sanne</td></tr>
+            <tr><td>Field rule: <span class="mono">deals.discount &gt; 20</span></td><td>Role <b>sales-lead</b> (Sanne)</td></tr>
+            <tr><td>Autonomy slider moves</td><td>Manager or admin · an agent never</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</main>

@@ -1,0 +1,154 @@
+<!--meta
+{"title": "Mobile", "area": "Mobile", "order": 700, "layout": "free",
+ "summary": "Phone width: Home, Chats, a chat with Ada, the approval as a full-screen sheet and the takeover screen; bottom bar Home · Chats · Spaces · Team.",
+ "notes": [
+  ["k", "Home is the home screen", "The bottom bar holds Home, Chats, Spaces and Team. Home opens on Needs you, answerable with one tap.", "ui-structure §3 “Mobile” · Appendix A"],
+  ["p", "Cards open as full-screen sheets", "Tapping the approval card opens the same card contract as a sheet: what, why, where from, risk, scope. Answers go straight to the policy engine, never parsed from chat.", "messenger-ui “Card anatomy” · governance “Approval card contract”"],
+  ["a", "The computer opens full screen", "Takeover on mobile web hides the bottom bar and keeps one big Hand back button. Typed content is never reported back to the agent.", "computer-provider-contract “Takeover viewer”"],
+  ["q", "Open: takeover on mobile web vs signed hand-off link", "Shown as in-app mobile web. The docs leave open whether phones always hand off via a signed link, and whether push for mobile web ships before native apps.", "messenger-ui “Open questions”"]
+ ]}
+-->
+<style>
+.mob{width:1440px;margin:0 auto}
+.mob .phones{flex-wrap:wrap;gap:36px 40px;padding:8px 0 0}
+.mob .pm{display:flex;flex-direction:column;align-items:center}
+.mob .ttl{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.mob .mini{border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden}
+.mob .mini .mh{display:flex;align-items:center;gap:6px;padding:8px 10px;font-size:12px;border-bottom:1px solid var(--border)}
+.mob .mini .mb{padding:8px 10px;font-size:12px}
+.mob .mini .mf{display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--border);background:var(--card-2)}
+.mob .mini .mf .btn{flex:1;justify-content:center}
+.mob .crow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.mob .crow .grow{flex:1;min-width:0}
+.mob .big{padding:12px;font-size:15px;border-radius:12px;justify-content:center;width:100%}
+.mob .scr{background:#f4f4f5;color:#18181b;border-radius:10px;padding:18px 16px;font-size:13px}
+.mob .otp{display:flex;gap:6px;margin-top:10px}.mob .otp i{width:34px;height:42px;border:1.5px solid #d4d4d8;border-radius:8px;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:18px;background:#fff}
+</style>
+<div class="mob">
+ <div class="phones">
+
+  <!-- 1 Home -->
+  <div class="pm"><div class="phone">
+    <div class="island"></div><div class="sbar"><span>9:41</span><span>▂▄▆ ◔</span></div>
+    <div class="ptop"><div class="logo">A</div><span class="ttl">Home</span><span class="right icon-btn b">⌕</span></div>
+    <div class="pbody">
+      <div class="section-t" style="margin:0"><span class="sdot needd"></span>Needs you <span class="badge need">3</span></div>
+      <div class="mini card approval" style="border-color:var(--warning-border)">
+        <div class="mh" style="background:var(--warning-soft)"><span class="av agent ada">A</span><b>Ada</b><span class="muted">wants to send 23 emails</span></div>
+        <div class="mb">Re-engage stale leads · first send to 19 new domains · <span class="untrusted">web-form leads</span></div>
+        <div class="mf"><span class="btn sm primary">Review</span><span class="btn sm">Send once</span><span class="btn sm ghost">Deny</span></div>
+      </div>
+      <div class="mini" style="border-color:var(--primary-border)">
+        <div class="mh" style="background:var(--primary-soft)"><span class="av agent bram">B</span><b>Bram</b><span class="muted">needs a 2FA code</span></div>
+        <div class="mb">Time-tracking tool · Client · Northwind</div>
+        <div class="mf"><span class="btn sm primary">Take over</span><span class="btn sm">Later</span></div>
+      </div>
+      <div class="mini">
+        <div class="mh"><span class="ico sm">↻</span><b>New Space proposed</b><span class="muted right xs">2 h</span></div>
+        <div class="mb">Client · Northwind from template agency-client</div>
+        <div class="mf"><span class="btn sm primary">Create</span><span class="btn sm">Open</span></div>
+      </div>
+      <div class="section-t" style="margin:4px 0 0"><span class="sdot on"></span>Results</div>
+      <div class="crow"><span class="av agent cleo md">C</span><div class="grow"><b>October expenses reconciled</b><div class="muted xs">41 rows · auto-applied · revert</div></div></div>
+      <div class="crow" style="border:0"><span class="av agent bram md">B</span><div class="grow"><b>6 supplier invoices filed</b><div class="muted xs">Drive /Finance/2026-10</div></div></div>
+    </div>
+    <div class="bbar"><div class="on"><b>◉</b>Home<span class="badge need">3</span></div><div><b>☰</b>Chats<span class="badge unread">7</span></div><div><b>▦</b>Spaces</div><div><b>◍</b>Team</div></div>
+  </div><div class="phone-cap">Home · needs you first</div></div>
+
+  <!-- 2 Chats -->
+  <div class="pm"><div class="phone">
+    <div class="island"></div><div class="sbar"><span>9:41</span><span>▂▄▆ ◔</span></div>
+    <div class="ptop"><span class="ttl">Chats</span><span class="right icon-btn b">✎</span></div>
+    <div class="pbody" style="gap:0">
+      <div class="input ph mb8">⌕ Search chats</div>
+      <div class="section-t" style="margin:6px 0 0">Agents</div>
+      <div class="crow"><span class="av agent ada md">A<i class="dot work"></i></span><div class="grow"><div class="flex"><b>Ada</b><span class="tag">🖥</span><span class="right muted xs">09:24</span></div><div class="muted small ell">working · checking lead websites</div></div><span class="badge unread">2</span></div>
+      <div class="crow"><span class="av agent bram md">B<i class="dot needd"></i></span><div class="grow"><div class="flex"><b>Bram</b><span class="tag">🖥</span><span class="right muted xs">09:21</span></div><div class="muted small ell">Needs you: 2FA code</div></div><span class="badge need">!</span></div>
+      <div class="crow"><span class="av agent cleo md">C<i class="dot on"></i></span><div class="grow"><div class="flex"><b>Cleo</b><span class="right muted xs">08:00</span></div><div class="muted small ell">Morning brief is on Home</div></div></div>
+      <div class="section-t" style="margin:10px 0 0">People</div>
+      <div class="crow"><span class="av sanne md">S<i class="dot on"></i></span><div class="grow"><div class="flex"><b>Sanne</b><span class="right muted xs">08:41</span></div><div class="muted small ell">Northwind signed 🎉 can you check the Space?</div></div><span class="badge unread">1</span></div>
+      <div class="section-t" style="margin:10px 0 0">Groups &amp; channels</div>
+      <div class="crow"><span class="ico">#</span><div class="grow"><div class="flex"><b>launch-q4</b><span class="right muted xs">09:02</span></div><div class="muted small ell">Jonas: @Ada can you pull the beta signups?</div></div><span class="badge unread">4</span></div>
+      <div class="crow" style="border:0"><span class="ico">#</span><div class="grow"><div class="flex"><b>sales</b><span class="right muted xs">Fri</span></div><div class="muted small ell">Ada: Weekly pipeline page refreshed</div></div></div>
+    </div>
+    <div class="bbar"><div><b>◉</b>Home<span class="badge need">3</span></div><div class="on"><b>☰</b>Chats<span class="badge unread">7</span></div><div><b>▦</b>Spaces</div><div><b>◍</b>Team</div></div>
+  </div><div class="phone-cap">Chats · agents, people, channels</div></div>
+
+  <!-- 3 Chat with Ada -->
+  <div class="pm"><div class="phone">
+    <div class="island"></div><div class="sbar"><span>9:41</span><span>▂▄▆ ◔</span></div>
+    <div class="ptop" style="border-bottom:1px solid var(--border)"><span class="muted">‹</span><span class="av agent ada md">A<i class="dot work"></i></span><div><div class="flex gap4"><b>Ada</b><span class="agent-label">Agent</span></div><div class="muted xs">working · step 4 of 5</div></div><span class="right icon-btn b">🖥</span></div>
+    <div class="pbody" style="padding-top:10px">
+      <div class="msg"><span class="av rutger">R</span><div class="body"><div class="text small">Clean up Leads: no activity for 30 days → stale, and draft re-engage emails.</div></div></div>
+      <div class="msg"><span class="av agent ada">A</span><div class="body"><div class="text small">On it. 23 leads; status changes apply now, emails stay drafts.</div>
+        <div class="mini mt8"><div class="mh"><span class="state working">working</span><b>Leads clean-up</b><span class="right muted xs">▾ 6 steps</span></div>
+          <div class="mb"><div class="prog"><i style="width:72%"></i></div><div class="muted xs mt4">1 step parked for you · €0.21</div></div>
+          <div class="mf"><span class="btn sm">Redirect</span><span class="btn sm danger">Stop</span></div></div>
+        <div class="mini mt8" style="border-color:var(--ada-border)"><div class="mh" style="background:var(--ada-soft)"><b class="ada-t xs">CHANGE SET</b><span>23 rows in Leads</span></div><div class="mf"><span class="btn sm">Review</span><span class="btn sm danger">↶ Revert run</span></div></div>
+        <div class="mini mt8" style="border-color:var(--warning-border)"><div class="mh" style="background:var(--warning-soft)"><b class="warn-t xs">APPROVAL</b><span>Send 23 emails</span></div><div class="mb muted">19 new domains · tap to review</div></div>
+      </div></div>
+    </div>
+    <div style="padding:8px 12px 6px"><div class="composer" style="padding:8px 10px"><div class="flex"><span class="ph small" style="min-height:0">Message Ada…</span><span class="send" style="margin-left:auto">↑</span></div></div></div>
+    <div class="bbar"><div><b>◉</b>Home<span class="badge need">3</span></div><div class="on"><b>☰</b>Chats</div><div><b>▦</b>Spaces</div><div><b>◍</b>Team</div></div>
+  </div><div class="phone-cap">Chat · run activity collapsed</div></div>
+
+  <!-- 4 approval sheet -->
+  <div class="pm"><div class="phone">
+    <div class="island"></div><div class="sbar"><span>9:42</span><span>▂▄▆ ◔</span></div>
+    <div class="ptop" style="border-bottom:1px solid var(--border);opacity:.4"><span class="muted">‹</span><span class="av agent ada md">A</span><b>Ada</b></div>
+    <div class="pbody" style="opacity:.3;padding-top:10px"><div class="msg"><span class="av agent ada">A</span><div class="body"><div class="text small">On it. 23 leads…</div></div></div></div>
+    <div class="scrim" style="z-index:4"></div>
+    <div class="sheet" style="top:96px;display:flex;flex-direction:column">
+      <div class="grab"></div>
+      <div class="flex"><span class="pill warn">external_send · not reversible</span><span class="right muted xs">expires tomorrow</span></div>
+      <div class="h2 mt8">Send 23 re-engage emails</div>
+      <div class="muted small">from sales@acme.example · Ada · run R-2291</div>
+      <dl class="kv mt12 small" style="grid-template-columns:84px 1fr">
+        <dt>Why</dt><dd>Your request in the DM, 09:12</dd>
+        <dt>Where from</dt><dd>On behalf of you · <span class="untrusted">3 web-form leads</span></dd>
+        <dt>Cost</dt><dd>€0.06 · €41.20 left</dd>
+        <dt>You answer</dt><dd>as Ada's manager</dd>
+      </dl>
+      <div class="card flat mt12">
+        <div class="list-row"><span class="check on"></span><div class="grow ell"><b>Orbit Coffee</b> <span class="muted">lena@orbit-coffee.example</span></div></div>
+        <div class="list-row"><span class="check on"></span><div class="grow ell"><b>Northwind</b> <span class="muted">always allowed</span></div></div>
+        <div class="list-row"><span class="check"></span><div class="grow ell"><b>Halden &amp; Co</b> <span class="muted">new domain</span></div></div>
+        <div class="list-row muted small">+20 more</div>
+      </div>
+      <span class="label mt12">Scope</span>
+      <div class="seg" style="width:100%"><span class="on" style="flex:1;text-align:center">Once</span><span style="flex:1;text-align:center">This run</span><span style="flex:1;text-align:center">24 h</span></div>
+      <div class="col gap8" style="margin-top:auto">
+        <span class="btn primary big">Approve 22 selected</span>
+        <span class="btn big">Deny all</span>
+      </div>
+    </div>
+  </div><div class="phone-cap">Approval as a full-screen sheet</div></div>
+
+  <!-- 5 takeover -->
+  <div class="pm"><div class="phone">
+    <div class="island"></div><div class="sbar"><span>9:43</span><span>▂▄▆ ◔</span></div>
+    <div class="ptop" style="border-bottom:1px solid var(--border)"><span class="muted">✕</span><span class="av agent bram md">B</span><div><b>Bram's computer</b><div class="muted xs">office-mini · connected host · self-managed</div></div></div>
+    <div class="pbody" style="padding-top:12px">
+      <div class="callout info"><span>✋</span><span><b>You're in control.</b> Bram's computer actions are paused until you hand back.</span></div>
+      <div class="browser">
+        <div class="bar"><span class="lights"><i></i><i></i><i></i></span><span class="url">timetrack.example/verify</span></div>
+        <div style="padding:12px;background:#e4e4e7">
+          <div class="scr">
+            <b style="font-size:15px">Verify it's you</b>
+            <div style="color:#52525b;margin-top:4px">Enter the 6-digit code sent to the account owner's phone.</div>
+            <div class="otp"><i>4</i><i>8</i><i>1</i><i></i><i></i><i></i></div>
+            <div style="margin-top:12px;background:#2563eb;color:#fff;border-radius:8px;padding:8px;text-align:center;font-weight:600">Verify</div>
+          </div>
+        </div>
+      </div>
+      <div class="muted xs">Bram asked for this: “2FA prompt while creating Northwind in the time-tracking tool.” What you type is never shown to Bram.</div>
+      <div class="flex gap8"><span class="btn" style="flex:1;justify-content:center">⌨ Keyboard</span><span class="btn" style="flex:1;justify-content:center">⤢ Zoom</span></div>
+      <div class="col gap8" style="margin-top:auto;padding-bottom:22px">
+        <span class="btn primary big">I'm done · hand back</span>
+        <div class="muted xs" style="text-align:center">Bram receives only “human completed sign-in”.</div>
+      </div>
+    </div>
+  </div><div class="phone-cap">Takeover · computer full screen (no bottom bar)</div></div>
+
+ </div>
+</div>

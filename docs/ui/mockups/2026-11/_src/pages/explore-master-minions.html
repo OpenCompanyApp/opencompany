@@ -1,0 +1,88 @@
+<!--meta
+{"title": "Exploration · Master + Minions", "area": "Exploration (not locked)", "order": 810, "rail": "none", "layout": "three", "ctx_w": 500, "exploration": true,
+ "summary": "NOT LOCKED. Each person has one personal Master that launches scoped Minions; a roster with scope, model, state and Wake.",
+ "notes": [
+  ["q", "Exploration, not locked", "From GIN-2543 and GIN-2544 (backlog): one personal main agent per user, the Master; scoped, bot-like helpers are Minions. Shown in Rutger's words; no doc has accepted it.", "Linear GIN-2542 · GIN-2543 · GIN-2544"],
+  ["a", "Minions as scoped child runs", "A Minion is launched with an explicit scope and stays addressable after its run. The owner can wake a finished Minion to reuse its context, and each Minion can use a different model, including the user's own keys.", "Linear GIN-2544 · related GIN-1288, GIN-1739"],
+  ["k", "Governance unchanged", "A Minion acts on behalf of its owner, can never exceed the Master's grants or the owner's access, never approves, and counts against the Master's budget. Spawn depth is limited by the causality chain.", "governance “Always-on invariants”, “Budgets” · PRODUCT_DIRECTION pillar 1"],
+  ["q", "Open: Master vs named teammates", "The locked rail lists named teammates (Ada, Bram…) with managers and Space membership. Is a Master a fifth kind of agent above them, a renamed personal agent, or does it replace them? Where does it sit in the one rail?", "ui-structure Appendix A · PRODUCT_DIRECTION pillar 1"]
+ ]}
+-->
+<style>
+.mm .mrow{display:grid;grid-template-columns:24px minmax(0,1fr) 78px 74px 50px;gap:8px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--border);font-size:12.5px}
+.mm .mrow:last-child{border-bottom:0}
+.mm .mrow.h{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted-foreground);font-weight:650;background:var(--card-2)}
+.mm .mini-av{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:700;background:var(--secondary);color:var(--muted-foreground);border:1px dashed var(--border-strong)}
+.mm .master{background:linear-gradient(135deg,var(--rutger),var(--ada));color:#fff}
+.mm .map td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top;font-size:12px}
+.mm .map tr:last-child td{border-bottom:0}
+.mm .map td:first-child{font-weight:600;white-space:nowrap}
+</style>
+<main class="main mm">
+  <div class="pane-head">
+    <div class="title"><span class="av md master" style="border-radius:8px">M</span>Rutger's Master <span class="agent-label">Master</span></div>
+    <span class="muted small">one per person</span>
+    <div class="acts"><span class="btn sm ghost">Minions · 5</span><span class="icon-btn b">⋯</span></div>
+  </div>
+  <div class="pane-body">
+    <div class="thread">
+      <div class="callout warn"><span>⚑</span><span><b>Exploration.</b> “Master” and “Minion” are Rutger's proposed names (GIN-2543). Today the locked model has named teammates such as Ada and Bram; this page shows how the idea could sit inside the same rail, panes and governance.</span></div>
+
+      <div class="msg"><span class="av rutger md">R</span><div class="body"><div class="meta"><span class="who">Rutger</span><span class="time">11:20</span></div>
+        <div class="text">Prepare the Northwind kickoff: a one-page brief from the deal notes, check their site for anything new, and draft the agenda. Use something cheap for the site check.</div></div></div>
+
+      <div class="msg"><span class="av md master" style="border-radius:8px">M</span><div class="body"><div class="meta"><span class="who">Master</span><span class="agent-label">Master</span><span class="time">11:20</span></div>
+        <div class="text">I'll split this into three Minions so they can work in parallel. Each one only gets what its job needs.</div>
+        <div class="card mt8">
+          <div class="card-h"><span class="k">Minions launched</span><span class="muted">3 · depth 1 · on behalf of Rutger</span><span class="right pill outline">budget from Master</span></div>
+          <div class="list-row"><span class="mini-av">m1</span><div class="grow"><b>brief-writer</b><div class="muted xs">Scope: read CRM deal “Northwind”, Mail thread · write a Doc draft in Client · Northwind</div></div><span class="pill">Reasoning model</span><span class="state done">finished</span></div>
+          <div class="list-row"><span class="mini-av">m2</span><div class="grow"><b>site-check</b><div class="muted xs">Scope: web fetch northwind.example only · read-only · no company data</div></div><span class="pill">Fast model</span><span class="state done">finished</span></div>
+          <div class="list-row"><span class="mini-av">m3</span><div class="grow"><b>agenda-drafter</b><div class="muted xs">Scope: read the brief Doc · write one Doc draft</div></div><span class="pill">Fast model · your key</span><span class="state working">working</span></div>
+        </div>
+      </div></div>
+
+      <div class="msg"><span class="av md master" style="border-radius:8px">M</span><div class="body"><div class="meta"><span class="who">Master</span><span class="agent-label">Master</span><span class="time">11:26</span></div>
+        <div class="text">The brief is ready as a draft (owner: you). The site check found a new office in Ghent and a pricing page change. The agenda is still being drafted; I'll post it here.</div>
+        <div class="card mt8"><div class="list-row"><span class="ico">≡</span><div class="grow"><b>Northwind · kickoff brief</b><div class="muted xs">Doc · Spec · draft · Client · Northwind · written by Minion brief-writer</div></div><span class="btn sm">Open</span></div></div>
+      </div></div>
+
+      <div class="msg"><span class="av rutger md">R</span><div class="body"><div class="meta"><span class="who">Rutger</span><span class="time">11:31</span></div>
+        <div class="text">Wake <b>site-check</b> again and have it look at their careers page too, same context.</div></div></div>
+
+      <div class="msg"><span class="av md master" style="border-radius:8px">M</span><div class="body"><div class="meta"><span class="who">Master</span><span class="agent-label">Master</span><span class="time">11:31</span></div>
+        <div class="run mt4"><div class="run-b"><div class="act action"><span class="ai">↻</span><div>Woke <b>site-check</b> with its previous context (2 pages read, 3.1k tokens) <span class="det">· scope unchanged</span></div></div>
+          <div class="act input"><span class="ai">?</span><div>Careers page is on <span class="mono">jobs.northwind.example</span>, outside site-check's scope. <b>Widen scope to that domain?</b> <span class="btn sm">Allow for this Minion</span></div></div></div></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="pane-foot"><div class="composer"><div class="ph">Ask your Master… it can launch Minions for parts of the job</div><div class="bar"><span class="icon-btn">＋</span><span class="icon-btn">@</span><span class="xs muted">Model: reasoning (workspace default) ▾</span><span class="send">↑</span></div></div></div>
+</main>
+<aside class="ctx mm">
+  <div class="pane-head"><div class="title">Minions</div><span class="muted small">owned by Rutger</span><div class="acts"><span class="seg"><span class="on">All 5</span><span>Asleep</span><span>Working</span></span></div></div>
+  <div class="pane-body">
+    <div class="section" style="padding:0">
+      <div class="mrow h"><span></span><span>Minion</span><span>Model</span><span>State</span><span></span></div>
+      <div class="mrow"><span class="mini-av">m2</span><div><b>site-check</b><div class="muted xs">web: northwind.example · read-only</div></div><span class="xs">Fast model</span><span class="state working">waking</span><span></span></div>
+      <div class="mrow"><span class="mini-av">m3</span><div><b>agenda-drafter</b><div class="muted xs">1 Doc draft · Client · Northwind</div></div><span class="xs">Fast · your key</span><span class="state working">working</span><span class="btn sm ghost">Stop</span></div>
+      <div class="mrow"><span class="mini-av">m1</span><div><b>brief-writer</b><div class="muted xs">CRM deal + Mail thread → Doc</div></div><span class="xs">Reasoning</span><span class="state done">finished</span><span class="btn sm">Wake</span></div>
+      <div class="mrow"><span class="mini-av">m4</span><div><b>invoice-chaser</b><div class="muted xs">Invoices table · drafts only</div><div class="muted xs">last run Fri · context 12k kept 30 d</div></div><span class="xs">Fast model</span><span class="state paused">asleep</span><span class="btn sm">Wake</span></div>
+      <div class="mrow"><span class="mini-av">m5</span><div><b>competitor-watch</b><div class="muted xs">web: 4 domains · weekly heartbeat</div></div><span class="xs">Local · office-mini</span><span class="state paused">asleep</span><span class="btn sm">Wake</span></div>
+    </div>
+    <div class="section">
+      <div class="section-t">This month</div>
+      <div class="meter"><div class="top"><span>Master + Minions</span><span><b>€18.40</b> <span class="muted">/ €60</span></span></div><div class="prog"><i style="width:31%"></i></div></div>
+      <div class="muted xs mt4">Minions spend from the Master's budget; your own keys are counted as reported usage.</div>
+    </div>
+    <div class="section">
+      <div class="section-t">How it maps to the locked model</div>
+      <table class="map" style="width:100%;border-collapse:collapse">
+        <tr><td>Master</td><td>A personal agent per person, DM-first. Grants, budget and memory like any agent.</td></tr>
+        <tr><td>Minion</td><td>A scoped agent or durable child run (GIN-1288) that stays addressable and can be woken.</td></tr>
+        <tr><td>Access</td><td>Scope ∩ Master's grants ∩ owner's access (on-behalf-of). Space-level only.</td></tr>
+        <tr><td>Approvals</td><td>Same cards, to the owner. A Minion and a Master never approve.</td></tr>
+        <tr><td>Depth</td><td>Causality chain caps spawn depth; loops stop.</td></tr>
+        <tr><td>Teammates</td><td class="warn-t">Open: Ada, Bram, Cleo and Finn are shared, named teammates with managers. Are they Masters, Minions, or a third kind?</td></tr>
+      </table>
+    </div>
+  </div>
+</aside>

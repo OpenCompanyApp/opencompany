@@ -1,0 +1,88 @@
+<!--meta
+{"title": "Search results", "area": "Search", "order": 510, "rail": "home", "layout": "three", "ctx_w": 380,
+ "summary": "Full search with filters by type, Space, owner and status; archived items excluded; inaccessible records and agent runs handled.",
+ "notes": [
+  ["p", "Structured search over fixed types", "Filters follow the fixed object types and their required owner and status. Search makes the structure faster; it doesn't replace it.", "ui-structure §2 rules 1–4"],
+  ["s", "Archived leaves search", "Archived items are excluded by default and redirect to their replacement. The count tells you they exist; one click includes them.", "ui-structure §2 rule 4 · PRODUCT_DIRECTION pillar 7"],
+  ["k", "Inaccessible records", "A mention of something you can't read renders as “inaccessible record”, with no title or snippet. Spaces you're not in never appear at all.", "agent-native-work-apps “Agent-native capabilities” · “Spaces and the anti-mess rules”"],
+  ["q", "Open: semantic vs keyword ranking", "Docs don't fix how hybrid (keyword + semantic) ranking is explained to users. The mockup shows a “matched on” line per result.", "not specified in docs"]
+ ]}
+-->
+<main class="main">
+  <div class="pane-head">
+    <div class="input focus" style="flex:1;max-width:620px"><span class="muted">⌕</span>insurance renewal<span class="right muted xs">48 results · 0.12 s</span></div>
+    <div class="acts"><span class="btn sm">Save search</span><span class="btn sm ghost">Ask Cleo to summarize</span></div>
+  </div>
+  <div class="sr-wrap">
+    <div class="sr-filters">
+      <div class="section-t">Type</div>
+      <div class="col gap4 small">
+        <label class="flex"><span class="check on"></span>All<span class="right muted">48</span></label>
+        <label class="flex"><span class="check"></span>◇ Issues<span class="right muted">6</span></label>
+        <label class="flex"><span class="check"></span>≡ Docs<span class="right muted">5</span></label>
+        <label class="flex"><span class="check"></span>▦ Records<span class="right muted">9</span></label>
+        <label class="flex"><span class="check"></span>▤ Files<span class="right muted">7</span></label>
+        <label class="flex"><span class="check"></span>✉ Mail threads<span class="right muted">11</span></label>
+        <label class="flex"><span class="check"></span># Messages<span class="right muted">8</span></label>
+        <label class="flex"><span class="check"></span>⟳ Runs<span class="right muted">2</span></label>
+      </div>
+      <div class="section-t mt16">Space</div>
+      <div class="col gap4 small">
+        <label class="flex"><span class="check on"></span>Operations<span class="right muted">31</span></label>
+        <label class="flex"><span class="check on"></span>Sales<span class="right muted">9</span></label>
+        <label class="flex"><span class="check on"></span>Engineering<span class="right muted">2</span></label>
+        <label class="flex"><span class="check on"></span>Workspace &amp; personal<span class="right muted">6</span></label>
+      </div>
+      <div class="section-t mt16">Owner</div>
+      <div class="col gap4 small">
+        <label class="flex"><span class="check"></span><span class="av rutger">R</span>Me</label>
+        <label class="flex"><span class="check"></span><span class="av sanne">S</span>Sanne</label>
+        <label class="flex"><span class="check"></span><span class="av agent cleo">C</span>Created by Cleo</label>
+      </div>
+      <div class="section-t mt16">Status</div>
+      <div class="col gap4 small">
+        <label class="flex"><span class="check on"></span>Current</label>
+        <label class="flex"><span class="check on"></span>Draft</label>
+        <label class="flex"><span class="check"></span>Archived<span class="right muted">4 hidden</span></label>
+      </div>
+      <div class="section-t mt16">Modified</div>
+      <div class="seg"><span>7d</span><span class="on">30d</span><span>Any</span></div>
+    </div>
+    <div class="pane-body sr-res">
+      <div class="callout mb12"><span>ⓘ</span><span>4 archived results hidden (e.g. <b>Insurance policy 2025</b> → replaced by <b>Insurance policy 2026</b>). <u>Include archived</u></span></div>
+      <div class="sr on"><span class="ico info">◇</span><div class="grow"><div class="flex"><b>OPS-142 Renew insurance</b><span class="pill warn">due Fri</span><span class="pill">In Progress</span></div><div class="muted small">Operations · owner Rutger · delegate Cleo · “Compare broker quote with current policy; liability limit must stay €2.5M”</div><div class="xs subtle mt4">matched on title, description · 3 linked items</div></div></div>
+      <div class="sr"><span class="ico">≡</span><div class="grow"><div class="flex"><b>Insurance policy 2026</b><span class="pill ok">current</span><span class="pill outline">Policy</span></div><div class="muted small">Operations · owner Sanne · review 1 Mar 2027 · “…<mark>renewal</mark> runs on 1 December each year; the broker sends a quote 30 days ahead…”</div></div></div>
+      <div class="sr"><span class="ico">✉</span><div class="grow"><div class="flex"><b>Your renewal quote for 2027</b><span class="untrusted">external</span></div><div class="muted small">Mail · ops@acme.example · from broker@shieldline.example · Sat 21 Nov · 1 attachment</div></div></div>
+      <div class="sr"><span class="ico">▤</span><div class="grow"><div class="flex"><b>Renewal_quote_2027.pdf</b></div><div class="muted small">Files · Drive · Operations/Insurance · 412 KB · saved by Cleo from Mail</div></div></div>
+      <div class="sr"><span class="ico">▦</span><div class="grow"><div class="flex"><b>Business liability insurance</b><span class="muted xs">Contracts</span></div><div class="muted small">Record · Operations · renews 2026-12-01 · €3,960 / year · notice 30 days</div></div></div>
+      <div class="sr"><span class="ico ada">⟳</span><div class="grow"><div class="flex"><b>Run: compare renewal quote</b><span class="state done">done</span></div><div class="muted small">Cleo · R-2276 · Sat · “Quote is 8% higher; deductible unchanged; cyber cover added as option”</div></div></div>
+      <div class="sr"><span class="ico">#</span><div class="grow"><div class="flex"><b>#general</b><span class="muted xs">Sanne · Thu</span></div><div class="muted small">“Reminder that the insurance <mark>renewal</mark> is due Dec 1, Rutger owns it this year”</div></div></div>
+      <div class="sr dim"><span class="ico">⊘</span><div class="grow"><div class="flex"><b class="muted">Inaccessible record</b></div><div class="muted small">Mentioned in OPS-142 · it's in a private Space you're not a member of · no title or preview shown</div></div></div>
+      <div class="muted small" style="padding:10px 4px">+40 more · <u>show all</u></div>
+    </div>
+  </div>
+  <style>.sr-wrap{display:grid;grid-template-columns:220px minmax(0,1fr);flex:1;min-height:0}.sr-filters{border-right:1px solid var(--border);padding:16px}.sr-res{padding:16px 20px}.sr{display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid transparent;border-radius:10px;margin-bottom:4px}.sr .grow{flex:1;min-width:0}.sr.on{background:var(--card);border-color:var(--primary-border)}.sr.dim{opacity:.75}.sr mark{background:var(--warning-soft);color:inherit;border-radius:2px;padding:0 2px}</style>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title">◇ OPS-142</div><div class="acts"><span class="btn sm">Open</span><span class="icon-btn">✕</span></div></div>
+  <div class="pane-body">
+    <div class="section">
+      <div class="h3">Renew insurance</div>
+      <div class="flex mt8 wrap"><span class="pill">In Progress</span><span class="pill warn">due Fri 27 Nov</span><span class="chip">Operations</span></div>
+      <dl class="kv small" style="margin-top:12px">
+        <dt>Owner</dt><dd><span class="flex gap4"><span class="av rutger">R</span>Rutger</span></dd>
+        <dt>Delegate</dt><dd><span class="flex gap4"><span class="av agent cleo">C</span>Cleo · done her part</span></dd>
+        <dt>Priority</dt><dd>High</dd>
+        <dt>Linked</dt><dd>Insurance policy 2026 · Renewal_quote_2027.pdf · 1 inaccessible</dd>
+      </dl>
+    </div>
+    <div class="section small">
+      <div class="section-t">Description</div>
+      Compare the broker's quote with the current policy. Liability limit must stay at €2.5M. Decide on the optional cyber cover before Friday.
+    </div>
+    <div class="section">
+      <div class="section-t">Latest</div>
+      <div class="msg"><span class="av agent cleo">C</span><div class="body small"><b>Cleo</b> <span class="muted xs">Sat</span><div>Quote is 8% higher (€4,277). Same deductible. Cyber cover is +€640. Summary doc attached; I didn't reply to the broker.</div></div></div>
+    </div>
+  </div>
+</aside>

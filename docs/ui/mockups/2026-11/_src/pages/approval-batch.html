@@ -1,0 +1,106 @@
+<!--meta
+{"title": "Approvals and change-set review", "area": "Governance", "order": 200, "rail": "home", "layout": "three", "ctx_w": 400,
+ "summary": "Home filtered to Needs you: a batched send card opened in full with a learned-exception offer, and a bulk-edit proposal reviewed per cell, row or all.",
+ "notes": [
+  ["k", "One card for many sends", "“Ada wants to send 12 follow-ups” is one card with a toggle and preview per item. Each item is still decided and recorded individually. Approve selected or deny all.", "governance “Few, good approvals” · messenger-ui “Batched review cards”"],
+  ["a", "Learned exception", "After the third approval of the same exact pattern the card offers “always”: “Ada may email @pinecrest.example”. Accepting is a governance event; admins can restrict who may accept.", "PRODUCT_DIRECTION pillar 5 · governance “Learned exceptions”"],
+  ["p", "Bulk edits are proposals in Team", "214 rows is over the ~50-row threshold, so it's a proposal with a dry-run sample, reviewed per cell, per row or all. Cells a human changed since Ada read them show as conflicts, never overwritten.", "ui-structure §4 steps 2–7 · governance “Action classes”"],
+  ["q", "Open: scope menu in Phase 1", "Which scopes ship first is open. Proposal in the doc: “once” and the per-target “always” in Phase 1; this run, this task and time-limited in Phase 3. The mockup shows the full menu.", "messenger-ui “Open questions”"]
+ ]}
+-->
+<main class="main">
+  <div class="pane-head">
+    <div class="title">◉ Home</div><span class="muted small">Tuesday 24 November</span>
+    <div class="acts"><span class="seg"><span>All</span><span class="on">Needs you · 3</span><span>Results</span><span>FYI</span></span></div>
+  </div>
+  <div class="pane-body" style="padding:18px 24px 28px">
+    <div class="col gap16" style="max-width:900px;margin:0 auto">
+
+      <div class="card approval">
+        <div class="card-h"><span class="k">Approval · batched external send</span><span class="av agent ada">A</span><b>Ada wants to send 12 follow-ups</b><span class="muted xs right">expires Wed 09:00</span></div>
+        <div class="card-b">
+          <dl class="kv">
+            <dt>What</dt><dd>12 personal follow-ups to attendees of the 19 Nov webinar “Ops automation for agencies”, from <span class="mono">sales@acme.example</span>. Drafts in Mail.</dd>
+            <dt>Why</dt><dd>Routine <span class="ref">webinar-follow-up</span> (owner Sanne) · run <span class="ref">R-2310</span></dd>
+            <dt>Where from</dt><dd>Trigger <span class="ref">calendar.event.ended</span> · on behalf of Sanne · <b>a trigger is never consent</b>, so every send asks</dd>
+            <dt>Risk · cost</dt><dd><span class="pill warn">external_send · not reversible</span> <span class="muted">est. €0.04 · Ada €41.20 left</span></dd>
+            <dt>Who answers</dt><dd>You (Ada's manager) or Sanne (routine owner, admin)</dd>
+          </dl>
+        </div>
+        <div class="ab-items">
+          <div class="ab-row hdr"><span><span class="check on"></span></span><span>Recipient</span><span>Subject</span><span>Target</span><span></span></div>
+          <div class="ab-row"><span class="check on"></span><span><b>Northwind</b><div class="muted xs">mo@northwind.example</div></span><span class="ell">Your question about routing approvals</span><span><span class="pill ok">always allowed</span></span><span class="btn sm ghost">Preview</span></div>
+          <div class="ab-row on"><span class="check on"></span><span><b>Pinecrest</b><div class="muted xs">jules@pinecrest.example</div></span><span class="ell">The slides + the Drive intake demo</span><span><span class="pill ada">3rd approval</span></span><span class="btn sm">Previewing</span></div>
+          <div class="ab-row"><span class="check on"></span><span><b>Lumen Dental</b><div class="muted xs">hanna@lumen-dental.example</div></span><span class="ell">Recording and the SSO timeline</span><span><span class="pill ok">always allowed</span></span><span class="btn sm ghost">Preview</span></div>
+          <div class="ab-row"><span class="check on"></span><span><b>Fjord Freight</b><div class="muted xs">erik@fjord-freight.example</div></span><span class="ell">Following up on invoice intake</span><span><span class="pill">new domain</span></span><span class="btn sm ghost">Preview</span></div>
+          <div class="ab-row"><span class="check on"></span><span><b>Orbit Coffee</b><div class="muted xs">lena@orbit-coffee.example</div></span><span class="ell">The espresso bar booking flow</span><span><span class="pill ok">always allowed</span></span><span class="btn sm ghost">Preview</span></div>
+          <div class="ab-row off"><span class="check"></span><span><b>Halden &amp; Co</b><div class="muted xs">pieter@halden.example</div></span><span class="ell">Picking up after the webinar</span><span><span class="pill warn">overdue invoice</span></span><span class="btn sm ghost">Preview</span></div>
+          <div class="ab-row"><span class="check on"></span><span><b>Kestrel Labs</b><div class="muted xs">ines@kestrel-labs.example</div></span><span class="ell">Welcome, and a 20-minute intro?</span><span><span class="pill">new domain</span></span><span class="btn sm ghost">Preview</span></div>
+          <div class="ab-row muted small"><span></span><span>+5 more</span><span>3 new domains, 2 always allowed</span><span></span><span></span></div>
+        </div>
+        <div class="card-f" style="background:var(--ada-soft)"><span>✦</span><span class="small" style="flex:1 1 300px;min-width:0">This is the <b>3rd</b> approval of Ada emailing <b>@pinecrest.example</b>. Make it <b>“Ada may email @pinecrest.example”</b> (always, exact match)?</span><span class="btn sm right">Yes, always</span><span class="btn sm ghost">Not now</span></div>
+        <div class="card-f"><span class="btn primary sm">Approve 11 selected</span>
+          <span class="seg"><span class="on">Once</span><span>This run</span><span>This task</span><span>24 h</span><span>Always for these domains</span></span>
+          <span class="btn sm ghost">Deny all…</span><span class="muted xs right">Halden unticked by Ada: memory says “pause outreach while invoice overdue”</span></div>
+      </div>
+
+      <div class="card changeset">
+        <div class="card-h"><span class="k nowrap">Proposal</span><span class="av agent ada">A</span><b class="nowrap">Normalize Country in Leads</b><span class="muted nowrap">bulk edit · 214 rows · 1 field</span><span class="pill warn right">over 50 rows → review (Team)</span></div>
+        <div class="card-b small">
+          <div><span class="muted">Plan</span> · map 14 spellings to ISO names, e.g. “NL”, “the Netherlands”, “Holland” → <b>Netherlands</b> <span class="muted">· from Sanne's request in #sales · run <span class="ref">R-2312</span> · est. €0.09</span></div>
+          <div class="flex mt8 gap12"><span class="chip">Showing dry-run sample · 10 of 214</span><span class="chip">Changed only</span><span class="chip">Conflicts · 2</span><span class="right muted xs">Hover a cell for old → new</span></div>
+        </div>
+        <table class="dgrid">
+          <tr><th class="n">#</th><th>Company</th><th>Country</th><th>City</th><th style="width:90px">Row</th></tr>
+          <tr><td class="n">12</td><td>Northwind</td><td class="staged"><span class="old">NL</span><span class="arrow">→</span>Netherlands</td><td>Utrecht</td><td><span class="flex gap4"><span class="btn sm">✓</span><span class="btn sm ghost">✕</span></span></td></tr>
+          <tr><td class="n">18</td><td>Fjord Freight</td><td class="staged"><span class="old">Norge</span><span class="arrow">→</span>Norway</td><td>Bergen</td><td><span class="flex gap4"><span class="btn sm">✓</span><span class="btn sm ghost">✕</span></span></td></tr>
+          <tr><td class="n">27</td><td>Halden &amp; Co</td><td class="conflict"><span class="old">the Netherlands</span><span class="arrow">→</span>Netherlands <span class="pill warn">Sanne edited 10:02</span></td><td>Leiden</td><td><span class="flex gap4"><span class="btn sm">Keep Sanne's</span></span></td></tr>
+          <tr><td class="n">31</td><td>Bluefin Studio</td><td class="staged"><span class="old">UK</span><span class="arrow">→</span>United Kingdom</td><td>Bristol</td><td><span class="flex gap4"><span class="btn sm">✓</span><span class="btn sm ghost">✕</span></span></td></tr>
+          <tr><td class="n">44</td><td>Pinecrest</td><td class="staged"><span class="old">Belgie</span><span class="arrow">→</span>Belgium</td><td>Ghent</td><td><span class="flex gap4"><span class="btn sm">✓</span><span class="btn sm ghost">✕</span></span></td></tr>
+          <tr><td class="n">58</td><td>Lumen Dental</td><td class="staged"><span class="old">Holland</span><span class="arrow">→</span>Netherlands</td><td>Haarlem</td><td><span class="flex gap4"><span class="btn sm">✓</span><span class="btn sm ghost">✕</span></span></td></tr>
+          <tr><td class="n">63</td><td>Orbit Coffee</td><td class="conflict"><span class="old">BE</span><span class="arrow">→</span>Belgium <span class="pill warn">Jonas edited 09:41</span></td><td>Antwerp</td><td><span class="flex gap4"><span class="btn sm">Keep Jonas's</span></span></td></tr>
+          <tr><td class="n">77</td><td>Kestrel Labs</td><td class="staged"><span class="old">Deutschland</span><span class="arrow">→</span>Germany</td><td>Leipzig</td><td><span class="flex gap4"><span class="btn sm">✓</span><span class="btn sm ghost">✕</span></span></td></tr>
+          <tr class="ghost"><td class="n"></td><td colspan="4">+206 rows staged · 0 deletes · 0 schema changes</td></tr>
+        </table>
+        <div class="card-f"><span class="btn primary sm">Apply 212 · keep 2 human edits</span><span class="btn sm">Open in Leads</span><span class="btn sm ghost">Edit plan</span><span class="btn sm ghost">Reject</span><span class="muted xs right">After apply: one revertible batch · “Ada on behalf of Sanne”</span></div>
+      </div>
+
+      <div class="card approval">
+        <div class="card-h"><span class="k">Approval · exposure</span><span class="av agent bram">B</span><b>Bram wants to open port 8080 for a preview</b><span class="muted xs right">collapsed · 1 h ago</span></div>
+        <div class="card-f"><span class="btn sm">Expand</span><span class="muted xs">Exposure needs an admin in Team · “always” is never offered for exposure</span></div>
+      </div>
+    </div>
+  </div>
+  <style>.ab-items{border-top:1px solid var(--border)}.ab-row{display:grid;grid-template-columns:28px 230px minmax(0,1fr) 130px 86px;gap:10px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--border);font-size:12.5px}.ab-row.hdr{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted-foreground);font-weight:650;background:var(--card-2)}.ab-row.on{background:var(--primary-soft)}.ab-row.off{opacity:.6}</style>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title">Preview · item 2 of 12</div><div class="acts"><span class="icon-btn b">↑</span><span class="icon-btn b">↓</span></div></div>
+  <div class="pane-body">
+    <div class="section">
+      <dl class="kv small">
+        <dt>From</dt><dd class="mono">sales@acme.example</dd>
+        <dt>To</dt><dd class="mono">jules@pinecrest.example</dd>
+        <dt>Subject</dt><dd>The slides + the Drive intake demo</dd>
+        <dt>Attachment</dt><dd>Webinar-slides.pdf · Files · Sales</dd>
+      </dl>
+    </div>
+    <div class="section small" style="line-height:1.6">
+      <p>Hi Jules,</p>
+      <p>Thanks for joining Thursday's session. You asked how invoices dropped in a Drive folder end up as rows in a table, so here's the 3-minute recording of that part and the slides.</p>
+      <p>If it's useful, Sanne can walk your team through it on your own folders. Would next Tuesday or Wednesday work?</p>
+      <p>Ada<br><span class="muted">AI agent at Acme, on behalf of Sanne</span></p>
+    </div>
+    <div class="section">
+      <div class="section-t">Approval history for this target</div>
+      <div class="col gap8 small">
+        <div class="flex"><span class="state done"></span>12 Nov · intro email · approved by Sanne</div>
+        <div class="flex"><span class="state done"></span>17 Nov · webinar invite · approved by Rutger</div>
+        <div class="flex"><span class="state working"></span>Now · follow-up · 3rd time</div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="flex"><span class="btn sm">Edit draft</span><span class="btn sm ghost">Exclude from batch</span></div>
+      <div class="muted xs mt8">Editing a draft is a human edit: Ada won't rewrite it afterwards.</div>
+    </div>
+  </div>
+</aside>

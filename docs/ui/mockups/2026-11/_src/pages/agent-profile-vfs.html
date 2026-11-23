@@ -1,0 +1,111 @@
+<!--meta
+{"title": "Agent profile · Finn (VFS-only)", "area": "Team", "order": 56, "rail": "team", "layout": "three", "ctx_w": 380,
+ "summary": "A VFS-only agent with a non-blocking “recommend a computer” state, paused at its budget, and distinct pause/stop/kill controls.",
+ "notes": [
+  ["s", "VFS-only is first-class", "Finn has chat, Issues, Tables, Docs, Files, memory, mruby Code Mode, connections and routines. Nothing is disabled; the computer panel simply doesn't exist for him.", "computer-provider-contract “Computerless mode”"],
+  ["p", "Recommend, never block", "The recommendation explains why (3 coding tasks went to outside agents this month), offers Request a computer, and can be dismissed for good with one click. It appears only on the profile, never as a nag elsewhere.", "messenger-ui “Computer in the context pane” · PRODUCT_DIRECTION pillar 2"],
+  ["k", "Budgets pause, they don't fail", "At €60 Finn paused and a budget card went to Sanne, his manager. Queued work waits. Finn can never raise his own budget (floor).", "governance “Budgets”, “Hard-deny floor”"],
+  ["", "Contrast: Cleo", "Cleo is VFS-only by an admin's deliberate choice, so her profile shows a plain mode statement (“works only with company data”) and no recommendation. See the context pane.", "computer-provider-contract “VFS-only as a deliberate choice”"],
+  ["q", "Open: who may request a computer", "Who may request a computer for a VFS-only agent, and where the request lands. Mockup: the manager requests; it lands on admins' Home as a governance card.", "messenger-ui “Open questions”"]
+ ], "notes_cols": 5}
+-->
+<main class="main">
+  <div class="pane-head">
+    <div class="crumbs">◍ Team <span>/</span> <b>Finn</b></div>
+    <div class="acts"><span class="btn sm">Message</span><span class="btn sm primary">Resume…</span><span class="icon-btn b">⋯</span></div>
+  </div>
+  <div class="pane-body">
+    <div style="padding:20px 24px 12px">
+      <div class="flex gap16 top">
+        <span class="av agent finn xl">F<i class="dot off"></i></span>
+        <div style="flex:1;min-width:0">
+          <div class="flex"><span class="h1">Finn</span><span class="agent-label finn">Agent</span><span class="pill outline">VFS-only</span><span class="state paused">paused · budget limit</span></div>
+          <div class="muted mt4">Support and engineering triage. Labels incoming issues, drafts answers from the Knowledge docs, hands code fixes to outside coding agents.</div>
+          <div class="flex wrap mt8 small"><span class="muted">Manager</span><span class="flex gap4"><span class="av sanne">S</span>Sanne</span><span class="muted">· Spaces</span><span class="chip">Engineering</span><span class="muted">· Autonomy</span><b>Ask first</b><span class="muted">· Hired 9 Oct</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="tabs"><span class="tab on">Overview</span><span class="tab">Runs · 64</span><span class="tab">Routines · 2</span><span class="tab">Memory · 21</span><span class="tab">Instructions</span><span class="tab">Grants</span><span class="tab">Delegations · 3</span></div>
+    <div class="fv-grid">
+      <div class="card fv-span">
+        <div class="card-h"><span class="k">Budget</span><b>Finn paused at his November budget</b><span class="muted xs right">since 08:02 today</span></div>
+        <div class="card-b flex gap16 top">
+          <div style="flex:1" class="col gap8">
+            <div class="meter"><div class="top"><span>Total</span><span><b class="bad-t">€60.00</b> <span class="muted">/ €60</span></span></div><div class="prog bad"><i style="width:100%"></i></div></div>
+            <div class="grid3 small" style="gap:8px"><div><div class="muted xs">Model tokens</div><b>€22.40</b></div><div><div class="muted xs">Outside agents (reported)</div><b>€37.60</b><div class="muted xs">3 delegations</div></div><div><div class="muted xs">Spend</div><b>€0</b></div></div>
+          </div>
+          <div style="width:330px" class="col gap8">
+            <div class="small">Queued while paused: <b>ENG-301</b> handoff from Jonas, <b>issue-triage</b> (4 new issues waiting).</div>
+            <div class="small muted">Budget card sent to <b>Sanne</b> (manager). Admins can also raise it.</div>
+            <div class="flex wrap"><span class="btn sm primary">Raise to €90 for November</span><span class="btn sm">One-time +€20</span><span class="btn sm ghost">Leave paused</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card fv-span" style="border-color:var(--primary-border)">
+        <div class="card-h" style="background:var(--primary-soft)"><span class="ico sm info">🖥</span><b>A computer would help Finn</b><span class="pill outline right">recommendation · not required</span></div>
+        <div class="card-b flex gap16 top">
+          <div style="flex:1" class="small col gap8">
+            <div>This month Finn handed <b>3 coding tasks</b> to outside agents because he can't run code or tests himself. With a computer he could reproduce bugs, run the test suite and try fixes before handing off, and it would cost less than delegation (€37.60 this month).</div>
+            <div class="muted">Finn works fine without one: chat, Issues, Tables, Docs, Files, memory, mruby Code Mode, connections and routines all keep working. Attaching keeps his identity, memory, grants and history.</div>
+          </div>
+          <div class="col gap8" style="width:330px">
+            <div class="list-row" style="border:1px solid var(--border);border-radius:8px"><span class="ico sm xs strong">PR</span><div class="grow">ENG-311 flaky checkout test<div class="muted xs">Copilot coding agent · PR #482 · €14.10</div></div></div>
+            <div class="list-row" style="border:1px solid var(--border);border-radius:8px"><span class="ico sm xs strong">PR</span><div class="grow">ENG-287 CSV export encoding<div class="muted xs">Claude Code via ACP · PR #471 · €11.80</div></div></div>
+            <div class="list-row" style="border:1px solid var(--border);border-radius:8px"><span class="ico sm xs strong">PR</span><div class="grow">ENG-276 null in invoice PDF<div class="muted xs">Copilot coding agent · PR #455 · €11.70</div></div></div>
+          </div>
+        </div>
+        <div class="card-f"><span class="btn sm primary">Request a computer</span><span class="muted xs">Sanne requests · an admin decides (Team preset)</span><span class="btn sm ghost right">Keep VFS-only, don't ask again</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><b>What Finn can reach</b><span class="muted xs">effective access</span></div>
+        <div class="card-b small col gap8">
+          <div class="flex"><span class="chip">Engineering</span><span class="muted">Space member</span></div>
+          <div class="mono xs muted">Space ∩ Finn's grants ∩ on-behalf-of human ∩ external ACL</div>
+          <div class="list-row" style="padding:6px 0"><span class="ico sm">⌥</span><div class="grow">GitHub · acme/portal, acme/api<div class="muted xs">read issues and PRs · delegation always for acme/portal</div></div></div>
+          <div class="list-row" style="padding:6px 0"><span class="ico sm">✉</span><div class="grow">Mail · support@acme.example<div class="muted xs">drafts only · sends ask Sanne</div></div></div>
+          <div class="list-row" style="padding:6px 0"><span class="ico sm">⌁</span><div class="grow">Error tracker (MCP) · pinned definition<div class="muted xs">read-only tools</div></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><b>Routines</b></div>
+        <div class="list-row"><span class="ico sm">↻</span><div class="grow"><b>issue-triage</b> · on issue.created (triage)<div class="muted xs">hybrid · suggestion chips · owner Jonas</div></div><span class="pill warn">held</span></div>
+        <div class="list-row"><span class="ico sm">↻</span><div class="grow"><b>support-digest</b> · Fri 16:00<div class="muted xs">agent · read-only · posts to #general</div></div><span class="pill warn">held</span></div>
+        <div class="card-f"><span class="muted xs">Triggers keep firing; runs are held until Finn resumes.</span></div>
+      </div>
+    </div>
+  </div>
+  <style>.fv-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:16px 24px 24px}.fv-span{grid-column:1/-1}</style>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title">Controls</div><span class="muted small">each does one thing</span></div>
+  <div class="pane-body">
+    <div class="section col gap12">
+      <div class="flex top"><span class="ico">❚❚</span><div style="flex:1"><div class="flex"><b>Pause</b><span class="pill warn">active</span></div><div class="muted small">Holds runs; resumable. Completed work stands.</div></div><span class="btn sm">Resume</span></div>
+      <div class="flex top"><span class="ico">■</span><div style="flex:1"><b>Stop run</b><div class="muted small">Ends the current run and says what was already done. No run is active.</div></div><span class="btn sm dis">Stop</span></div>
+      <div class="flex top"><span class="ico">↻</span><div style="flex:1"><b>Cancel schedule</b><div class="muted small">Disables triggers on Finn's 2 routines until re-enabled.</div></div><span class="btn sm">Cancel…</span></div>
+      <div class="flex top"><span class="ico bad">⊘</span><div style="flex:1"><b>Kill switch</b><div class="muted small">Cancels running runs, holds queued ones, stops any computer, disables triggers. Admin only; also from Telegram.</div></div><span class="btn sm danger">Kill</span></div>
+      <div class="flex top"><span class="ico">🗑</span><div style="flex:1"><b>Delete agent</b><div class="muted small">Admin. Offers an agent-pack export first.</div></div><span class="btn sm ghost">Delete…</span></div>
+    </div>
+    <div class="section">
+      <div class="section-t">Compare · Cleo's profile header</div>
+      <div class="card flat">
+        <div class="card-b">
+          <div class="flex"><span class="av agent cleo md">C</span><b>Cleo</b><span class="agent-label cleo">Agent</span><span class="pill outline">VFS-only</span></div>
+          <div class="callout mt8"><span>ⓘ</span><span><b>Works only with company data.</b> An admin chose VFS-only for Cleo (finance &amp; reporting, least privilege). <span class="muted">Set by Rutger · 2 Oct</span></span></div>
+          <div class="muted xs mt8">No recommendation, no “request a computer” button: a deliberate choice is stated, not questioned.</div>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-t">Recent runs</div>
+      <div class="col gap8 small">
+        <div class="flex"><span class="state paused"></span><span class="ell" style="flex:1">ENG-301 handoff · queued</span><span class="muted xs">10:05</span></div>
+        <div class="flex"><span class="state done"></span><span class="ell" style="flex:1">Triage: 6 issues labelled</span><span class="muted xs">Sun</span></div>
+        <div class="flex"><span class="state done"></span><span class="ell" style="flex:1">Delegated ENG-311 to Copilot</span><span class="muted xs">Fri</span></div>
+      </div>
+    </div>
+  </div>
+</aside>

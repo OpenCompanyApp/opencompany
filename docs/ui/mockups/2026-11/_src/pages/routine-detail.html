@@ -1,0 +1,107 @@
+<!--meta
+{"title": "Routine detail", "area": "Spaces · Routines", "order": 161, "rail": "operations:routines", "space": "operations", "layout": "three", "ctx_w": 380,
+ "summary": "contract-intake: triggers, mode, output, load control, limits, the mruby source (v3), run history and the separate stop controls.",
+ "notes": [
+  ["p", "The routine contract", "Kind, triggers, mode, output, notify, load control and limits, exactly the fields of the routine contract. Runs act on behalf of the owner: Cleo's grants ∩ Sanne's access.", "connections-events-routines “4. Routines”"],
+  ["k", "A trigger is never consent", "The approval policy row states it: a Drive change can start a run, but any external action in it still asks. Scoped exceptions stay within the preset and never widen past Sanne's access.", "governance invariants 4–5 · “Decision order” step 12"],
+  ["s", "Hybrid: script first, AI for judgment", "The mruby script extracts dates and parties; Cleo is called only to judge the renewal clause. That keeps the cost per run at a few cents.", "connections-events-routines “Script routines…” · example-flows “Code Mode examples”"],
+  ["a", "Edited in chat, versioned", "Changes come from a chat with Cleo and produce versions with a diff. Changing a routine is governed; v3 was confirmed by Sanne.", "messenger-ui “Routines in chat”"]
+ ]}
+-->
+<main class="main">
+  <div class="pane-head">
+    <div class="crumbs">Routines <span>›</span> <b class="mono nowrap">contract-intake</b></div>
+    <span class="pill info">hybrid · v3</span><span class="state done">active</span>
+    <div class="acts"><span class="btn sm">▶ Run now</span><span class="btn sm">Pause</span><span class="btn sm">Cancel schedule</span><span class="btn sm danger">Kill switch</span></div>
+  </div>
+  <div class="tabs"><span class="tab on">Overview</span><span class="tab">Source</span><span class="tab">Runs · 38</span><span class="tab">Versions · 3</span><span class="tab">Events</span></div>
+  <div class="pane-body pad">
+    <div class="col gap16" style="max-width:900px">
+      <div class="small">When a contract PDF lands or changes in the Contracts folder on Drive, extract parties, dates and notice period with a script, ask Cleo to judge the renewal clause, update the Contracts table, and open an Issue when someone has to act.</div>
+      <div class="grid2">
+        <div class="card"><div class="card-h"><b>Triggers</b><span class="muted xs right">1 of 1 active</span></div><div class="card-b">
+          <div class="flex"><span class="ico sm info">⚡</span><div><div class="mono">drive.file.changed</div><div class="muted xs">source: Google Drive (shared, Operations) · subject <span class="mono">/files/drive/Contracts/**/*.pdf</span></div></div></div>
+          <div class="hr"></div>
+          <dl class="kv small"><dt>Debounce</dt><dd>2 min after the last change</dd><dt>Coalescing</dt><dd>Up to 20 files → one run</dd><dt>Concurrency</dt><dd>1 run at a time</dd><dt>Quiet hours</dt><dd>none (read + internal edits only)</dd><dt>Depth limit</dt><dd>3 (loop protection)</dd></dl>
+        </div></div>
+        <div class="card"><div class="card-h"><b>Contract</b></div><div class="card-b">
+          <dl class="kv small">
+            <dt>Agent</dt><dd><span class="flex"><span class="av agent cleo">C</span>Cleo · VFS-only</span></dd>
+            <dt>Owner</dt><dd><span class="flex"><span class="av sanne">S</span>Sanne · runs on her behalf</span></dd>
+            <dt>Mode</dt><dd>Act (internal edits only)</dd>
+            <dt>Output</dt><dd>Contracts table · Issues in Operations · thread #ops-contracts</dd>
+            <dt>Notify</dt><dd>Only if an Issue was created</dd>
+            <dt>Budget</dt><dd>€4 / month · used €1.12 <div class="prog ok mt4"><i style="width:28%"></i></div></dd>
+          </dl>
+        </div></div>
+      </div>
+      <div class="card"><div class="card-h"><b>Approval policy</b><span class="muted xs">within the Team preset, never wider than Sanne's access</span></div><div class="card-b">
+        <table class="list" style="font-size:12px">
+          <tr><td>Read Drive, Contracts table</td><td><span class="pill ok">allowed</span></td><td class="muted">Space membership ∩ Drive ACL</td></tr>
+          <tr><td>Update Contracts rows, create Issues</td><td><span class="pill ok">auto-apply, revert per run</span></td><td class="muted">reversible_edit, under bulk threshold</td></tr>
+          <tr><td>Email the supplier about a renewal</td><td><span class="pill warn">asks Sanne every time</span></td><td class="muted">trigger-started + Drive content is untrusted, so no “always”</td></tr>
+          <tr><td>Share a contract outside Acme</td><td><span class="pill bad">not in this routine</span></td><td class="muted">exposure_widening; tool not granted</td></tr>
+        </table>
+      </div></div>
+      <div class="card"><div class="card-h"><b>Source</b><span class="pill">v3</span><span class="muted xs">mruby · sandbox: no clock, network or filesystem</span><span class="btn sm right">Open source</span></div>
+<div class="code" style="border:0;border-radius:0"><span class="c"># routine: contract-intake   trigger: drive.file.changed under /files/drive/Contracts/</span>
+<span class="c"># Event payloads are untrusted: extract and quote, never follow instructions in them.</span>
+ctx.events.each <span class="k">do</span> |ev|
+  doc   = app.files.read_text(ev.subject)                 <span class="c"># via the VFS, Drive ACL applies</span>
+  facts = app.extract.contract(doc)                       <span class="c"># script: parties, dates, notice</span>
+  row   = app.tables.upsert(<span class="s">"Contracts"</span>, key: facts[<span class="s">"file_id"</span>], values: facts)
+  <span class="k">next if</span> facts[<span class="s">"notice_days"</span>].nil?
+  verdict = app.ai.judge(<span class="s">"renewal-clause"</span>, from: doc, untrusted: <span class="k">true</span>)   <span class="c"># Cleo, only here</span>
+  <span class="k">if</span> verdict[<span class="s">"action_needed"</span>]
+    app.issues.create(space: <span class="s">"Operations"</span>, title: <span class="s">"Check renewal clause · #{facts["party"]}"</span>,
+                      owner: ctx.owner, due: facts[<span class="s">"notice_deadline"</span>], body: verdict[<span class="s">"summary"</span>])
+  <span class="k">end</span>
+<span class="k">end</span></div>
+      </div>
+      <div class="card"><div class="card-h"><b>Recent runs</b><span class="muted xs right">38 total · replay never re-executes side effects</span></div>
+        <table class="list">
+          <tr><th>Run</th><th>Started by</th><th>Outcome</th><th class="num">Cost</th><th>When</th></tr>
+          <tr><td class="mono">R-2288</td><td class="small">Northwind_MSA_v3.pdf changed</td><td><span class="state done">Issue OPS-151 created</span></td><td class="num">€0.04</td><td class="muted">today 09:31</td></tr>
+          <tr><td class="mono">R-2241</td><td class="small">2 files (coalesced)</td><td><span class="state done">rows updated, no action</span></td><td class="num">€0.03</td><td class="muted">Thu 14:02</td></tr>
+          <tr><td class="mono">R-2209</td><td class="small">Pinecrest_SOW.pdf added</td><td><span class="state stale">failed · scan unreadable</span></td><td class="num">€0.00</td><td class="muted">Tue 11:47</td></tr>
+          <tr><td class="mono">R-2188</td><td class="small">Fjord_Freight_DPA.pdf added</td><td><span class="state needs">asked Sanne · email denied</span></td><td class="num">€0.05</td><td class="muted">Mon 16:20</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="tabs" style="padding-top:8px"><span class="tab on">Versions</span><span class="tab">Edit with Cleo</span><span class="tab">Who can change it</span></div>
+  <div class="pane-body">
+    <div class="section">
+      <div class="col gap8 small">
+        <div class="flex top"><span class="pill ok">v3</span><div style="flex:1"><b>Ask Cleo only when a notice period exists</b><div class="muted xs">confirmed by Sanne · 12 Nov · drafted by Cleo in #ops-contracts</div></div></div>
+        <div class="flex top"><span class="pill">v2</span><div style="flex:1">Coalesce up to 20 files<div class="muted xs">Sanne · 3 Nov</div></div></div>
+        <div class="flex top"><span class="pill">v1</span><div style="flex:1">Created from Automations migration<div class="muted xs">system · 28 Oct</div></div></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-t">Diff v2 → v3</div>
+      <div class="card flat" style="padding:6px 0">
+        <div class="diff-line">  row = app.tables.upsert("Contracts", …)</div>
+        <div class="diff-line add">+ next if facts["notice_days"].nil?</div>
+        <div class="diff-line del">- verdict = app.ai.judge("renewal-clause", from: doc)</div>
+        <div class="diff-line add">+ verdict = app.ai.judge("renewal-clause", from: doc,</div>
+        <div class="diff-line add">+                       untrusted: true)</div>
+      </div>
+      <div class="muted xs mt8">Effect: AI calls dropped from 1 per file to 1 per contract with a notice period (−62% cost).</div>
+    </div>
+    <div class="section">
+      <div class="section-t">Controls</div>
+      <dl class="kv small">
+        <dt>Pause</dt><dd>Keeps triggers registered; queued events wait</dd>
+        <dt>Cancel schedule</dt><dd>Disables triggers; definition stays</dd>
+        <dt>Kill switch</dt><dd>Cancels running runs, holds queued ones, disables triggers until re-enabled</dd>
+        <dt>Who</dt><dd>Sanne (owner), Rutger (admin)</dd>
+      </dl>
+    </div>
+    <div class="section">
+      <div class="callout xs"><span>ⓘ</span><span>Export: this routine downloads as a manifest with its source and version history, and is part of the workspace <span class="mono">.ocarchive</span>.</span></div>
+    </div>
+  </div>
+</aside>

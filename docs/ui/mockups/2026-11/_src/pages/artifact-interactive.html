@@ -1,0 +1,129 @@
+<!--meta
+{"title": "Artifacts · Interactive", "area": "Spaces · Artifacts", "order": 151, "rail": "agent:ada", "layout": "three", "ctx_w": 520,
+ "summary": "Ada builds an interactive Quote calculator in a DM; the context pane shows the sandboxed live preview and its mruby endpoint.",
+ "notes": [
+  ["a", "Artifact card + live preview", "The card shows kind, version, bindings and publish level. Opening it puts a live preview in the context pane that refreshes as Ada edits the draft.", "messenger-ui “Artifacts in the messenger”"],
+  ["p", "Sandboxed on a separate origin", "The UI runs in an iframe on the cookie-less user-content origin with a default-deny CSP and talks to the host only through the MCP Apps bridge. Messages it sends toward an agent are untrusted.", "artifacts-and-forms “UI sandbox” · PRODUCT_DIRECTION pillar 7"],
+  ["s", "Server logic is mruby", "The price endpoint is an mruby script with auth share and side_effect read. Generated JavaScript never runs on the server.", "artifacts-and-forms “Server logic (mruby endpoints)”"],
+  ["k", "Publish = exposure_widening", "A signed link for clients is an approval card that goes to an admin (Team). Ada can't approve it and can't pick the admin.", "governance “Action classes”, “Publishing ladder”"]
+ ]}
+-->
+<style>
+.ai-calc{background:#fff;color:#1a1a1a;padding:18px 20px;font-family:var(--font-sans)}
+.ai-calc .row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #eee;font-size:12.5px}
+.ai-calc .inp{border:1px solid #d4d4d8;border-radius:6px;padding:3px 8px;min-width:110px;text-align:right;background:#fafafa}
+.ai-calc .tot{font-size:24px;font-weight:700;margin-top:10px;letter-spacing:-.02em}
+.ai-calc .btnx{display:inline-block;background:#0f766e;color:#fff;border-radius:7px;padding:6px 12px;font-weight:600;font-size:12.5px;margin-top:10px}
+.ai-calc .tg{display:inline-flex;border:1px solid #d4d4d8;border-radius:7px;overflow:hidden}
+.ai-calc .tg span{padding:2px 9px;font-size:12px}.ai-calc .tg span.on{background:#0f766e;color:#fff}
+.ai-hl{outline:2px dashed var(--ada);outline-offset:2px;border-radius:4px}
+</style>
+<main class="main">
+  <div class="pane-head">
+    <div class="title"><span class="av agent ada md">A<i class="dot work"></i></span>Ada <span class="agent-label">Agent</span><span class="tag">🖥</span></div>
+    <span class="muted small">Sales &amp; ops teammate · manager Rutger</span>
+    <div class="acts"><span class="btn sm ghost">Profile</span><span class="icon-btn b">⋯</span></div>
+  </div>
+  <div class="pane-body">
+    <div class="thread">
+      <div class="day">Today</div>
+      <div class="msg"><span class="av rutger md">R</span><div class="body">
+        <div class="meta"><span class="who">Rutger</span><span class="time">10:02</span></div>
+        <div class="text">Build a quote calculator for website care plans that we can send clients. Prices from the <span class="ref">▦ Price list</span> table, not hard-coded. Hours slider, plan tier, optional hosting, VAT shown separately.</div>
+      </div></div>
+
+      <div class="msg"><span class="av agent ada md">A</span><div class="body">
+        <div class="meta"><span class="who">Ada</span><span class="agent-label">Agent</span><span class="time">10:03</span></div>
+        <div class="text">I'll make it an interactive artifact: an HTML UI plus one mruby endpoint that prices a quote from the Price list. It stores nothing of its own; if you want to keep requests, I'll propose a Quotes table.</div>
+        <div class="run mt8">
+          <div class="run-h"><span class="state done">done</span><b>Build quote calculator</b><span class="ref">R-2297</span><span class="muted xs">· 6 min · €0.34</span></div>
+          <div class="run-b">
+            <div class="act thought"><span class="ai">…</span><div>Thought for 6s · <u>show</u></div></div>
+            <div class="act action"><span class="ai">↗</span><div>Read <span class="mono">/spaces/sales/tables/price-list</span> · 9 rows <span class="det">· VFS</span></div></div>
+            <div class="act action"><span class="ai">✎</span><div>Wrote <span class="mono">ui/index.html</span>, <span class="mono">endpoints/price.rb</span>, manifest <span class="det">· draft v1 → v3</span></div></div>
+            <div class="act result"><span class="ai">✓</span><div>Tests: 6 sample quotes priced, totals match the sheet Sanne used in October</div></div>
+          </div>
+        </div>
+        <div class="card" style="border-color:var(--ada-border)">
+          <div class="card-h"><span class="ico sm ada">◩</span><b>Quote calculator</b><span class="pill ada">Interactive</span><span class="pill">Draft · v3</span><span class="muted xs right">updated 10:09</span></div>
+          <div class="card-b flex top gap12">
+            <div class="thumb" style="width:150px;height:92px;flex:none;background:#fff;padding:8px;color:#222;font-size:9px"><b>Website care quote</b><div style="height:5px;background:#e5e7eb;border-radius:3px;margin:6px 0"><div style="width:60%;height:100%;background:#0f766e;border-radius:3px"></div></div><div>Growth · 12 h/mo</div><div style="font-size:14px;font-weight:700;margin-top:4px">€1,140/mo</div></div>
+            <dl class="kv small" style="flex:1">
+              <dt>Bindings</dt><dd><span class="mono">PRICES</span> → Price list · read</dd>
+              <dt>Endpoints</dt><dd><span class="mono">POST price</span> · share · read</dd>
+              <dt>Runtime AI</dt><dd>Off</dd>
+              <dt>Publish level</dt><dd>Draft · owner Rutger, author Ada</dd>
+            </dl>
+          </div>
+          <div class="card-f"><span class="btn sm primary">Open preview</span><span class="btn sm">Publish to Sales</span><span class="btn sm">Share signed link…</span><span class="muted xs right">Versions · v1 v2 <b>v3</b></span></div>
+        </div>
+      </div></div>
+
+      <div class="msg"><span class="av rutger md">R</span><div class="body">
+        <div class="meta"><span class="who">Rutger</span><span class="time">10:14</span></div>
+        <div class="text">Nice. Make hosting a toggle instead of a dropdown, then get me a signed link I can send to Northwind.</div>
+      </div></div>
+
+      <div class="msg"><span class="av agent ada md">A</span><div class="body">
+        <div class="meta"><span class="who">Ada</span><span class="agent-label">Agent</span><span class="time">10:15</span></div>
+        <div class="text">Toggle is in the preview now (v4 draft). A signed link exposes the page outside Acme, so it needs an admin. You're one, so the card is here (Sanne has it too).</div>
+        <div class="card approval">
+          <div class="card-h"><span class="k">Approval · exposure</span><b>Signed link for Quote calculator</b><span class="muted xs right">expires in 3 d</span></div>
+          <div class="card-b">
+            <dl class="kv">
+              <dt>What</dt><dd>Signed link to version v4 for <span class="mono">mo@northwind.example</span>, password off, expires 23 Dec. Visitors can call <span class="mono">price</span> (read) only; no AI, no connections.</dd>
+              <dt>Why</dt><dd>“Get me a signed link I can send to Northwind” · on behalf of Rutger</dd>
+              <dt>Who answers</dt><dd>An admin: you or <b>Sanne</b> (Team preset). Ada can never approve.</dd>
+              <dt>Risk</dt><dd><span class="pill warn">exposure_widening · revocable link</span></dd>
+            </dl>
+          </div>
+          <div class="card-f"><span class="btn primary sm">Approve once</span><span class="btn sm ghost">Deny…</span><span class="muted xs">No “always” for exposure: each link asks.</span><span class="muted xs right"><u>Why?</u></span></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+  <div class="pane-foot" style="border-top:0;padding-top:0">
+    <div class="composer"><div class="ph">Message Ada…  e.g. “show VAT per line”</div><div class="bar"><span class="icon-btn">＋</span><span class="icon-btn">@</span><span class="icon-btn">#</span><span class="send">↑</span></div></div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="tabs" style="padding-top:8px"><span class="tab">Run</span><span class="tab">🖥 Computer</span><span class="tab on">◩ Quote calculator</span><span class="tab">Details</span></div>
+  <div class="pane-sub"><span class="pill">Draft v4</span><span class="presence"><span class="av agent ada">A</span>Ada · editing ui/index.html</span><span class="right seg"><span class="on">Preview</span><span>Source</span><span>Endpoints</span></span></div>
+  <div class="pane-body" style="padding:12px">
+    <div class="browser">
+      <div class="bar"><span class="lights"><i></i><i></i><i></i></span><span class="url">🔒 https://u-7f3c.acme-content.example/a/quote-calculator/draft</span><span class="pill">sandbox</span></div>
+      <div class="ai-calc">
+        <div style="font-size:16px;font-weight:700">Website care plan · quote</div>
+        <div style="font-size:11.5px;color:#666;margin-bottom:8px">Prices from Acme's price list · updated 20 Nov</div>
+        <div class="row"><span>Plan tier</span><span class="tg"><span>Starter</span><span class="on">Growth</span><span>Scale</span></span></div>
+        <div class="row"><span>Support hours / month</span><span style="display:flex;align-items:center;gap:8px"><span style="width:120px;height:5px;background:#e5e7eb;border-radius:3px;display:inline-block;position:relative"><i style="position:absolute;left:0;top:0;bottom:0;width:55%;background:#0f766e;border-radius:3px"></i></span><b>12 h</b></span></div>
+        <div class="row ai-hl"><span>Managed hosting</span><span class="toggle on"></span></div>
+        <div class="row"><span>Billing</span><span class="tg"><span class="on">Monthly</span><span>Yearly −8%</span></span></div>
+        <div class="row"><span>Subtotal</span><span>€1,140.00</span></div>
+        <div class="row"><span>VAT 21%</span><span>€239.40</span></div>
+        <div class="tot">€1,379.40 <span style="font-size:12px;font-weight:500;color:#666">/ month incl. VAT</span></div>
+        <span class="btnx">Request this plan</span><span style="font-size:11px;color:#888;margin-left:8px">submits through the form pipeline</span>
+      </div>
+    </div>
+    <div class="flex mt8 xs muted"><span>No cookies · default-deny CSP · host bridge: MCP Apps</span><span class="right">refreshed 4 s ago</span></div>
+
+    <div class="section-t mt16">Endpoints</div>
+    <div class="card flat">
+      <div class="list-row"><span class="mono strong">POST price</span><span class="pill outline">mruby</span><span class="pill">auth: share</span><span class="pill ok">side_effect: read</span><span class="muted xs right">60/min</span></div>
+      <div class="list-row"><span class="mono strong">POST request</span><span class="muted xs">→ form <b>Plan request</b> on Leads (submit endpoint, not a write)</span></div>
+    </div>
+    <div class="code mt8"><span class="c"># endpoints/price.rb · request/response schemas in manifest</span>
+<span class="k">tier</span>  = req[<span class="s">"tier"</span>]
+row   = app.tables.find(<span class="s">"PRICES"</span>, tier: tier)   <span class="c"># binding, read only</span>
+hours = req[<span class="s">"hours"</span>].clamp(<span class="n">2</span>, <span class="n">40</span>)
+sub   = row[<span class="s">"base"</span>] + hours * row[<span class="s">"hourly"</span>]
+sub  += row[<span class="s">"hosting"</span>] <span class="k">if</span> req[<span class="s">"hosting"</span>]
+{ subtotal: sub, vat: sub * <span class="n">0.21</span>, currency: <span class="s">"EUR"</span> }</div>
+
+    <div class="section-t mt16">Bridge messages<span class="r muted">last 3</span></div>
+    <div class="col gap4 xs">
+      <div class="flex"><span class="mono">tools/call price</span><span class="muted">{tier: growth, hours: 12, hosting: true}</span><span class="pill ok right">200 · 38 ms</span></div>
+      <div class="flex"><span class="mono">ui/message → Ada</span><span class="muted">“Request this plan” clicked</span><span class="untrusted right">untrusted</span></div>
+    </div>
+  </div>
+</aside>

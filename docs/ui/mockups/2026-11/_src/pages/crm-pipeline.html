@@ -1,0 +1,67 @@
+<!--meta
+{"title": "CRM · pipeline", "area": "Apps", "order": 310, "rail": "app:crm", "layout": "two",
+ "summary": "The CRM pipeline board: deals by stage with values, stale markers, agent suggestion chips and forecast totals.",
+ "notes": [
+  ["p", "An app is a manifest over primitives", "Deals are a schema-locked record type with a board view from the fixed catalog. No own storage: search, change sets, revert and the event log work on deals automatically.", "PRODUCT_DIRECTION pillar 7 “Add-on apps” · ui-structure Appendix B"],
+  ["a", "Suggestions, not silent edits", "Ada's stage and next-step suggestions are chips you accept or reject. Accepting writes a change set with her as the proposer and you as the actor.", "example-flows stories 12, 15 · ui-structure §4"],
+  ["s", "Same data, scoped in a Space", "The workspace-level CRM also appears as Deals inside the Sales Space (rail). Access still comes from Space membership; there are no per-deal ACLs.", "ui-structure Appendix A · governance “Permissions”"],
+  ["k", "Discount rule on cards", "Deals with a discount above 20% carry the field-level rule badge; the edit is a proposal to the sales lead, for humans and agents alike.", "PRODUCT_DIRECTION pillar 5 “Business rules on record fields”"]
+ ]}
+-->
+<style>
+.cp .bcol{width:218px}
+.cp .v{font-variant-numeric:tabular-nums;font-weight:650}
+.cp .stale{color:var(--warning-text);font-size:11px}
+</style>
+<main class="main cp">
+  <div class="pane-head">
+    <div class="title">◈ CRM <span class="muted">›</span> Pipeline</div>
+    <span class="seg"><span class="on">Board</span><span>Table</span><span>Forecast</span><span>Companies</span><span>Contacts</span></span>
+    <div class="acts"><span class="chip">Owner: all ▾</span><span class="chip">Close: Q4–Q1 ▾</span><span class="btn sm">Ask Ada</span><span class="btn sm primary">＋ Deal</span></div>
+  </div>
+  <div class="pane-sub">
+    <span class="strong">Open €383k</span><span class="muted">· weighted €171k</span><span class="muted">· won this month €96k</span>
+    <div class="prog" style="width:220px"><i style="width:78%"></i></div><span class="muted xs">78% of Q4 target €220k</span>
+    <span class="right presence"><span class="av agent ada">A</span>Ada · 3 suggestions from yesterday's calls</span>
+  </div>
+  <div class="board" style="height:auto">
+    <div class="bcol"><div class="bcol-h"><span class="sdot" style="background:var(--muted-foreground)"></span>Lead <span class="cnt">6 · €110k</span></div>
+      <div class="kcard"><div class="flex"><b>Lumen Dental</b><span class="right v">€22k</span></div><div class="muted xs">Patient portal refresh · from form</div><div class="flex"><span class="av rutger">R</span><span class="muted xs">created by website-lead-intake</span></div></div>
+      <div class="kcard"><div class="flex"><b>Bluefin Studio</b><span class="right v">€9k</span></div><div class="muted xs">Site rebuild</div><div class="flex wrap gap4"><span class="pill bad">website down</span><span class="chip sug">→ Lost? <span class="yn"><i>✓</i><i>✕</i></span></span></div></div>
+      <div class="kcard"><div class="flex"><b>Pinecrest · intranet</b><span class="right v">€31k</span></div><div class="muted xs">Inbound referral</div><div class="flex"><span class="av sanne">S</span><span class="muted xs">Sanne</span></div></div>
+      <div class="muted xs" style="padding:2px 6px">+3 more</div>
+    </div>
+    <div class="bcol"><div class="bcol-h"><span class="sdot" style="background:var(--chart-1)"></span>Qualified <span class="cnt">5 · €128k</span></div>
+      <div class="kcard agentwork"><div class="flex"><b>Kestrel Labs</b><span class="right v">€40k</span></div><div class="muted xs">Ops dashboard · new contact Ines V.</div><div class="flex wrap gap4"><span class="chip sug">→ Proposal <span class="yn"><i>✓</i><i>✕</i></span></span><span class="chip sug">close 15 Jan <span class="yn"><i>✓</i><i>✕</i></span></span></div><div class="muted xs">from call notes · Thu</div></div>
+      <div class="kcard"><div class="flex"><b>Fjord Freight · app</b><span class="right v">€36k</span></div><div class="muted xs">Driver app</div><div class="flex"><span class="av rutger">R</span><span class="muted xs">Rutger · next: demo 2 Dec</span></div></div>
+      <div class="kcard"><div class="flex"><b>Orbit Coffee · web</b><span class="right v">€14k</span></div><div class="muted xs">Online ordering</div><div class="flex"><span class="av sanne">S</span><span class="muted xs">Sanne</span></div></div>
+      <div class="muted xs" style="padding:2px 6px">+2 more</div>
+    </div>
+    <div class="bcol"><div class="bcol-h"><span class="sdot" style="background:var(--chart-4)"></span>Proposal <span class="cnt">4 · €90k</span></div>
+      <div class="kcard"><div class="flex"><b>Halden &amp; Co</b><span class="right v">€24k</span></div><div class="muted xs">Retainer · SOW sent</div><div class="stale">● no activity 16 days</div><div class="flex wrap gap4"><span class="chip sug">draft check-in <span class="yn"><i>✓</i><i>✕</i></span></span></div></div>
+      <div class="kcard"><div class="flex"><b>Pinecrest · audit</b><span class="right v">€7k</span></div><div class="muted xs">Site audit</div><div class="stale">● no activity 15 days</div></div>
+      <div class="kcard"><div class="flex"><b>Lumen Dental · SEO</b><span class="right v">€19k</span></div><div class="muted xs">Proposal v2</div><div class="flex"><span class="pill warn">25% discount · sales lead</span></div></div>
+      <div class="kcard"><div class="flex"><b>Kestrel · training</b><span class="right v">€40k</span></div><div class="muted xs">Workshop series</div></div>
+    </div>
+    <div class="bcol"><div class="bcol-h"><span class="sdot" style="background:var(--warning)"></span>Negotiation <span class="cnt">3 · €55k</span></div>
+      <div class="kcard"><div class="flex"><b>Orbit Coffee · bar</b><span class="right v">€18.5k</span></div><div class="muted xs">Espresso bar fit-out site</div><div class="stale">● no activity 19 days</div><div class="flex wrap gap4"><span class="chip sug">amount €16k? <span class="yn"><i>✓</i><i>✕</i></span></span></div><div class="muted xs">from Lena's email today <span class="untrusted">untrusted</span></div></div>
+      <div class="kcard"><div class="flex"><b>Fjord Freight · portal</b><span class="right v">€12k</span></div><div class="muted xs">Tracking portal</div><div class="stale">● no activity 14 days</div></div>
+      <div class="kcard"><div class="flex"><b>Lumen Dental · portal</b><span class="right v">€24.5k</span></div><div class="muted xs">Phase 2 · legal review</div><div class="flex"><span class="av sanne">S</span><span class="muted xs">Sanne · next: redlines Thu</span></div></div>
+      <div class="kcard" style="opacity:.6;border-style:dashed"><div class="muted xs">Drop here · moving a card is a reversible edit with revert</div></div>
+    </div>
+    <div class="bcol"><div class="bcol-h"><span class="sdot" style="background:var(--success)"></span>Won <span class="cnt">Nov · €96k</span></div>
+      <div class="kcard"><div class="flex"><b>Northwind · Q1 rollout</b><span class="right v">€64k</span></div><div class="muted xs">Won today 07:41 by Sanne</div><div class="flex wrap gap4"><span class="pill info">↻ onboard-won-deal ran</span><span class="pill warn">Space proposal waiting</span></div></div>
+      <div class="kcard"><div class="flex"><b>Orbit Coffee · care</b><span class="right v">€14k</span></div><div class="muted xs">Care plan, 12 months</div></div>
+      <div class="kcard"><div class="flex"><b>Halden · migration</b><span class="right v">€18k</span></div><div class="muted xs">CMS migration</div></div>
+    </div>
+  </div>
+  <div class="p16" style="padding-top:0">
+    <div class="card"><div class="card-h"><b>Forecast by close month</b><span class="muted xs">weighted by stage probability · Pipeline Page v14 uses the same view</span></div>
+      <table class="list"><tr><th>Month</th><th class="num">Open</th><th class="num">Weighted</th><th class="num">Commit</th><th>Note</th></tr>
+        <tr><td>December</td><td class="num">€86k</td><td class="num">€44k</td><td class="num">€30.5k</td><td class="muted small">Orbit bar + Fjord portal in Negotiation</td></tr>
+        <tr><td>January</td><td class="num">€152k</td><td class="num">€72k</td><td class="num">€40k</td><td class="muted small">Kestrel if Ada's stage suggestion is accepted</td></tr>
+        <tr><td>February+</td><td class="num">€145k</td><td class="num">€55k</td><td class="num">–</td><td class="muted small">Leads not yet qualified</td></tr>
+      </table>
+    </div>
+  </div>
+</main>

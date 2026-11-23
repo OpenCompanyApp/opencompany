@@ -1,0 +1,91 @@
+<!--meta
+{"title": "Onboarding · 3 First agent", "area": "Onboarding", "order": 602, "layout": "solo", "min_height": 900,
+ "summary": "Hire the first agent: template, manager, Spaces, Balanced autonomy, and the computer choice (recommended, never required).",
+ "notes": [
+  ["a", "An agent is a teammate", "Name, role from an agent pack, a human manager (its default approver in Team) and the Spaces it joins. “Add Ada to Sales” is the whole data-access model.", "PRODUCT_DIRECTION pillars 1 and 5"],
+  ["p", "Computer: recommended, not required", "Both options are one click and neither is styled as a warning. VFS-only is a first-class, least-privilege choice; the explanation says what a computer adds.", "computer-provider-contract “Computerless mode”, “Per-agent attachment”"],
+  ["k", "Starts at Balanced", "The autonomy slider writes scoped grants and is capped by the preset and the floor. It is not the deleted behaviour modes.", "governance “Few, good approvals”"],
+  ["q", "Open: computer provider in onboarding", "With no provider configured (fresh self-host) the attach card shows “set up later” instead of hiding. Who may request a computer for a VFS-only agent is open in messenger-ui.", "messenger-ui “Open questions”"]
+ ]}
+-->
+<style>
+.onb{display:flex;flex-direction:column;align-items:center;padding:28px 0 40px;background:var(--background);min-height:100%}
+.onb .stepper{display:flex;align-items:center;gap:10px;margin-bottom:24px;font-size:12.5px}
+.onb .step{display:flex;align-items:center;gap:8px;color:var(--muted-foreground)}
+.onb .step .n{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border-strong);display:grid;place-items:center;font-size:11px;font-weight:700}
+.onb .step.on{color:var(--foreground);font-weight:650}
+.onb .step.on .n{background:var(--primary);border-color:var(--primary);color:#fff}
+.onb .step.done .n{background:var(--success);border-color:var(--success);color:#fff}
+.onb .line{width:56px;height:1px;background:var(--border-strong)}
+.onb .wrapg{display:grid;grid-template-columns:600px 380px;gap:18px;align-items:start}
+.onb .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.onb .panel .pb{padding:20px 22px}
+.onb .tpl{border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px;font-size:12px}
+.onb .tpl.on{border-color:var(--ada);box-shadow:0 0 0 3px var(--ada-soft)}
+.onb .comp{border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.onb .comp.on{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.onb .comp ul{margin:0;padding-left:16px;font-size:12px;line-height:1.6}
+</style>
+<main class="main">
+  <div class="onb">
+    <div class="stepper">
+      <div class="step done"><span class="n">✓</span>Workspace</div><span class="line"></span>
+      <div class="step done"><span class="n">✓</span>Preset · Team</div><span class="line"></span>
+      <div class="step on"><span class="n">3</span>First agent</div><span class="line"></span>
+      <div class="step"><span class="n">4</span>Connect <span class="pill">optional</span></div>
+    </div>
+    <div class="h1">Hire your first agent</div>
+    <div class="muted mt4 mb16">Agents are teammates with a name, a manager, memory and a budget. You can hire more from the rail at any time.</div>
+
+    <div class="wrapg">
+      <div class="panel"><div class="pb">
+        <span class="label">Start from an agent pack</span>
+        <div class="grid3 mb16" style="gap:8px">
+          <div class="tpl on"><b>Sales teammate</b><span class="muted">Leads, follow-ups, pipeline review</span></div>
+          <div class="tpl"><b>Ops teammate</b><span class="muted">Vendors, renewals, filing</span></div>
+          <div class="tpl"><b>Finance teammate</b><span class="muted">Invoices, expenses, reporting</span></div>
+          <div class="tpl"><b>Support teammate</b><span class="muted">Triage, drafted answers</span></div>
+          <div class="tpl"><b>Research teammate</b><span class="muted">Briefs, monitors</span></div>
+          <div class="tpl"><b>Blank</b><span class="muted">Write your own instructions</span></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><span class="label">Name</span><div class="input focus"><span class="av agent ada">A</span>Ada</div></div>
+          <div class="field"><span class="label">Manager · default approver</span><div class="input"><span class="av rutger">R</span>Rutger (you)<span class="right muted">▾</span></div></div>
+        </div>
+        <div class="field"><span class="label">Joins these Spaces · this is what Ada can read and edit</span>
+          <div class="input"><span class="chip x">▦ Sales</span><span class="chip x">▦ Operations</span><span class="muted">Add a Space…</span></div>
+          <div class="muted xs mt4">Ada never exceeds the person being helped: in your DM, Ada sees only what you can see.</div>
+        </div>
+        <div class="field"><span class="label">Autonomy</span>
+          <div class="slider" style="padding-top:8px"><div class="track"><div class="fill" style="width:50%"></div><div class="cap" style="left:100%"></div><div class="knob" style="left:50%"></div></div>
+            <div class="stops"><span>Ask first</span><b>Balanced · new agents start here</b><span>Autopilot</span></div></div>
+          <div class="muted xs mt4">Balanced: reversible edits auto-apply with “revert this run”; the first send to each recipient asks you.</div>
+        </div>
+        <div class="field" style="margin-bottom:0"><span class="label">Monthly budget</span><div class="input" style="width:200px">€ 60 <span class="right muted xs">pauses at limit</span></div></div>
+      </div></div>
+
+      <div class="col gap12">
+        <span class="label" style="margin:0">Computer for Ada</span>
+        <div class="comp on">
+          <div class="flex"><span class="radio on"></span><b>Attach a computer</b><span class="pill info">recommended</span></div>
+          <ul>
+            <li>A shell and installed software</li>
+            <li>A real browser with persistent logins</li>
+            <li>Long-running work, builds, portals without an API</li>
+            <li>You can watch, take over and hand back</li>
+          </ul>
+          <div class="input"><span class="ico sm">☁</span>Cloud computer · 2 vCPU · 4 GB<span class="right muted">▾</span></div>
+          <div class="muted xs">Or a connected host such as your own server. Company data still goes only through the VFS.</div>
+        </div>
+        <div class="comp">
+          <div class="flex"><span class="radio"></span><b>VFS-only</b><span class="pill">least privilege</span></div>
+          <div class="small">Ada works only with company data: chat, Tables, Issues, Docs, Files and Drive, memory, Code Mode, connections and routines. Nothing is disabled.</div>
+          <div class="muted xs">You can attach a computer later without losing anything.</div>
+        </div>
+        <div class="callout"><span>ⓘ</span><span>Either choice is fine. Ada keeps her identity, memory and grants if you switch.</span></div>
+      </div>
+    </div>
+
+    <div class="flex mt16" style="width:998px"><span class="btn ghost">← Back</span><span class="btn ghost">Skip, hire later</span><span class="right btn primary">Hire Ada →</span></div>
+  </div>
+</main>

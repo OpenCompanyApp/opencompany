@@ -1,0 +1,58 @@
+<!--meta
+{"title": "Issues · board", "area": "Spaces", "order": 111, "rail": "engineering:issues", "space": "engineering", "layout": "two",
+  "summary": "Engineering board by state with a cycle header, filters and agent-delegated cards showing run state.",
+ "notes": [
+  ["p", "Board is a view, not a new object", "List and board are two views over the same Issues. Apps reuse the same fixed view catalog (list, board, table, calendar…).", "ui-structure Appendix B · work-apps “Fixed core primitives”"],
+  ["a", "Run state on the card", "Delegated cards show the agent's run state (working, needs you, parked, stale) next to the human workflow column. Only a human, or a policy explicitly allowing it, moves a card to Done.", "work-apps “Issues are built from the list model”"],
+  ["s", "Cycle scope as a change set", "At cycle start, propose-cycle-scope suggested the cycle field for 7 issues as one change set; Jonas applied 5 of them.", "example-flows story 18"],
+  ["q", "Open: paused delegate", "Finn is the only agent in Engineering and is paused at his budget. Do his delegated issues show as blocked, re-route to another agent, or stay assigned? Here: they stay, marked “paused”, with a reassign shortcut; the outside-agent PR he launched keeps running.", "not specified"]
+ ]}
+-->
+<style>
+.ibd .cyc{white-space:nowrap;display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border);font-size:12.5px}
+.ibd .cyc .prog{width:120px}
+.ibd .bcol{width:218px}
+.ibd .pri{font-family:var(--font-mono);color:var(--muted-foreground);font-size:11px;letter-spacing:-1px}
+</style>
+<main class="main ibd">
+  <div class="pane-head">
+    <div class="crumbs">Engineering <span>/</span> <b>◇ Issues</b></div>
+    <span class="seg"><span>List</span><span class="on">Board</span></span>
+    <div class="acts"><span class="btn sm">Filter</span><span class="btn sm ghost">Group: state ▾</span><span class="btn sm primary">+ New issue</span></div>
+  </div>
+  <div class="cyc"><b>Cycle 47</b><span class="muted">16–29 Nov</span><div class="prog ok"><i style="width:58%"></i></div><span class="muted">11 of 19 done · 5 delegated</span><span class="chip x">Label: not chore</span><span class="chip">+ filter</span><span class="right pill ada">Scope proposed by routine · 5 of 7 applied</span></div>
+  <div class="pane-body" style="overflow:hidden">
+    <div class="board">
+      <div class="bcol">
+        <div class="bcol-h"><span>◌</span>Triage<span class="cnt">2</span></div>
+        <div class="kcard"><div class="flex"><span class="id">ENG-322</span><span class="pill bad right">sev-3</span></div><b>Webhook retries flood the log</b><div class="flex wrap gap4"><span class="chip sug">bug<span class="yn"><i>✓</i><i>✕</i></span></span><span class="chip sug">owner Jonas<span class="yn"><i>✓</i><i>✕</i></span></span></div><div class="muted xs">from Sentry MCP · <span class="untrusted">untrusted</span></div></div>
+        <div class="kcard"><div class="flex"><span class="id">ENG-323</span></div><b>SSO for enterprise customers</b><div class="muted xs">moved from Sales · Northwind, Kestrel Labs · €46k linked</div><div class="flex wrap gap4"><span class="chip sug">feature<span class="yn"><i>✓</i><i>✕</i></span></span></div></div>
+      </div>
+      <div class="bcol">
+        <div class="bcol-h"><span>○</span>Todo<span class="cnt">4</span></div>
+        <div class="kcard"><div class="flex"><span class="id">ENG-318</span><span class="pri right">▮▮▯</span></div><b>Rate-limit public form endpoint per IP</b><div class="flex"><span class="av jonas">J</span><span class="muted xs">Jonas</span><span class="right muted xs">3 pts</span></div></div>
+        <div class="kcard"><div class="flex"><span class="id">ENG-316</span><span class="pri right">▮▯▯</span></div><b>Upgrade Postgres to 17.2</b><div class="flex"><span class="av rutger">R</span><span class="muted xs">Rutger</span><span class="right muted xs">2 pts</span></div></div>
+        <div class="kcard agentwork"><div class="flex"><span class="id">ENG-314</span><span class="pri right">▮▮▯</span></div><b>Document webhook signature check</b><div class="flex"><span class="av jonas">J</span><span class="muted xs">owner</span><span class="av agent finn">F</span><span class="state paused">Finn paused</span></div><div class="muted xs">budget limit · <u>reassign delegate</u></div></div>
+        <div class="kcard"><div class="flex"><span class="id">ENG-309</span><span class="pri right">▮▯▯</span></div><b>Remove dead chat components</b><div class="flex"><span class="av jonas">J</span><span class="muted xs">Jonas</span><span class="chip right">chore</span></div></div>
+      </div>
+      <div class="bcol">
+        <div class="bcol-h"><span class="warn-t">◐</span>In progress<span class="cnt">4</span></div>
+        <div class="kcard agentwork"><div class="flex"><span class="id">ENG-311</span><span class="pri right">▮▮▮</span></div><b>Fix flaky checkout test</b><div class="flex wrap gap4"><span class="av jonas">J</span><span class="av agent finn">F</span><span class="pill info">↗ Copilot · PR #482</span></div><div class="flex"><span class="state done">CI green</span><span class="muted xs right">€1.90 reported</span></div></div>
+        <div class="kcard agentwork"><div class="flex"><span class="id">ENG-317</span><span class="pri right">▮▮▯</span></div><b>Triage support tickets tagged “checkout”</b><div class="flex"><span class="av rutger">R</span><span class="av agent finn">F</span><span class="state paused">paused · budget</span></div><div class="prog"><i style="width:40%;background:var(--muted-foreground)"></i></div><div class="muted xs">read-only run held at step 2 of 5 · Sanne decides</div></div>
+        <div class="kcard"><div class="flex"><span class="id">ENG-312</span><span class="pri right">▮▮▯</span></div><b>Artifact origin config for self-host docs</b><div class="flex"><span class="av jonas">J</span><span class="muted xs">Jonas</span></div></div>
+        <div class="kcard agentwork"><div class="flex"><span class="id">ENG-305</span><span class="pri right">▮▯▯</span></div><b>Backfill change-set history for old rows</b><div class="flex"><span class="av jonas">J</span><span class="av agent finn">F</span><span class="state needs">needs Jonas</span></div><div class="muted xs">proposal · 1,204 rows over the 50-row bulk threshold</div></div>
+      </div>
+      <div class="bcol">
+        <div class="bcol-h"><span class="ok-t">◑</span>In review<span class="cnt">2</span></div>
+        <div class="kcard"><div class="flex"><span class="id">ENG-307</span><span class="pri right">▮▮▯</span></div><b>Signed webhook verification for uptime monitor</b><div class="flex"><span class="av jonas">J</span><span class="muted xs">PR #476 · 1 approval</span></div></div>
+        <div class="kcard agentwork"><div class="flex"><span class="id">ENG-303</span><span class="pri right">▮▯▯</span></div><b>Typst export: page numbers in footer</b><div class="flex"><span class="av rutger">R</span><span class="av agent finn">F</span><span class="state done">done · verify</span></div><div class="muted xs">a done run is not “achieved” until reviewed</div></div>
+      </div>
+      <div class="bcol">
+        <div class="bcol-h"><span class="ok-t">●</span>Done<span class="cnt">11</span></div>
+        <div class="kcard"><div class="flex"><span class="id">ENG-301</span></div><b>Incident post-mortem: checkout 5xx</b><div class="muted xs">Doc drafted by routine from the event log · Jonas</div></div>
+        <div class="kcard"><div class="flex"><span class="id">ENG-299</span></div><b>Egress allowlist for Ada's computer</b><div class="muted xs">Rutger · exposure approved</div></div>
+        <div class="muted xs" style="padding:2px 4px">+ 9 more</div>
+      </div>
+    </div>
+  </div>
+</main>

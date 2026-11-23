@@ -1,0 +1,68 @@
+<!--meta
+{"title": "Team directory", "area": "Team", "order": 50, "rail": "team", "layout": "three", "ctx_w": 360,
+ "summary": "People and agents in one directory with managers, Spaces, computer or VFS-only, status and budget use.",
+ "notes": [
+  ["p", "Team replaces Org", "One directory of people and agents with manager relations. Clicking an agent in the rail opens a DM; Team is where profiles live.", "ui-structure §2 table · messenger-ui “Team and agent profiles”"],
+  ["a", "Computer is per agent", "🖥 marks agents with a computer and names the provider. VFS-only is shown as a plain mode, never as a warning or a missing setup step.", "PRODUCT_DIRECTION pillar 2 · computer-provider-contract “Computerless mode”"],
+  ["s", "Spaces are the access model", "The Spaces column is the whole data-access story: “Add Ada to Sales”. There are no per-document grants to list.", "PRODUCT_DIRECTION pillar 5 “Permissions are simple on purpose”"],
+  ["q", "Open: guests in the directory", "Guests with a single shared object are not listed here. Proposal: a separate “Guests” filter visible to admins only.", "work-apps “Spaces and the anti-mess rules” (silent on directory)"]
+ ]}
+-->
+<main class="main">
+  <div class="pane-head">
+    <div class="title">◍ Team</div><span class="muted small">3 people · 4 agents · Team preset</span>
+    <div class="acts"><span class="seg"><span class="on">Directory</span><span>Reports to</span></span><span class="btn sm">Invite person</span><span class="btn sm primary">+ Hire agent</span></div>
+  </div>
+  <div class="pane-sub"><div class="input ph" style="width:280px">⌕ Filter by name, role or Space</div><span class="chip">All</span><span class="chip">People</span><span class="chip">Agents</span><span class="chip">Has computer</span><span class="chip">Needs attention</span><span class="muted xs right">Sorted by: needs attention first</span></div>
+  <div class="pane-body">
+    <table class="list">
+      <tr><th style="width:240px">Name</th><th>Role</th><th>Manager</th><th>Spaces</th><th>Computer</th><th>Status</th><th style="width:150px">Budget this month</th></tr>
+      <tr class="grp"><td colspan="7">Agents · 4</td></tr>
+      <tr><td><div class="flex"><span class="av agent bram md">B<i class="dot needd"></i></span><div><b>Bram</b> <span class="agent-label bram">Agent</span><div class="muted xs">bram@agents.acme.example</div></div></div></td><td>Operations</td><td><span class="flex"><span class="av sanne">S</span>Sanne</span></td><td><span class="chip">Operations</span></td><td><span class="tag">🖥</span> <span class="small">office-mini</span><div class="muted xs">connected host · container</div></td><td><span class="state needs">needs you</span><div class="muted xs">2FA takeover</div></td><td><div class="meter"><div class="top"><span>€31.40</span><span class="muted">/ €80</span></div><div class="prog"><i style="width:39%"></i></div></div></td></tr>
+      <tr><td><div class="flex"><span class="av agent finn md">F<i class="dot off"></i></span><div><b>Finn</b> <span class="agent-label finn">Agent</span><div class="muted xs">support &amp; triage</div></div></div></td><td>Support &amp; engineering triage</td><td><span class="flex"><span class="av sanne">S</span>Sanne</span></td><td><span class="chip">Engineering</span></td><td><span class="small">VFS-only</span><div class="muted xs">computer recommended</div></td><td><span class="state paused">paused</span><div class="muted xs">budget limit</div></td><td><div class="meter"><div class="top"><span class="bad-t">€60.00</span><span class="muted">/ €60</span></div><div class="prog bad"><i style="width:100%"></i></div></div></td></tr>
+      <tr class="sel"><td><div class="flex"><span class="av agent ada md">A<i class="dot work"></i></span><div><b>Ada</b> <span class="agent-label">Agent</span><div class="muted xs">ada@agents.acme.example</div></div></div></td><td>Sales &amp; ops</td><td><span class="flex"><span class="av rutger">R</span>Rutger</span></td><td><span class="chip">Sales</span></td><td><span class="tag">🖥</span> <span class="small">Cloud</span><div class="muted xs">2 vCPU · 4 GB</div></td><td><span class="state working">working</span><div class="muted xs">Leads clean-up</div></td><td><div class="meter"><div class="top"><span>€18.80</span><span class="muted">/ €60</span></div><div class="prog ada"><i style="width:31%"></i></div></div></td></tr>
+      <tr><td><div class="flex"><span class="av agent cleo md">C<i class="dot on"></i></span><div><b>Cleo</b> <span class="agent-label cleo">Agent</span><div class="muted xs">finance &amp; reporting</div></div></div></td><td>Finance &amp; reporting</td><td><span class="flex"><span class="av rutger">R</span>Rutger</span></td><td><span class="chip">Sales</span> <span class="chip">Operations</span></td><td><span class="small">VFS-only</span><div class="muted xs">by admin choice</div></td><td><span class="state done">idle</span><div class="muted xs">next run 14:00</div></td><td><div class="meter"><div class="top"><span>€37.80</span><span class="muted">/ €40</span></div><div class="prog warn"><i style="width:95%"></i></div></div></td></tr>
+      <tr class="grp"><td colspan="7">People · 3</td></tr>
+      <tr><td><div class="flex"><span class="av rutger md">R<i class="dot on"></i></span><div><b>Rutger</b> <span class="muted xs">(you)</span><div class="muted xs">rutger@acme.example</div></div></div></td><td><span class="pill info">Owner</span></td><td class="muted">—</td><td><span class="chip">Sales</span> <span class="chip">Engineering</span> <span class="chip">Operations</span></td><td class="muted">—</td><td><span class="state done">online</span></td><td class="muted small">Manages Ada, Cleo</td></tr>
+      <tr><td><div class="flex"><span class="av sanne md">S<i class="dot on"></i></span><div><b>Sanne</b><div class="muted xs">sanne@acme.example</div></div></div></td><td><span class="pill info">Admin</span> <span class="pill">Sales lead</span></td><td><span class="flex"><span class="av rutger">R</span>Rutger</span></td><td><span class="chip">Sales</span> <span class="chip">Operations</span></td><td class="muted">—</td><td><span class="state done">online</span></td><td class="muted small">Manages Bram, Finn</td></tr>
+      <tr><td><div class="flex"><span class="av jonas md">J<i class="dot off"></i></span><div><b>Jonas</b><div class="muted xs">jonas@acme.example</div></div></div></td><td><span class="pill">Member</span></td><td><span class="flex"><span class="av rutger">R</span>Rutger</span></td><td><span class="chip">Engineering</span></td><td class="muted">—</td><td><span class="state paused">away</span><div class="muted xs">back Tuesday</div></td><td class="muted small">—</td></tr>
+    </table>
+    <div class="p16"><div class="callout"><span>ⓘ</span><span>Agents never manage people or approve anything. A manager is a human who is the agent's default approver (Team preset) and who can pause it, move its autonomy slider and raise its budget.</span></div></div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title">Reports to</div><div class="acts"><span class="icon-btn">⇥</span></div></div>
+  <div class="pane-body">
+    <div class="section">
+      <div class="col gap8 tm-tree">
+        <div class="flex"><span class="av rutger md">R</span><div><b>Rutger</b><div class="muted xs">Owner</div></div></div>
+        <div class="tm-kids">
+          <div class="flex"><span class="av sanne md">S</span><div><b>Sanne</b><div class="muted xs">Admin · Sales lead</div></div></div>
+          <div class="tm-kids">
+            <div class="flex"><span class="av agent bram">B</span>Bram <span class="tag">🖥</span><span class="state needs right">needs you</span></div>
+            <div class="flex"><span class="av agent finn">F</span>Finn<span class="state paused right">paused</span></div>
+          </div>
+          <div class="flex"><span class="av jonas md">J</span><div><b>Jonas</b><div class="muted xs">Member · Engineering</div></div></div>
+          <div class="flex"><span class="av agent ada">A</span>Ada <span class="tag">🖥</span><span class="state working right">working</span></div>
+          <div class="flex"><span class="av agent cleo">C</span>Cleo<span class="state done right">idle</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-t">Selected · Ada</div>
+      <dl class="kv small">
+        <dt>Approver</dt><dd>Rutger (manager)</dd>
+        <dt>Autonomy</dt><dd>Balanced</dd>
+        <dt>Always allow</dt><dd>4 exceptions</dd>
+        <dt>Routines</dt><dd>3 · pipeline-review, leads-hygiene, follow-ups</dd>
+        <dt>Runs (7 days)</dt><dd>38 · 1 failed</dd>
+      </dl>
+      <div class="flex mt12"><span class="btn sm primary">Open profile</span><span class="btn sm">Message</span></div>
+    </div>
+    <div class="section">
+      <div class="section-t">Hire an agent</div>
+      <div class="muted small">Start from an agent pack (Sales teammate, Support teammate, Bookkeeper) or from scratch. You choose Spaces, manager and whether it gets a computer.</div>
+    </div>
+  </div>
+  <style>.tm-kids{margin-left:13px;padding-left:16px;border-left:2px solid var(--border);display:flex;flex-direction:column;gap:8px}</style>
+</aside>

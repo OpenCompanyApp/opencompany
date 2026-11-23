@@ -1,0 +1,80 @@
+<!--meta
+{"title": "Mail app", "area": "Apps", "order": 300, "rail": "app:mail", "layout": "two",
+ "summary": "Mail with the shared sales@ inbox and Ada's own agent inbox; a drafted reply waits on a first-send approval.",
+ "notes": [
+  ["p", "Mail doubles as the agent inbox", "Ada's address ada@agents.acme.example is a folder like any shared inbox. Enabling an agent address is a governance action; inbound mail is untrusted.", "PRODUCT_DIRECTION pillar 7 app catalog · governance “Agent identity: inbox and one-time codes”"],
+  ["k", "Drafts free, sends ask", "Ada drafted the reply on her own (external_draft auto-applies). Sending asks the first time per domain, then “always for @domain” applies, except in runs that read untrusted content, like this reply.", "governance “Action classes” · messenger-ui “Few, good approvals”"],
+  ["s", "One-time codes stay out of the model", "The code email is used by the credential broker for Bram's sign-in and is redacted from model context; humans see it masked.", "agent-primitives-catalog §1 “One-time codes”"],
+  ["q", "Open: which inbox owns a reply", "Ada replies from sales@ because the thread arrived there. Whether an agent may reply from its own address on a shared-inbox thread isn't specified.", "governance “Agent identity” (silent)"]
+ ]}
+-->
+<style>
+.ml{display:grid;grid-template-columns:200px 360px minmax(0,1fr);flex:1;min-height:0}
+.ml-f{border-right:1px solid var(--border);padding:10px 8px;display:flex;flex-direction:column;gap:2px;font-size:12.5px;background:var(--card-2)}
+.ml-f .fi{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px}
+.ml-f .fi.on{background:var(--secondary);font-weight:600}
+.ml-f .h{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted-foreground);font-weight:700;margin:10px 8px 4px}
+.ml-l{border-right:1px solid var(--border);overflow:auto}
+.ml-i{padding:10px 12px;border-bottom:1px solid var(--border);font-size:12.5px;display:flex;flex-direction:column;gap:3px}
+.ml-i.on{background:var(--primary-soft);box-shadow:inset 3px 0 0 var(--primary)}
+.ml-i.unread .s{font-weight:700}
+.ml-t{overflow:auto;padding:16px 22px}
+.ml-mail{border:1px solid var(--border);border-radius:10px;background:var(--card);padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.55}
+.ml-mail.draft{border:1px dashed var(--ada-border);background:var(--ada-soft)}
+</style>
+<main class="main">
+  <div class="pane-head">
+    <div class="title">✉ Mail</div><span class="muted small">sales@acme.example</span>
+    <div class="acts"><div class="input ph" style="width:260px">⌕ Search mail</div><span class="btn sm primary">✎ Compose</span></div>
+  </div>
+  <div class="ml">
+    <div class="ml-f">
+      <div class="h">Shared inboxes</div>
+      <div class="fi on">✉ sales@<span class="right badge unread">8</span></div>
+      <div class="fi">✉ billing@<span class="right pc">2</span></div>
+      <div class="fi">✉ support@<span class="right pc">2</span></div>
+      <div class="h">Agent inboxes</div>
+      <div class="fi"><span class="av agent ada">A</span>ada@<span class="right pc">3</span></div>
+      <div class="fi"><span class="av agent bram">B</span>bram@<span class="right pc">1</span></div>
+      <div class="h">Personal</div>
+      <div class="fi"><span class="av rutger">R</span>rutger@</div>
+      <div class="h">Views</div>
+      <div class="fi">✎ Drafts by agents<span class="right badge need">24</span></div>
+      <div class="fi">⏳ Waiting on approval<span class="right pc">2</span></div>
+      <div class="fi">➤ Sent</div>
+      <div class="fi">🗑 Trash · 30 days</div>
+      <div class="callout xs mt12"><span>ⓘ</span><span>Mailboxes come from the Gmail connection (shared, admin-owned). Mail lives in the core primitives; the app adds no storage.</span></div>
+    </div>
+    <div class="ml-l">
+      <div class="pane-sub"><span class="seg"><span class="on">All</span><span>Unread</span><span>Needs reply</span></span></div>
+      <div class="ml-i on"><div class="flex"><b>Mo · Northwind</b><span class="right muted xs">09:52</span></div><div class="s">Re: Q1 rollout: timeline and SSO</div><div class="muted xs ell">Thanks for the signed copy. Two questions before kickoff: can we…</div><div class="flex gap4"><span class="pill ada">draft by Ada</span><span class="pill warn">send asks</span><span class="untrusted">external</span></div></div>
+      <div class="ml-i unread"><div class="flex"><b class="s">Lena · Orbit Coffee</b><span class="right muted xs">09:14</span></div><div class="s">Espresso bar: revised budget</div><div class="muted xs ell">We can stretch to €16k if the install happens before…</div><div class="flex gap4"><span class="pill">SAL-91 linked</span></div></div>
+      <div class="ml-i unread"><div class="flex"><b class="s">Contact form</b><span class="right muted xs">08:57</span></div><div class="s">3 new submissions · Contact us</div><div class="muted xs ell">Confirmation emails sent by the form pipeline</div><div class="flex gap4"><span class="untrusted">form.submitted</span></div></div>
+      <div class="ml-i"><div class="flex"><b>Pieter · Halden &amp; Co</b><span class="right muted xs">Sat</span></div><div class="s">Out of office until 30 Nov</div><div class="muted xs ell">Auto-reply · Ada paused the follow-up until 1 Dec</div></div>
+      <div class="ml-i"><div class="flex"><b>Insurance broker</b><span class="right muted xs">Sat</span></div><div class="s">Renewal quote 2027 (PDF)</div><div class="muted xs ell">Attached: quote_2027.pdf → linked to OPS-142</div><div class="flex gap4"><span class="pill">OPS-142</span><span class="pill">1 file</span></div></div>
+      <div class="ml-i"><div class="flex"><b>Tom · Kestrel Labs</b><span class="right muted xs">Fri</span></div><div class="s">Re: intro to Ines</div><div class="muted xs ell">Looping in Ines, who runs ops now.</div></div>
+      <div class="ml-i"><div class="flex"><span class="av agent bram">B</span><b>timetrack.example</b><span class="right muted xs">08:31</span></div><div class="s">Your sign-in code (bram@)</div><div class="muted xs">Code ●●●●●● · used by the broker, hidden from Bram's model</div><div class="flex gap4"><span class="pill ok">OTP · redacted</span></div></div>
+    </div>
+    <div class="ml-t">
+      <div class="flex mb12"><div class="h2">Re: Q1 rollout: timeline and SSO</div><span class="right flex gap4"><span class="pill">Deal · Northwind Q1 rollout</span><span class="icon-btn b">⋯</span></span></div>
+      <div class="ml-mail">
+        <div class="flex mb8"><span class="av ext md">M</span><div><b>Mo · Northwind</b> <span class="muted xs">mo@northwind.example → sales@acme.example</span><div class="muted xs">today 09:52</div></div><span class="untrusted right">untrusted inbound</span></div>
+        Thanks for the signed copy. Two questions before kickoff:<br>1. Can the first deliverable move to 19 January? Our CMS freeze ends on the 16th.<br>2. Does the care plan include SSO setup for our staff portal, or is that separate?<br><br>Best, Mo
+      </div>
+      <div class="ml-mail draft">
+        <div class="flex mb8"><span class="av agent ada md">A</span><div><b>Draft by Ada</b> <span class="muted xs">from sales@acme.example · on behalf of Sanne (deal owner)</span><div class="muted xs">drafted 09:54 · external_draft · auto</div></div><span class="pill warn right">not sent</span></div>
+        Hi Mo,<br><br>19 January works for us; I've moved the first deliverable in the plan and the kickoff stays on 8 January.<br><br>SSO for the staff portal isn't part of the care plan. We can scope it as a small add-on; I'll send a quote calculator link so you can see the options.<br><br>Best,<br>Sanne (drafted with Ada)
+        <div class="hr"></div>
+        <div class="flex xs muted"><span>Proposed with this reply:</span><span class="ref">SAL-88 due → 19 Jan</span><span class="ref">Deal next step</span><span class="muted">(change set, reversible)</span></div>
+      </div>
+      <div class="card approval">
+        <div class="card-h"><span class="k">Approval</span><b>Send reply to mo@northwind.example?</b><span class="muted xs right nowrap">Sanne or you</span></div>
+        <div class="card-b small">
+          “Ada may email @northwind.example” is allowed <i>always</i> (Sanne, today 08:40). But this draft answers an inbound email, which is untrusted, so the exception can't auto-send it: a human sends.
+        </div>
+        <div class="card-f"><span class="btn primary sm">Send once</span><span class="btn sm">Edit draft</span><span class="btn sm ghost">Discard</span></div>
+      </div>
+      <div class="muted xs mt8">Agents disclose they are agents to third parties: the signature says “drafted with Ada”.</div>
+    </div>
+  </div>
+</main>

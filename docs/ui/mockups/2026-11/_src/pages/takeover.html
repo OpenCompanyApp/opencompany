@@ -1,0 +1,97 @@
+<!--meta
+{"title": "Takeover and secure form", "area": "Governance", "order": 250, "rail": "agent:bram", "layout": "three", "ctx_w": 400,
+ "agent_status": {"bram": ["needd", "in takeover", ""]},
+ "summary": "Bram's computer in the main pane with you in control for a 2FA step, plus a secure-form card for a secret Bram must never see.",
+ "notes": [
+  ["k", "Exactly one controller", "Take over pauses Bram's computer actions; his run stays alive and non-computer work continues. Hand back (“I'm done”) resumes him with a factual note. Typed content is never reported back.", "computer-provider-contract “Takeover viewer”"],
+  ["s", "Secure form, not chat", "Secrets never go into chat. The secure-form card sends the value straight to the vault and the credential broker; Bram only learns the entry name. Lookup order: vault → password manager → secure form.", "agent-primitives-catalog §1 · messenger-ui “Composer”"],
+  ["p", "Connected host, labelled", "office-mini is a self-managed connected host (container sandbox). The UI says so: isolation and egress are best effort. Secrets are injected per call and never stored on the host.", "PRODUCT_DIRECTION pillar 2 “Connected hosts” · governance “Connected hosts”"],
+  ["q", "Open: takeover on mobile web", "Whether takeover works on mobile web or always hands off through a signed link (and its latency) is open. The mobile mockup shows the sheet only.", "messenger-ui “Open questions” · catalog open questions"]
+ ]}
+-->
+<main class="main">
+  <div class="pane-head">
+    <div class="title nowrap"><span class="av agent bram md">B</span>Bram's computer</div>
+    <span class="muted small nowrap">office-mini · connected host · self-managed</span><span class="pill outline">container</span>
+    <div class="acts"><span class="seg"><span class="on">Browser</span><span>Terminal</span><span>Screen</span></span><span class="icon-btn b">⤡</span></div>
+  </div>
+  <div class="pane-sub tk-bar"><span class="sdot" style="background:var(--primary);width:10px;height:10px"></span><b class="nowrap">You are in control</b><span class="mono">01:42</span><span class="muted ell">· Bram's computer actions are paused · times out in 8:18</span><span class="right flex gap8"><span class="btn sm">Hand back without finishing</span><span class="btn primary">I'm done · hand back</span></span></div>
+  <div class="pane-body" style="padding:16px 20px">
+    <div class="browser">
+      <div class="bar"><span class="lights"><i></i><i></i><i></i></span><span class="chip">Drive · Clients</span><span class="chip" style="border-color:var(--primary)">Timetrack · Verify</span><span class="url">https://app.timetrack.example/login/verify</span><span class="pill">🔒</span></div>
+      <div class="tk-site">
+        <div class="tk-brand">◷ Timetrack</div>
+        <div class="tk-box">
+          <div class="h2">Verify it's you</div>
+          <div class="muted small mt4">We sent a 6-digit code to the phone ending in ••47. It expires in 5 minutes.</div>
+          <div class="tk-code mt16"><span>4</span><span>8</span><span>1</span><span class="cur"></span><span></span><span></span></div>
+          <label class="flex small mt12"><span class="check on"></span>Trust this browser for 30 days</label>
+          <div class="tk-btn mt16">Verify</div>
+          <div class="muted xs mt8">Didn't get it? Resend · Use backup code</div>
+        </div>
+        <div class="tk-cursor">⬉<span>Rutger</span></div>
+      </div>
+    </div>
+    <div class="grid3 mt16">
+      <div class="callout info"><span>🔒</span><span><b>Not reported back.</b> Bram receives only “human completed sign-in on app.timetrack.example”. Keystrokes and the code stay private.</span></div>
+      <div class="callout"><span>⟲</span><span><b>Session persists</b> in Bram's browser profile, so the next client setup won't ask again (30-day trust).</span></div>
+      <div class="callout"><span>✎</span><span><b>Attributed to you.</b> Actions while you control are logged as Rutger, not Bram.</span></div>
+    </div>
+    <div class="card mt16">
+      <div class="card-h"><b>Control log</b><span class="muted xs">event log · run R-2302</span></div>
+      <div class="card-b"><div class="chain">
+        <div class="node hu"><span class="t">09:41:08</span> Rutger took over (requested by Bram: “2FA code sent to account owner's phone”)</div>
+        <div class="node rt"><span class="t">09:37:12</span> Bram requested takeover · notified Rutger (push) and Sanne (Home)</div>
+        <div class="node cs"><span class="t">09:36:50</span> Bram filled login from vault entry <span class="ref">timetrack-admin</span> · value never in context</div>
+        <div class="node ev"><span class="t">09:35:02</span> Routine <span class="ref">populate-client-space</span> asked Bram: “Create Northwind in the time-tracking tool”</div>
+      </div></div>
+    </div>
+  </div>
+  <style>
+  .tk-bar{background:var(--primary-soft);border-bottom-color:var(--primary-border)}
+  .tk-site{position:relative;height:430px;background:#f4f6f8;color:#1f2933;display:flex;flex-direction:column;align-items:center;padding-top:36px}
+  .tk-brand{position:absolute;left:24px;top:18px;font-weight:700;color:#0e7490}
+  .tk-box{width:380px;background:#fff;border:1px solid #d9dee4;border-radius:12px;padding:26px 28px;box-shadow:0 6px 24px rgba(15,23,42,.08)}
+  .tk-box .muted{color:#5f6b78}
+  .tk-code{display:flex;gap:8px}
+  .tk-code span{width:44px;height:52px;border:1px solid #c8d0d8;border-radius:8px;display:grid;place-items:center;font-size:22px;font-weight:600;background:#fff}
+  .tk-code span.cur{border:2px solid #0e7490;box-shadow:0 0 0 3px rgba(14,116,144,.15)}
+  .tk-btn{background:#0e7490;color:#fff;text-align:center;border-radius:8px;padding:9px;font-weight:600}
+  .tk-cursor{position:absolute;left:58%;top:178px;font-size:18px;color:var(--primary)}
+  .tk-cursor span{font-size:10.5px;background:var(--primary);color:#fff;border-radius:4px;padding:0 5px;margin-left:2px;vertical-align:middle}
+  </style>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title"><span class="av agent bram">B</span>Bram</div><span class="agent-label bram">Agent</span><span class="muted xs">DM</span></div>
+  <div class="pane-body">
+    <div class="thread" style="padding:14px 14px">
+      <div class="msg"><span class="av agent bram md">B</span><div class="body"><div class="meta"><span class="who">Bram</span><span class="time">09:37</span></div>
+        <div class="text small">I'm creating Northwind in Timetrack for the onboarding. Login worked from the vault, but the site wants a code from the account owner's phone. That needs a human.</div>
+        <div class="card takeover"><div class="card-h"><span class="k">Takeover</span><b>2FA on app.timetrack.example</b></div>
+          <div class="card-b small"><span class="state working">Rutger in control · 01:42</span><div class="muted xs mt4">Requested 09:37 · accepted 09:41</div></div>
+          <div class="card-f"><span class="btn sm primary">I'm done</span><span class="btn sm ghost">Watch only</span></div></div>
+      </div></div>
+      <div class="msg"><span class="av agent bram md">B</span><div class="body"><div class="meta"><span class="who">Bram</span><span class="time">09:38</span></div>
+        <div class="text small">While you're here: for the weekly hours export I need Timetrack's reporting API key. It's not in the vault or 1Password. Please paste it in the secure form; I'll never see the value.</div>
+        <div class="card secure">
+          <div class="card-h"><span class="k">Secure form</span><b>Timetrack reporting key</b></div>
+          <div class="card-b col gap8">
+            <div class="field" style="margin:0"><span class="label">API key</span><div class="input focus mono">••••••••••••••••••••••••<span class="right muted xs">👁</span></div></div>
+            <div class="field" style="margin:0"><span class="label">Save to vault as</span><div class="input mono">timetrack-reporting-key</div></div>
+            <div class="flex small"><span class="check on"></span>Grant to Bram only · read-only use via broker</div>
+            <div class="flex small"><span class="check on"></span>Remind me to rotate in 180 days</div>
+            <div class="muted xs">Goes straight to the vault and credential broker. Never enters the model, chat, the VFS, mruby, logs or the host's disk.</div>
+          </div>
+          <div class="card-f"><span class="btn sm primary">Save securely</span><span class="btn sm ghost">I don't have it</span><span class="muted xs right">Only you see this card</span></div>
+        </div>
+      </div></div>
+      <div class="msg"><span class="av agent bram md">B</span><div class="body"><div class="meta"><span class="who">Bram</span><span class="time">09:41</span></div>
+        <div class="run"><div class="run-b">
+          <div class="act input"><span class="ai">❚❚</span><div>Computer actions paused: human in control</div></div>
+          <div class="act action"><span class="ai">✎</span><div>Meanwhile: drafted the Northwind project codes list <span class="det">· Doc draft · auto</span></div></div>
+        </div></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="pane-foot"><div class="composer"><div class="ph small">Message Bram…</div><div class="bar"><span class="xs warn-t">⚠ Looks like a key? Use the secure form instead.</span><span class="send">↑</span></div></div></div>
+</aside>

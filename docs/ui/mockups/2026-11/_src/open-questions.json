@@ -1,0 +1,126 @@
+[
+ {
+  "q": "Product name in the UI",
+  "detail": "The mockups show only the workspace (Acme). Onboarding, public forms (“Powered by …”) and the workspace address need a decision on OpenCompany versus the pending rename. <code>onboarding-workspace</code>, <code>form-public</code>"
+ },
+ {
+  "q": "Where the Make view lives",
+  "detail": "Shown as a “Make” section in Home's context pane. The doc lists Home results filter, user menu or Team profile as candidates. <code>home</code>"
+ },
+ {
+  "q": "Default context-pane tab in an agent DM",
+  "detail": "Run, Computer, object or Details: which opens first while a computer agent works. Shown: Computer. <code>dm-agent</code>"
+ },
+ {
+  "q": "Exception scopes in Phase 1",
+  "detail": "The approval cards show the full menu (once, this run, this task, time-limited, always). The messenger doc proposes only “once” plus per-target “always” in Phase 1. <code>approval-batch</code>, <code>dm-agent</code>"
+ },
+ {
+  "q": "What each autonomy position bundles",
+  "detail": "Ask first · Balanced · Autopilot per preset is still undefined; the slider shows the Team cap marker but not the bundle contents. <code>agent-profile</code>, <code>admin-governance</code>"
+ },
+ {
+  "q": "Requesting a computer for a VFS-only agent",
+  "detail": "Shown: the manager requests it and the request lands on admins' Home as a governance card. Cleo, VFS-only by admin choice, gets a plain statement and no button. <code>agent-profile-vfs</code>, <code>empty-states</code>"
+ },
+ {
+  "q": "Run activity visible to non-owners in channels",
+  "detail": "Shown: a one-line summary with full activity one click away; approvals render as “waiting for Sanne”. <code>channel</code>"
+ },
+ {
+  "q": "Business-rule override",
+  "detail": "May an admin outside the rule's role (for example sales lead) override a field-level approval rule? Shown: no. <code>approval-field-rule</code>"
+ },
+ {
+  "q": "Takeover on mobile",
+  "detail": "In-app mobile web takeover or a signed hand-off link; and whether mobile-web push ships before native apps. <code>takeover</code>, <code>mobile</code>"
+ },
+ {
+  "q": "⌘K prefixes",
+  "detail": "Shown: <code>&gt;</code> commands, <code>@</code> agents and people, <code>#</code> records. No doc fixes them. <code>palette</code>"
+ },
+ {
+  "q": "Where skills live",
+  "detail": "No rail slot exists for skills. Shown: the catalog under Admin → Skills &amp; plugins, per-agent grants on the agent profile, and <code>$</code> invocation in chat. Also open: per-Space skills or workspace-wide only. <code>admin-skills</code>, <code>agent-profile</code>"
+ },
+ {
+  "q": "The <code>$</code> prefix and agent-drafted skills",
+  "detail": "<code>$</code> comes from the older skill-system plan, which the direction partly supersedes. Shown: agents draft skills privately and the owner or an admin publishes each digest. Can a draft be shared with the requesting human before publishing? <code>skill-invoke</code>"
+ },
+ {
+  "q": "Explaining hybrid search ranking",
+  "detail": "Shown: a “matched on” line per result; archived items are hidden by default. <code>search</code>"
+ },
+ {
+  "q": "Guests in the directory",
+  "detail": "Whether single-object guests appear in Team. Shown: an admin-only Guests filter; guest shares default to comment access with a required end date. <code>team</code>, <code>admin-members</code>"
+ },
+ {
+  "q": "What a Space's landing page shows",
+  "detail": "Proposed: the six tools with counts, the review queue (owner, status, review date), activity, the policy summary and a Space-scoped agent panel. <code>space-overview</code>"
+ },
+ {
+  "q": "Triage auto-accept",
+  "detail": "Which labels count as low-risk, and whether auto-accept is a Space policy or a routine setting. <code>issues-list</code>"
+ },
+ {
+  "q": "Issues delegated to a paused agent",
+  "detail": "Shown: they stay assigned, marked paused, with a reassign shortcut; an outside-agent run already launched continues. Also open: is close-on-merge a Space policy, a routine or a per-issue toggle (shown as a toggle)? <code>issue-detail</code>, <code>issues-board</code>"
+ },
+ {
+  "q": "Stale presence and stale proposals",
+  "detail": "The presence timeout value, and whether a stale change-set proposal can still be applied. <code>table-review</code>"
+ },
+ {
+  "q": "Relations to app records",
+  "detail": "Whether a Table's Relation column to CRM records shows their fields inline or only a link. <code>table-grid</code>"
+ },
+ {
+  "q": "Who accepts doc suggestions",
+  "detail": "Shown: the doc owner or an admin. The collaboration engine and canonical format are still open in the UI doc. <code>doc-editor</code>"
+ },
+ {
+  "q": "Drive revert versus change sets",
+  "detail": "Reverting an agent's Drive edit restores a Drive revision; partial reverts and Drive-side edits after the run are unspecified. <code>files-drive</code>"
+ },
+ {
+  "q": "Artifact stale threshold",
+  "detail": "Shown: 30 days without a view flags an artifact as stale. No default in the docs. <code>artifact-page</code>"
+ },
+ {
+  "q": "Team-owned routines",
+  "detail": "Whose access applies (last enabler or a named owner) for a routine owned by a team. <code>routine-detail</code>"
+ },
+ {
+  "q": "Agent reply address in a shared inbox",
+  "detail": "May an agent reply to a shared-inbox thread from its own address instead of sales@? <code>mail</code>"
+ },
+ {
+  "q": "Admin grant matrix",
+  "detail": "Is the per-agent connection grant matrix in Admin editable, or a read-only view of the agent profiles? <code>admin-connections</code>"
+ },
+ {
+  "q": "Audit export on Team",
+  "detail": "Export is described for Company; shown disabled on Team. Also: when downloads count as “bulk” (shown: 50 objects). <code>admin-audit</code>, <code>admin-export</code>"
+ },
+ {
+  "q": "Sandbox “none” on Team",
+  "detail": "Shown: Team may keep the host but its computer capability is blocked until a sandbox is set. <code>admin-hosts</code>"
+ },
+ {
+  "q": "Preset recommendation in onboarding",
+  "detail": "Shown: Team is pre-selected when teammates were invited in step 1, otherwise Personal. With no computer provider, the attach card says “set up later” instead of hiding. <code>onboarding-preset</code>, <code>onboarding-agent</code>"
+ },
+ {
+  "q": "Coding mode triggers and stickiness",
+  "detail": "Exploration. Which signals switch it on (repo or file reference, diff, stack trace, coding run) and whether the mode sticks per thread, person or agent. <code>explore-coding-mode</code>"
+ },
+ {
+  "q": "Master versus named teammates",
+  "detail": "Exploration. Is a Master a new kind of agent above Ada and Bram, a renamed personal agent, or a replacement? Where does it sit in the one rail? <code>explore-master-minions</code>"
+ },
+ {
+  "q": "Who may inspect a raw session",
+  "detail": "Exploration. Proposed: the on-behalf-of human, the agent's manager and admins; debug and read-only. <code>explore-session-inspect</code>"
+ }
+]

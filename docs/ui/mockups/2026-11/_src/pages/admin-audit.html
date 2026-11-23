@@ -1,0 +1,112 @@
+<!--meta
+{"title": "Admin · Audit log", "area": "Admin", "order": 411, "rail": "admin", "layout": "three", "ctx_w": 360,
+ "summary": "Who allowed what, at what cost: policy decisions, approvals, exceptions and one entry traced through its causality chain.",
+ "notes": [
+  ["p", "One log, many views", "The audit log is a permission-checked view of the workspace event log: decisions with their trace, approvals, exceptions granted and used, slider changes, secret uses (names only), takeovers, kill switch.", "governance “Event log, audit and replay”"],
+  ["k", "Who allowed what, at what cost", "Selecting an entry follows its causality chain back to the trigger and on-behalf-of human, names the rule or exception that decided, the approver, and sums the cost events on the chain.", "governance “Event log”, PRODUCT_DIRECTION pillar 5 “Budgets and visibility”"],
+  ["s", "Replay never re-executes", "“Replay run” re-renders the timeline and decisions from the log; it never repeats a side effect.", "governance “Event log, audit and replay”"],
+  ["q", "Open: audit export for Team", "Audit export and retention settings are Company controls. Team can read the log here and through the API; whether Team also gets a CSV export is not specified, so it is shown disabled.", "governance “Presets” · “Open questions” (export format)"]
+ ]}
+-->
+<main class="main">
+<style>
+.adm{display:flex;flex:1;min-height:0}
+.adm-nav{width:184px;flex:none;border-right:1px solid var(--border);padding:14px 8px;background:var(--card-2);display:flex;flex-direction:column;gap:1px}
+.adm-nav .adm-h{font-weight:700;font-size:14px;padding:2px 8px}
+.adm-nav .adm-s{font-size:11px;color:var(--muted-foreground);padding:0 8px 10px}
+.adm-nav .adm-i{white-space:nowrap;display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;font-size:12.5px;color:var(--muted-foreground)}
+.adm-nav .adm-i.on{background:var(--secondary);color:var(--foreground);font-weight:600}
+.adm-nav .adm-i .ic{width:16px;text-align:center;flex:none}
+.adm-nav .adm-g{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--subtle-foreground);padding:12px 8px 3px}
+.adm-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.aud td{font-size:12px;vertical-align:top}
+.aud td.t{font-family:var(--font-mono);font-size:11px;color:var(--subtle-foreground);white-space:nowrap}
+.aud tr.on td{background:var(--primary-soft)}
+.aud .what{min-width:220px}
+.aud td:nth-child(2){white-space:nowrap}
+.aud td:nth-child(4){white-space:nowrap}
+.aud td:nth-child(4) .muted{white-space:normal;max-width:150px}
+</style>
+<div class="adm">
+  <nav class="adm-nav">
+    <div class="adm-h">Admin</div><div class="adm-s">Acme · Team preset · self-hosted</div>
+    <div class="adm-g">Workspace</div>
+    <a class="adm-i"><span class="ic">⌁</span>Connections</a>
+    <a class="adm-i"><span class="ic">$</span>Skills &amp; plugins</a>
+    <a class="adm-i"><span class="ic">⚖</span>Governance</a>
+    <a class="adm-i on"><span class="ic">☰</span>Audit</a>
+    <a class="adm-i"><span class="ic">◍</span>Members &amp; roles</a>
+    <a class="adm-i"><span class="ic">▣</span>Hosts</a>
+    <a class="adm-i"><span class="ic">€</span>Budgets</a>
+    <a class="adm-i"><span class="ic">◩</span>Published surfaces</a>
+    <a class="adm-i"><span class="ic">⇩</span>Export &amp; backups</a>
+    <a class="adm-i"><span class="ic">⚙</span>Workspace</a>
+  </nav>
+  <div class="adm-main">
+    <div class="pane-head"><div class="title">Audit log</div><span class="muted small">append-only · always on</span>
+      <div class="acts"><span class="btn sm dis" title="Audit export and retention are Company controls">⇩ Export · Company</span></div></div>
+    <div class="pane-sub" style="flex-wrap:wrap">
+      <div class="input ph" style="width:220px">⌕ Search actor, target, run…</div>
+      <span class="chip">Today ▾</span><span class="chip">Actor: any ▾</span>
+      <span class="chip sug" style="border-style:solid">Decisions</span><span class="chip">Approvals</span><span class="chip">Exceptions</span><span class="chip">Secrets</span><span class="chip">Takeovers</span><span class="chip">Kill switch</span>
+    </div>
+    <div class="pane-body">
+      <table class="list aud">
+        <tr><th>Time</th><th>Actor</th><th>What</th><th>Decision</th><th class="num">Cost</th></tr>
+        <tr><td class="t">10:14:02</td><td><span class="av agent ada">A</span> Ada</td><td class="what">mail.send ×22 to stale leads <div class="muted xs">external_send · run R-2291 · on behalf of Rutger</div></td><td><span class="pill warn">ask</span> → <span class="pill ok">approved</span><div class="muted xs">Rutger · once · batched</div></td><td class="num">€0.06</td></tr>
+        <tr><td class="t">10:02:40</td><td><span class="av agent bram">B</span> Bram</td><td class="what">Secret used: <span class="mono">vault/timetrack-admin</span> <div class="muted xs">filled by broker into browser · value never logged</div></td><td><span class="pill ok">allow</span><div class="muted xs">grant: Bram · timetrack</div></td><td class="num">—</td></tr>
+        <tr class="on"><td class="t">09:58:11</td><td><span class="av agent bram">B</span> Bram</td><td class="what">mail.send “Welcome to Acme” to <b>mo@northwind.example</b><div class="muted xs">external_send · routine populate-client-space · R-2275</div></td><td><span class="pill warn">ask</span> → <span class="pill ok">approved</span><div class="muted xs">Sanne · once · first send to domain</div></td><td class="num">€0.41</td></tr>
+        <tr><td class="t">09:55:30</td><td><span class="av sanne">S</span> Sanne</td><td class="what">Takeover of Bram's computer, 2 min 14 s <div class="muted xs">2FA on timetrack.example · actions attributed to Sanne</div></td><td><span class="pill info">takeover</span></td><td class="num">—</td></tr>
+        <tr><td class="t">09:41:07</td><td><span class="av agent ada">A</span> Ada</td><td class="what">Leads: 46 cells, change set CS-881 <div class="muted xs">reversible_edit · 23 rows · under the 50-row threshold</div></td><td><span class="pill ok">allow</span><div class="muted xs">preset default (Team)</div></td><td class="num">€0.09</td></tr>
+        <tr><td class="t">09:40:55</td><td><span class="av agent finn">F</span> Finn</td><td class="what">sentry.update_issue <div class="muted xs">MCP · definition hash mismatch</div></td><td><span class="pill bad">deny</span><div class="muted xs">guard: pinned definition</div></td><td class="num">—</td></tr>
+        <tr><td class="t">09:31:18</td><td><span class="av agent cleo">C</span> Cleo</td><td class="what">Created OPS-151 from Drive change <div class="muted xs">reversible_edit · routine contract-intake</div></td><td><span class="pill ok">allow</span></td><td class="num">€0.02</td></tr>
+        <tr><td class="t">09:12:44</td><td><span class="av agent ada">A</span> Ada</td><td class="what">Change own autonomy to Autopilot <div class="muted xs">governance · requested inside run R-2290</div></td><td><span class="pill bad">floor</span><div class="muted xs">an agent never changes its own policy</div></td><td class="num">—</td></tr>
+        <tr><td class="t">08:40:03</td><td><span class="av sanne">S</span> Sanne</td><td class="what">Accepted learned exception “Ada may email @northwind.example” <div class="muted xs">governance · offered after 3 approvals</div></td><td><span class="pill info">exception</span><div class="muted xs">always · exact match</div></td><td class="num">—</td></tr>
+        <tr><td class="t">08:12:20</td><td><span class="av sanne">S</span> Sanne</td><td class="what">Moved Bram's slider Balanced → Ask first <div class="muted xs">governance · as Bram's manager</div></td><td><span class="pill info">slider</span></td><td class="num">—</td></tr>
+        <tr><td class="t">08:02:00</td><td><span class="av sys">⚙</span> System</td><td class="what">Finn paused: monthly budget €60 reached <div class="muted xs">budget card to Sanne (manager)</div></td><td><span class="pill">pause</span></td><td class="num">—</td></tr>
+        <tr><td class="t">07:41:52</td><td><span class="av agent ada">A</span> Ada</td><td class="what">Edit deal Halden &amp; Co: discount 15% → 25% <div class="muted xs">field rule deals.discount &gt; 20</div></td><td><span class="pill warn">propose</span><div class="muted xs">to role sales-lead · pending</div></td><td class="num">€0.01</td></tr>
+        <tr><td class="t">Sun 02:00</td><td><span class="av sys">⚙</span> System</td><td class="what">Backup to r2://acme-backups · 1.8 GB <div class="muted xs">scheduled · approved destination</div></td><td><span class="pill ok">allow</span></td><td class="num">—</td></tr>
+        <tr><td class="t">Sat 23:10</td><td><span class="av rutger">R</span> Rutger</td><td class="what">Kill switch: routine <span class="ref">social-digest</span> <div class="muted xs">held 2 queued runs · triggers disabled</div></td><td><span class="pill bad">kill</span></td><td class="num">—</td></tr>
+      </table>
+      <div class="muted small" style="padding:10px 12px">Showing 14 of 1,284 events today · only events you may read</div>
+    </div>
+  </div>
+</div>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title">Who allowed this?</div><div class="acts"><span class="btn sm">Replay run</span><span class="icon-btn">✕</span></div></div>
+  <div class="pane-body" style="padding:14px 16px">
+    <div class="card flat mb16"><div class="card-b">
+      <div class="strong">Bram sent “Welcome to Acme” to mo@northwind.example</div>
+      <div class="muted small mt4">external_send · not reversible · 09:58:11 · event <span class="mono">01JD7Q…X4</span></div>
+    </div></div>
+    <div class="section-t">Causality chain · depth 3</div>
+    <div class="chain mb16">
+      <div class="node hu"><div class="t">07:41</div><b>Sanne</b> moved deal Northwind to <b>Won</b> in CRM<div class="muted xs">human action · emits crm.deal.updated</div></div>
+      <div class="node ev"><div class="t">07:41</div>Event <span class="mono">crm.deal.updated</span> stage → won</div>
+      <div class="node rt"><div class="t">07:42</div>Routine <b>onboard-won-deal</b> · run R-2270<div class="muted xs">owner Sanne · proposed Space “Client · Northwind”</div></div>
+      <div class="node ap"><div class="t">09:30</div><b>Rutger</b> approved the Space proposal<div class="muted xs">structural · from Home</div></div>
+      <div class="node rt"><div class="t">09:30</div>Routine <b>populate-client-space</b> · run R-2275<div class="muted xs">on behalf of Sanne (routine owner) · trigger is never consent</div></div>
+      <div class="node cs"><div class="t">09:57</div>Bram drafted the welcome email <span class="muted">(external_draft · auto)</span></div>
+      <div class="node ap"><div class="t">09:58</div><b>Sanne</b> approved once<div class="muted xs">first send to @northwind.example · Bram's manager</div></div>
+    </div>
+    <div class="section-t">Decision trace</div>
+    <dl class="kv small">
+      <dt>Access</dt><dd>Space Client · Northwind ✓ · grant Gmail sales@ act ✓ · Sanne ✓</dd>
+      <dt>Taint</dt><dd>none · run had not read untrusted content</dd>
+      <dt>Trigger</dt><dd>routine-started → automatic approval removed</dd>
+      <dt>Exception</dt><dd>none matched (domain new)</dd>
+      <dt>Preset</dt><dd>Team · external_send → ask the agent's manager</dd>
+      <dt>Approver</dt><dd><b>Sanne</b>, scope once · not the requester</dd>
+    </dl>
+    <div class="section-t mt16">Cost on this chain</div>
+    <table class="list">
+      <tr><td>Model tokens · 3 runs</td><td class="num">€0.38</td></tr>
+      <tr><td>Bram's computer · 18 min, office-mini</td><td class="num">€0.00</td></tr>
+      <tr><td>Mail send</td><td class="num">€0.00</td></tr>
+      <tr><td>Company enrichment lookup</td><td class="num">€0.03</td></tr>
+      <tr><td><b>Total</b></td><td class="num"><b>€0.41</b></td></tr>
+    </table>
+    <div class="callout mt12 small"><span>ⓘ</span><span>Charged to Bram's budget (€80/mo) and the routine's budget (€10/mo).</span></div>
+  </div>
+</aside>

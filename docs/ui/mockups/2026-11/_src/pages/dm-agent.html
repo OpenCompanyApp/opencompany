@@ -1,0 +1,142 @@
+<!--meta
+{"title": "Agent DM · Ada", "area": "Messenger", "order": 20, "rail": "agent:ada", "layout": "three", "ctx_w": 440, 
+ "summary": "Typed run activity, live plan, stop/redirect, inline approval, change-set card and the computer panel.",
+ "notes": [
+  ["a", "Typed run activity", "Thought (collapsed), action, needs input, result and error, each with its own glyph. The run header carries the live plan, state and Stop / Redirect. Stopping says what was already done.", "ui-structure §5 · messenger-ui “Typed run activity”"],
+  ["k", "Inline approval at the point it was raised", "What, why, where from (with the untrusted flag), risk and cost, who can answer, scope options and expiry. Only step 3 is parked; Ada keeps working on step 4.", "governance “Approval card contract”, “Few, good approvals”"],
+  ["a", "Change set with revert", "The reversible edit auto-applied as one batch (Team preset, under the ~50-row bulk threshold). Rows Sanne edited after Ada read them were skipped: human edits win.", "ui-structure §4 · governance “Action classes”"],
+  ["p", "Computer panel", "Only agents with a computer get this tab. Watching is not controlling: Take over is a separate permission and pauses Ada's computer actions until hand back.", "computer-provider-contract “Takeover viewer”"]
+ ]}
+-->
+<main class="main">
+  <div class="pane-head">
+    <div class="title"><span class="av agent ada md">A<i class="dot work"></i></span>Ada <span class="agent-label">Agent</span><span class="tag">🖥</span></div>
+    <span class="muted small">Sales &amp; ops teammate · manager Rutger · Balanced</span>
+    <div class="acts"><span class="btn sm ghost">Profile</span><span class="btn sm ghost">Routines · 3</span><span class="icon-btn b">⋯</span></div>
+  </div>
+  <div class="pane-body">
+    <div class="thread">
+      <div class="day">Today</div>
+
+      <div class="msg"><span class="av rutger md">R</span><div class="body">
+        <div class="meta"><span class="who">Rutger</span><span class="time">09:12</span></div>
+        <div class="text">Clean up <span class="ref">▦ Leads</span>: anything with no activity for 30 days → <b>stale</b>, and draft re-engage emails. Skip what Sanne touched this week. While you're at it, check whether the bounced ones still have a live website.</div>
+      </div></div>
+
+      <div class="msg"><span class="av agent ada md">A</span><div class="body">
+        <div class="meta"><span class="who">Ada</span><span class="agent-label">Agent</span><span class="time">09:13</span></div>
+        <div class="text">On it. 26 leads match; 3 of them Sanne edited on Monday, so I'm leaving those alone. Status changes are reversible, so they apply straight away. The emails stay drafts until you say send.</div>
+
+        <div class="run mt8">
+          <div class="run-h"><span class="state working">working</span><b>Leads clean-up</b><span class="ref">R-2291</span><span class="muted xs">· 11 min · €0.21</span>
+            <span class="right flex gap4"><span class="btn sm">Redirect…</span><span class="btn sm danger">■ Stop</span></span></div>
+          <div class="run-b">
+            <ul class="plan" style="padding:4px 0 6px;border-bottom:1px solid var(--border);margin-bottom:6px">
+              <li class="done">Find leads with no activity since 24 Oct (26 → 23 after skipping human edits)</li>
+              <li class="done">Set Status → stale and Next step → re-engage (change set CS-881)</li>
+              <li class="parked">Send 23 re-engage emails · <span class="xs">parked: waiting for Rutger</span></li>
+              <li class="doing">Check 6 bounced leads' websites for a newer contact (browser)</li>
+              <li>Post a summary to #sales</li>
+            </ul>
+            <div class="act thought"><span class="ai">…</span><div>Thought for 4s · <u>show</u></div></div>
+            <div class="act action"><span class="ai">↗</span><div>Read <span class="mono">/spaces/sales/tables/leads</span> · 214 rows, filter last_activity &lt; 2026-10-24 <span class="det">· VFS · 0.3s</span></div></div>
+            <div class="act action"><span class="ai">✎</span><div>Staged 23 rows × 2 fields in Leads <span class="det">· reversible_edit · auto-applied</span></div></div>
+          </div>
+        </div>
+
+        <div class="card changeset">
+          <div class="card-h"><span class="k">Change set</span><b>CS-881</b><span class="muted">Leads · 46 cells in 23 rows</span><span class="pill ok right">applied · reversible</span></div>
+          <div class="card-b" style="padding:0">
+            <table class="dgrid" style="font-size:12px">
+              <tr><th>Company</th><th>Status</th><th>Next step</th><th>Owner</th></tr>
+              <tr><td>Orbit Coffee</td><td class="staged"><span class="old">qualified</span><span class="arrow">→</span>stale</td><td class="staged">re-engage</td><td>Sanne</td></tr>
+              <tr><td>Kestrel Labs</td><td class="staged"><span class="old">contacted</span><span class="arrow">→</span>stale</td><td class="staged">re-engage</td><td>Jonas</td></tr>
+              <tr><td>Bluefin Studio</td><td class="staged"><span class="old">new</span><span class="arrow">→</span>stale</td><td class="staged">re-engage</td><td>Sanne</td></tr>
+              <tr class="ghost"><td colspan="4">+20 more · 3 rows skipped: edited by Sanne after Ada read them</td></tr>
+            </table>
+          </div>
+          <div class="card-f"><span class="btn sm">Review in table</span><span class="btn sm">Open in context pane</span><span class="btn sm danger right">↶ Revert this run</span></div>
+        </div>
+
+        <div class="run mt8">
+          <div class="run-b">
+            <div class="act action"><span class="ai">✉</span><div>Drafted 23 emails in Mail from <span class="mono">sales@acme.example</span> <span class="det">· external_draft · auto</span></div></div>
+            <div class="act input"><span class="ai">?</span><div><b>Needs you:</b> sending is an external action. Step 3 is parked; I'm carrying on with step 4.</div></div>
+          </div>
+        </div>
+
+        <div class="card approval">
+          <div class="card-h"><span class="k">Approval · batched external send</span><b>Send 23 re-engage emails</b><span class="muted xs right">expires tomorrow 09:20</span></div>
+          <div class="card-b">
+            <dl class="kv">
+              <dt>What</dt><dd>23 emails from <span class="mono">sales@acme.example</span>, one per lead. First send to <b>19 new domains</b>; 4 go to domains you've already allowed.</dd>
+              <dt>Why</dt><dd>“Re-engage stale leads” · your request above · run <span class="ref">R-2291</span> step 3</dd>
+              <dt>Where from</dt><dd>DM · on behalf of <b>Rutger</b> · <span class="untrusted">3 leads came from the web form</span> so “always” can't auto-send for this run</dd>
+              <dt>Risk · cost</dt><dd><span class="pill warn">external_send · not reversible</span> <span class="muted">· est. €0.06 · Ada's budget €41.20 left</span></dd>
+              <dt>Who answers</dt><dd>You, Ada's manager (Team preset)</dd>
+            </dl>
+            <div class="card flat mt12">
+              <div class="list-row"><span class="check on"></span><b class="ell" style="width:150px">Orbit Coffee</b><span class="muted ell grow">lena@orbit-coffee.example · “Still thinking about the espresso bar fit-out?”</span><span class="pill">new domain</span></div>
+              <div class="list-row"><span class="check on"></span><b class="ell" style="width:150px">Northwind</b><span class="muted ell grow">mo@northwind.example · “Quick follow-up on the Q1 rollout”</span><span class="pill ok">always allowed</span></div>
+              <div class="list-row"><span class="check"></span><b class="ell" style="width:150px">Halden &amp; Co</b><span class="muted ell grow">pieter@halden.example · “Picking up where we left off”</span><span class="pill">new domain</span></div>
+              <div class="list-row"><span class="muted small">+20 more · per-item preview opens in the context pane</span></div>
+            </div>
+          </div>
+          <div class="card-f"><span class="btn primary sm">Approve 22 selected</span><span class="btn sm">Scope: once ▾</span><span class="btn sm ghost">Deny all…</span><span class="muted xs right"><u>Why did this need approval?</u></span></div>
+        </div>
+
+        <div class="run mt8">
+          <div class="run-b">
+            <div class="act action"><span class="ai">🖥</span><div>Opened <span class="mono">kestrel-labs.example/team</span> in the browser <span class="det">· computer · egress allowlisted</span></div></div>
+            <div class="act result"><span class="ai">✓</span><div>Kestrel Labs: new Head of Ops listed (Ines V.). Updated Contact in Leads <span class="det">· CS-882 · 1 cell</span></div></div>
+            <div class="act error"><span class="ai">!</span><div>bluefin-studio.example doesn't resolve (NXDOMAIN). Marked the lead “website down”; not retrying. <span class="det">· 2 of 6 checked</span></div></div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+  <div class="pane-foot" style="border-top:0;padding-top:0">
+    <div class="flex small mb8" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card-2)"><span class="state working">Ada is working</span><span class="muted">· step 4 of 5 · 1 step parked for you</span><span class="right flex gap4"><span class="btn sm">Redirect</span><span class="btn sm danger">Stop</span></span></div>
+    <div class="composer">
+      <div class="ph">Message Ada… use @ to mention, / for commands, # to reference a record</div>
+      <div class="bar"><span class="icon-btn">＋</span><span class="icon-btn">@</span><span class="icon-btn">#</span><span class="icon-btn">/</span><span class="xs muted">Never paste passwords here: Ada will send you a secure form.</span><span class="send">↑</span></div>
+    </div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="tabs" style="padding-top:8px"><span class="tab">Run</span><span class="tab on">🖥 Computer</span><span class="tab">▦ Leads</span><span class="tab">Details</span></div>
+  <div class="pane-sub"><span class="sdot" style="background:var(--success)"></span><b>Ada's computer</b><span class="muted xs">cloud · 2 vCPU · 4 GB · up 14 min</span><span class="right seg"><span class="on">Browser</span><span>Terminal</span><span>Files</span></span></div>
+  <div class="pane-body" style="padding:12px">
+    <div class="browser">
+      <div class="bar"><span class="lights"><i></i><i></i><i></i></span><span class="url">https://kestrel-labs.example/team</span></div>
+      <div style="height:250px;position:relative;padding:14px 16px;background:var(--background)">
+        <div class="strong" style="font-size:15px">Kestrel Labs · Team</div>
+        <div class="grid3 mt12" style="gap:8px">
+          <div class="thumb p12" style="font-size:11px"><div class="av md" style="background:#64748b">IV</div><div class="strong mt4">Ines V.</div><div class="muted">Head of Operations</div></div>
+          <div class="thumb p12" style="font-size:11px"><div class="av md" style="background:#475569">TK</div><div class="strong mt4">Tom K.</div><div class="muted">CEO</div></div>
+          <div class="thumb p12" style="font-size:11px"><div class="av md" style="background:#334155">RA</div><div class="strong mt4">Ravi A.</div><div class="muted">Engineering</div></div>
+        </div>
+        <div style="position:absolute;left:96px;top:96px;width:120px;height:74px;border:2px solid var(--ada);border-radius:6px"></div>
+        <div style="position:absolute;left:206px;top:160px;font-size:16px">➚</div>
+        <div class="presence" style="position:absolute;left:12px;bottom:10px"><span class="av agent ada">A</span>Ada · reading “Ines V.”</div>
+      </div>
+    </div>
+    <div class="flex mt8"><span class="pill">👁 Watching · view only</span><span class="muted xs">1 controller at a time</span><span class="right flex gap4"><span class="btn sm primary">Take over</span><span class="icon-btn b">⤢</span></span></div>
+
+    <div class="section-t mt16">Computer log</div>
+    <div class="term"><span class="d">09:24:02</span> <span class="b">browser.open</span> kestrel-labs.example/team
+<span class="d">09:24:05</span> <span class="b">browser.read</span> 3 profiles
+<span class="d">09:24:07</span> <span class="g">vfs.write</span> /spaces/sales/tables/leads/row/183 contact ✓ CS-882
+<span class="d">09:24:11</span> <span class="b">browser.open</span> bluefin-studio.example
+<span class="d">09:24:12</span> <span class="y">net.error</span> NXDOMAIN · not retried
+<span class="d">09:24:15</span> <span class="b">browser.open</span> halden.example/contact</div>
+
+    <div class="section-t mt16">Guards on this computer</div>
+    <dl class="kv small">
+      <dt>Egress</dt><dd>Allowlist · 12 domains + lead websites for this run</dd>
+      <dt>Company data</dt><dd>Only through the VFS mount, never a bypass</dd>
+      <dt>Secrets</dt><dd>Injected per call by the broker; none on disk</dd>
+      <dt>Ports</dt><dd>None open · opening one asks an admin</dd>
+    </dl>
+  </div>
+</aside>

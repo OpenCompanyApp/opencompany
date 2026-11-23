@@ -1,0 +1,146 @@
+<!--meta
+{"title": "Home", "area": "Messenger", "order": 10, "rail": "home", "layout": "three", "ctx_w": 340, "height": 1180,
+ "summary": "The attention page: daily brief, then Needs you, Results and FYI from the event log.",
+ "notes": [
+  ["k", "Home, not Inbox", "Needs you ranks first (approval, takeover, proposal), then results, then FYI. Every card is answerable in place. It replaces Dashboard, Activity and Workload.", "ui-structure §3 · messenger-ui “Home”"],
+  ["p", "Daily brief", "A scheduled read-only routine posts here at 08:00 and only if something is new. Quiet days produce nothing.", "connections-events-routines “Proactivity” · example-flows story 9"],
+  ["s", "FYI is the event log", "Each FYI line is a permission-checked event with its causality chain (trigger → routine → run). Untrusted payloads are labelled and rendered as text.", "messenger-ui Home · governance “Event log”"],
+  ["a", "Routing follows the preset", "Acme runs the Team preset. Finn's budget card went to Sanne, his manager, so Rutger only sees it as FYI.", "governance “Approval authority”, “Budgets”"]
+ ]}
+-->
+<main class="main">
+  <div class="pane-head">
+    <div class="title">◉ Home</div>
+    <span class="muted small">Monday 23 November</span>
+    <div class="acts">
+      <span class="seg"><span class="on">All</span><span>Needs you · 3</span><span>Results</span><span>FYI</span></span>
+      <span class="icon-btn b">⚙</span>
+    </div>
+  </div>
+  <div class="pane-body" style="padding:18px 28px 28px">
+    <div style="max-width:860px;margin:0 auto" class="col gap16">
+
+      <!-- daily brief -->
+      <div class="card">
+        <div class="card-h"><span class="av agent cleo">C</span><b>Morning brief</b><span class="muted">from Cleo · routine <span class="ref">morning-brief</span> · 08:00</span><span class="pill outline right">read-only · only if new</span></div>
+        <div class="card-b">
+          <div class="grid3">
+            <div class="kpi"><div class="l">Overdue invoices</div><div class="v">2 · €3,480</div><div class="d warn-t">Orbit Coffee 21 days, Halden &amp; Co 16 days</div></div>
+            <div class="kpi"><div class="l">Stale deals (no activity 14d)</div><div class="v">4</div><div class="d muted">€61,500 in Negotiation and Proposal</div></div>
+            <div class="kpi"><div class="l">Agent spend this month</div><div class="v">€148 <span class="muted small" style="font-weight:500">/ €400</span></div><div class="d ok-t">37% of workspace budget, day 23 of 30</div></div>
+          </div>
+          <ul class="mt12" style="margin:12px 0 0;padding-left:18px;line-height:1.7">
+            <li>Northwind signed. The onboarding routine has proposed a client Space and is <b>waiting for you</b> (below).</li>
+            <li>Ada will finish the Leads clean-up this morning. 23 re-engage drafts are ready to review.</li>
+            <li>The insurance renewal <span class="ref">OPS-142</span> is due Friday; the broker's quote arrived in Mail on Saturday.</li>
+          </ul>
+        </div>
+        <div class="card-f"><span class="btn sm">Open brief thread</span><span class="btn sm ghost">Ask Cleo about this</span><span class="muted xs right">Brief v3 · edit routine</span></div>
+      </div>
+
+      <!-- needs you -->
+      <div>
+        <div class="section-t" style="padding:0 2px"><span class="sdot" style="background:var(--warning)"></span>Needs you <span class="badge need">3</span><span class="r muted">Only things addressed to you; group chats never get these</span></div>
+        <div class="col gap12">
+
+          <div class="card approval">
+            <div class="card-h"><span class="k">Approval · external send</span><span class="muted">·</span><span class="av agent ada">A</span><b>Ada</b> wants to send 23 re-engage emails<span class="muted xs right">expires in 23 h</span></div>
+            <div class="card-b">
+              <dl class="kv">
+                <dt>What</dt><dd>Send 23 drafted emails from <span class="mono">sales@acme.example</span> to stale leads. First send to <b>19 new domains</b>. Drafts in Mail, unsent.</dd>
+                <dt>Why</dt><dd>“Re-engage leads with no activity for 30 days” · serves your request · run <span class="ref">R-2291</span></dd>
+                <dt>Where from</dt><dd>Your DM with Ada, 09:12 · on behalf of <b>Rutger</b> · <span class="untrusted">read 3 web-form leads</span></dd>
+                <dt>Risk · cost</dt><dd><span class="pill warn">external_send · not reversible</span> <span class="muted">est. €0.06 · Ada has €41.20 left this month</span></dd>
+              </dl>
+            </div>
+            <div class="card-f"><span class="btn primary sm">Review 23 →</span><span class="btn sm">Send all once</span><span class="btn sm ghost">Deny…</span><span class="muted xs right">You approve as Ada's manager · <u>why did this need approval?</u></span></div>
+          </div>
+
+          <div class="card takeover">
+            <div class="card-h"><span class="k">Takeover request</span><span class="muted">·</span><span class="av agent bram">B</span><b>Bram</b> needs you for a 2FA prompt<span class="muted xs right">waiting 4 min</span></div>
+            <div class="card-b flex gap12">
+              <div class="thumb" style="width:150px;height:86px;display:grid;place-items:center;font-size:11px" ><div style="text-align:center"><div class="strong">Verify it's you</div><div class="muted xs">6-digit code · timetrack.example</div></div></div>
+              <div class="col gap4" style="flex:1">
+                <div>Creating <b>Northwind</b> in the time-tracking tool (no API). The site asks for a code sent to the account owner's phone.</div>
+                <div class="muted small">Routine <span class="ref">populate-client-space</span> · Space Client · Northwind · Bram's computer, browser tab 2</div>
+                <div class="muted xs">What you type is never shown to Bram. When you hand back, he gets only “human completed sign-in”.</div>
+              </div>
+            </div>
+            <div class="card-f"><span class="btn primary sm">Take over</span><span class="btn sm">Watch first</span><span class="btn sm ghost">Not now</span></div>
+          </div>
+
+          <div class="card approval">
+            <div class="card-h"><span class="k">Proposal · structural</span><span class="muted">·</span><span class="ico sm">↻</span><b>onboard-won-deal</b> proposes a new Space<span class="muted xs right">2 h ago</span></div>
+            <div class="card-b">
+              <div class="flex top gap12">
+                <div class="col gap4" style="flex:1">
+                  <div><b>Client · Northwind</b> from template <span class="ref">agency-client</span>: Issues checklist (4), Docs (Project brief), Routines (intake, weekly status), Files folder on Drive.</div>
+                  <div class="muted small">Members: you, Sanne, Ada, Bram · trigger <span class="ref">crm.deal.updated</span> stage → Won by Sanne at 07:41</div>
+                </div>
+                <span class="pill">Creating a Space is always a proposal</span>
+              </div>
+            </div>
+            <div class="card-f"><span class="btn primary sm">Create Space</span><span class="btn sm">Edit first</span><span class="btn sm ghost">Decline</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- results -->
+      <div>
+        <div class="section-t" style="padding:0 2px"><span class="sdot" style="background:var(--success)"></span>Results<span class="r muted">Completed runs, routine outputs, handoffs</span></div>
+        <div class="card">
+          <div class="list-row"><span class="av agent cleo md">C</span><div class="grow"><b>October expenses reconciled</b> · 41 rows in <span class="ref">Expenses</span> (Operations) <div class="muted small">Auto-applied change set CS-874 · 41 cells · 2 receipts missing, flagged · €0.38</div></div><span class="state done">done</span><span class="btn sm ghost">Revert this run</span></div>
+          <div class="list-row"><span class="av agent bram md">B</span><div class="grow"><b>6 supplier invoices filed</b> to <span class="mono">/files/drive/Finance/2026-10/</span><div class="muted small">Vendor portal via Bram's browser · 6 rows in Expenses · takeover once for a CAPTCHA (Sanne)</div></div><span class="state done">done</span><span class="btn sm ghost">Open</span></div>
+          <div class="list-row"><span class="ico ada">◩</span><div class="grow"><b>Weekly pipeline</b> Page refreshed · v14<div class="muted small">Routine <span class="ref">pipeline-review</span> · forecast by stage, 4 stale deals · published to Sales</div></div><span class="pill ada">Page</span><span class="btn sm ghost">Preview</span></div>
+          <div class="list-row"><span class="ico xs strong">PR</span><div class="grow"><b>PR #482 · Fix flaky checkout test</b> returned by Copilot coding agent<div class="muted small">Delegated by Finn on <span class="ref">ENG-311</span> · CI green · merged PRs can't be reverted by OpenCompany</div></div><span class="pill info">outside agent</span><span class="btn sm ghost">Review PR</span></div>
+        </div>
+      </div>
+
+      <!-- fyi -->
+      <div>
+        <div class="section-t" style="padding:0 2px"><span class="sdot" style="background:var(--muted-foreground)"></span>FYI<span class="r"><span class="chip">All</span> <span class="chip">Runs</span> <span class="chip">Approvals</span> <span class="chip">Routines</span> <span class="chip">Connections</span></span></div>
+        <div class="card">
+          <div class="list-row"><span class="mono muted" style="width:42px">09:31</span><span class="ico sm">▤</span><div class="grow"><b>Drive</b> · <span class="mono">Contracts/Northwind_MSA_v3.pdf</span> changed → routine <span class="ref">contract-intake</span> → Cleo created <span class="ref">OPS-151</span> “Check renewal clause”<div class="muted xs">causality depth 2 · drive.file.changed → run R-2288</div></div></div>
+          <div class="list-row"><span class="mono muted" style="width:42px">09:20</span><span class="av agent ada">A</span><div class="grow">Ada edited 4 cells in <span class="ref">Leads</span> · auto-applied, reversible<div class="muted xs">change set CS-879 · on behalf of Rutger</div></div><span class="btn sm ghost">Revert</span></div>
+          <div class="list-row"><span class="mono muted" style="width:42px">08:57</span><span class="ico sm">▭</span><div class="grow">Form <b>Contact us</b> received 3 submissions → <span class="ref">website-lead-intake</span> (script, no AI) added 3 leads <span class="untrusted">untrusted</span></div></div>
+          <div class="list-row"><span class="mono muted" style="width:42px">08:40</span><span class="av sanne">S</span><div class="grow">Sanne accepted a learned exception: <b>“Ada may email @northwind.example”</b> (always)<div class="muted xs">offered after 3 approvals of the same pattern · governance event</div></div></div>
+          <div class="list-row"><span class="mono muted" style="width:42px">08:02</span><span class="av agent finn">F</span><div class="grow">Finn paused at his monthly budget (€60) · budget card sent to <b>Sanne</b>, his manager</div><span class="state paused">paused</span></div>
+          <div class="list-row"><span class="mono muted" style="width:42px">Sun</span><span class="ico sm">⇩</span><div class="grow">Nightly backup to <span class="mono">r2://acme-backups</span> succeeded · 1.8 GB · verified sample restore</div><span class="pill ok">ok</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title">Today</div><div class="acts"><span class="icon-btn">⇥</span></div></div>
+  <div class="pane-body">
+    <div class="section">
+      <div class="section-t">Agents now</div>
+      <div class="col gap12">
+        <div class="flex top"><span class="av agent ada md">A<i class="dot work"></i></span><div class="grow" style="flex:1;min-width:0"><div class="flex"><b>Ada</b><span class="state working">working</span></div><div class="muted small">Leads clean-up · step 4 of 5</div><div class="prog ada mt4"><i style="width:72%"></i></div></div></div>
+        <div class="flex top"><span class="av agent bram md">B<i class="dot needd"></i></span><div style="flex:1"><div class="flex"><b>Bram</b><span class="state needs">needs you</span></div><div class="muted small">2FA in time-tracking tool</div></div></div>
+        <div class="flex top"><span class="av agent cleo md">C<i class="dot on"></i></span><div style="flex:1"><div class="flex"><b>Cleo</b><span class="state done">idle</span></div><div class="muted small">Next: invoice reminders at 14:00</div></div></div>
+        <div class="flex top"><span class="av agent finn md">F<i class="dot off"></i></span><div style="flex:1"><div class="flex"><b>Finn</b><span class="state paused">paused</span></div><div class="muted small">Budget limit · Sanne decides</div></div></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-t">Yours, due soon</div>
+      <div class="col gap4">
+        <div class="flex"><span class="ico sm warn">◇</span><span class="ell">OPS-142 Renew insurance</span><span class="right muted xs">Fri</span></div>
+        <div class="flex"><span class="ico sm">◇</span><span class="ell">SAL-88 Northwind kickoff deck</span><span class="right muted xs">Wed</span></div>
+        <div class="flex"><span class="ico sm">≡</span><span class="ell">Pricing policy · review date passed</span><span class="right warn-t xs">stale</span></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-t">Make<span class="r muted">outputs from your agents</span></div>
+      <div class="col gap8">
+        <div class="flex"><span class="ico sm ada">◩</span><div class="grow ell" style="flex:1">Weekly pipeline<div class="muted xs">Page · Sales · v14</div></div></div>
+        <div class="flex"><span class="ico sm xs strong">PDF</span><div class="grow ell" style="flex:1">Q4 board update.pdf<div class="muted xs">Typst export · Files</div></div></div>
+        <div class="flex"><span class="ico sm ada">▭</span><div class="grow ell" style="flex:1">Client intake<div class="muted xs">Form on Clients table · signed link</div></div></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="callout"><span>ⓘ</span><span>Notifications: desktop first, phone after 5 min if unanswered. Quiet hours 20:00–08:00 except two-approver requests.</span></div>
+    </div>
+  </div>
+</aside>

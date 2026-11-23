@@ -1,0 +1,151 @@
+<!--meta
+{"title": "Artifacts · Page", "area": "Spaces · Artifacts", "order": 150, "rail": "sales:artifacts", "layout": "three", "ctx_w": 320,
+ "summary": "The Space Artifacts tool with the live “Weekly pipeline” Page: blocks, bindings, versions and the publishing ladder.",
+ "notes": [
+  ["p", "Pages are blocks, not code", "KPIs, a Vega-Lite chart, a live table view, a Mermaid diagram and text. A Page binds to Tables through named bindings and owns no storage.", "artifacts-and-forms “Kinds”, “Built-in block and renderer types”"],
+  ["a", "Versions at a stable URL", "Each saved version is immutable; v14 is what the routine refreshed this morning. The URL never changes when Ada edits the draft.", "artifacts-and-forms “Storage, versions and lifecycle” · messenger-ui “Artifacts in the messenger”"],
+  ["k", "Publishing ladder", "Draft → Space → workspace auto-apply in Team. Signed link asks an admin (exposure_widening). Public stays greyed until an admin enables public publishing.", "artifacts-and-forms “Publishing and governance”"],
+  ["q", "Open: stale threshold", "The Artifacts list marks a Page stale after 30 days without a view. The docs name a stale sweep but no default threshold.", "artifacts-and-forms (silent on the default)"]
+ ]}
+-->
+<style>
+.ap-list{width:232px;flex:none;border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+.ap-item{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12.5px}
+.ap-item.sel{background:var(--secondary)}
+.ap-item .t{font-weight:600}
+.ap-page{flex:1;min-width:0;display:flex;flex-direction:column}
+.ap-block{position:relative}
+.ap-block .lbl{position:absolute;top:-9px;right:10px;font-size:10px;background:var(--background);padding:0 5px;color:var(--subtle-foreground);font-family:var(--font-mono)}
+.ap-mm{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px}
+.ap-mm .n{border:1px solid var(--border-strong);border-radius:6px;padding:4px 8px;background:var(--card)}
+.ap-mm .n.a{border-color:var(--ada-border);background:var(--ada-soft)}
+.ap-ladder{display:flex;flex-direction:column;gap:0}
+.ap-rung{display:flex;gap:10px;align-items:flex-start;padding:7px 0;position:relative;font-size:12.5px}
+.ap-rung .b{width:14px;height:14px;border-radius:50%;border:2px solid var(--border-strong);background:var(--card);flex:none;margin-top:2px;z-index:1}
+.ap-rung.done .b{background:var(--success);border-color:var(--success)}
+.ap-rung.cur .b{background:var(--primary);border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.ap-rung.off{opacity:.5}
+.ap-ladder .ap-rung:not(:last-child)::after{content:"";position:absolute;left:6px;top:20px;bottom:-8px;width:2px;background:var(--border)}
+</style>
+<main class="main">
+  <div class="pane-head">
+    <div class="crumbs">Sales <span>›</span> <b>◩ Artifacts</b></div>
+    <div class="acts"><span class="seg"><span class="on">All 5</span><span>Pages</span><span>Interactive</span><span>Forms</span></span><span class="btn sm primary">＋ New</span></div>
+  </div>
+  <div style="display:flex;flex:1;min-height:0">
+    <div class="ap-list">
+      <div class="pane-sub"><div class="input ph" style="flex:1">⌕ Filter artifacts</div></div>
+      <div class="ap-item sel"><span class="ico ada">◩</span><div style="flex:1;min-width:0"><div class="t">Weekly pipeline</div><div class="muted xs">Page · Rutger + Ada · v14</div><div class="flex wrap mt4 gap4"><span class="pill info">Space</span><span class="muted xs">viewed 12 min ago</span></div></div></div>
+      <div class="ap-item"><span class="ico ada">◩</span><div style="flex:1;min-width:0"><div class="t">Quote calculator</div><div class="muted xs">Interactive · Sanne + Ada · draft v3</div><div class="flex wrap mt4 gap4"><span class="pill">Draft</span><span class="pill warn">signed link pending</span></div></div></div>
+      <div class="ap-item"><span class="ico">▭</span><div style="flex:1;min-width:0"><div class="t">Contact us</div><div class="muted xs">Form on Leads · Sanne</div><div class="flex wrap mt4 gap4"><span class="pill bad">Public</span><span class="muted xs">38 submissions this week</span></div></div></div>
+      <div class="ap-item"><span class="ico">▭</span><div style="flex:1;min-width:0"><div class="t">Client intake</div><div class="muted xs">Form on Clients · Rutger</div><div class="flex wrap mt4 gap4"><span class="pill warn">Signed link</span><span class="muted xs">expires 7 Dec</span></div></div></div>
+      <div class="ap-item"><span class="ico">◩</span><div style="flex:1;min-width:0"><div class="t">Q3 win/loss review</div><div class="muted xs">Page · Sanne · snapshot v2</div><div class="flex wrap mt4 gap4"><span class="pill">Workspace</span><span class="pill warn">stale · 41 d unviewed</span></div></div></div>
+      <div class="p12 muted xs">Artifacts bind to Tables; they never own storage. A form's submissions are Leads rows.</div>
+    </div>
+    <div class="ap-page">
+      <div class="pane-sub"><b>Weekly pipeline</b><span class="pill ada">Page</span><span class="right flex gap4"><span class="seg"><span class="on">Live</span><span>Snapshot</span></span><span class="btn sm">⇩ PDF</span><span class="btn sm">Edit with Ada</span></span></div>
+      <div class="pane-body pad">
+        <div style="max-width:820px;margin:0 auto" class="col gap16">
+          <div><div class="h1">Pipeline, week 48</div><div class="muted small">Refreshed by routine <span class="ref">pipeline-review</span> · Mon 23 Nov 08:00 · owner Rutger · authored by Ada · <span class="mono">acme.example/a/weekly-pipeline/v14</span></div></div>
+          <div class="ap-block">
+            <div class="grid4">
+              <div class="kpi"><div class="l">Open pipeline</div><div class="v">€383k</div><div class="d ok-t">+€38k vs last week</div></div>
+              <div class="kpi"><div class="l">Weighted forecast</div><div class="v">€171k</div><div class="d muted">Q4 target €220k</div></div>
+              <div class="kpi"><div class="l">Won this month</div><div class="v">€96k</div><div class="d ok-t">Northwind €64k</div></div>
+              <div class="kpi"><div class="l">Stale deals</div><div class="v">4</div><div class="d warn-t">no activity 14 days</div></div>
+            </div>
+          </div>
+          <div class="ap-block card">
+            <div class="card-h"><b>Pipeline by stage</b><span class="muted xs">binding PIPELINE · €k</span></div>
+            <div class="card-b">
+              <svg viewBox="0 0 760 190" width="100%" height="190" role="img" aria-label="bar chart">
+                <g font-size="11" fill="var(--muted-foreground)">
+                  <line x1="60" y1="160" x2="750" y2="160" stroke="var(--border)"/>
+                  <line x1="60" y1="110" x2="750" y2="110" stroke="var(--border)" stroke-dasharray="3 3"/>
+                  <line x1="60" y1="60" x2="750" y2="60" stroke="var(--border)" stroke-dasharray="3 3"/>
+                  <line x1="60" y1="10" x2="750" y2="10" stroke="var(--border)" stroke-dasharray="3 3"/>
+                  <text x="50" y="164" text-anchor="end">0</text><text x="50" y="114" text-anchor="end">50</text><text x="50" y="64" text-anchor="end">100</text><text x="50" y="14" text-anchor="end">150</text>
+                </g>
+                <g>
+                  <rect x="90" y="50" width="70" height="110" rx="3" fill="var(--chart-1)"/><rect x="225" y="32" width="70" height="128" rx="3" fill="var(--chart-1)"/>
+                  <rect x="360" y="70" width="70" height="90" rx="3" fill="var(--chart-1)"/><rect x="495" y="105" width="70" height="55" rx="3" fill="var(--chart-1)"/>
+                  <rect x="630" y="64" width="70" height="96" rx="3" fill="var(--chart-2)"/>
+                </g>
+                <g font-size="11" fill="var(--foreground)" text-anchor="middle">
+                  <text x="125" y="44">€110k</text><text x="260" y="26">€128k</text><text x="395" y="64">€90k</text><text x="530" y="99">€55k</text><text x="665" y="58">€96k</text>
+                </g>
+                <g font-size="11" fill="var(--muted-foreground)" text-anchor="middle">
+                  <text x="125" y="178">Lead</text><text x="260" y="178">Qualified</text><text x="395" y="178">Proposal</text><text x="530" y="178">Negotiation</text><text x="665" y="178">Won (Nov)</text>
+                </g>
+              </svg>
+            </div>
+          </div>
+          <div class="ap-block card">
+            <div class="card-h"><b>Deals with no activity for 14 days</b><span class="muted xs right">live · respects each viewer's access</span></div>
+            <table class="dgrid">
+              <tr><th>Deal</th><th>Stage</th><th class="num">Value</th><th>Last activity</th></tr>
+              <tr><td>Orbit Coffee · espresso bar</td><td><span class="pill">Negotiation</span></td><td class="num">€18,500</td><td class="warn-t">19 days</td></tr>
+              <tr><td>Halden &amp; Co · retainer</td><td><span class="pill">Proposal</span></td><td class="num">€24,000</td><td class="warn-t">16 days</td></tr>
+              <tr><td>Pinecrest · site audit</td><td><span class="pill">Proposal</span></td><td class="num">€7,000</td><td class="warn-t">15 days</td></tr>
+              <tr><td>Fjord Freight · tracking portal</td><td><span class="pill">Negotiation</span></td><td class="num">€12,000</td><td class="warn-t">14 days</td></tr>
+            </table>
+          </div>
+          <div class="grid2">
+            <div class="ap-block card">
+              <div class="card-h"><b>How this page refreshes</b></div>
+              <div class="card-b"><div class="ap-mm"><span class="n">⏱ Mon 08:00</span>→<span class="n">↻ pipeline-review</span>→<span class="n a">Ada summarises</span>→<span class="n">◩ v14</span>→<span class="n">DM owners</span></div></div>
+            </div>
+            <div class="ap-block card">
+              <div class="card-h"><b>Ada's read</b></div>
+              <div class="card-b small">Northwind closes the month above plan. Two Proposal deals (Halden, Pinecrest) have gone quiet since the price change; I've drafted check-ins for their owners. Forecast is 78% of the Q4 target.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="tabs" style="padding-top:8px"><span class="tab on">Details</span><span class="tab">Versions · 14</span><span class="tab">Ask Ada</span></div>
+  <div class="pane-body">
+    <div class="section">
+      <div class="section-t">Publishing</div>
+      <div class="ap-ladder">
+        <div class="ap-rung done"><span class="b"></span><div><b>Draft</b><div class="muted xs">Owner and authoring agent</div></div></div>
+        <div class="ap-rung cur"><span class="b"></span><div><b>Space · Sales</b> <span class="pill ok">current</span><div class="muted xs">4 members · auto-applied in Team</div></div></div>
+        <div class="ap-rung"><span class="b"></span><div><b>Workspace</b><div class="muted xs">All 3 members of Acme · no approval</div></div></div>
+        <div class="ap-rung"><span class="b"></span><div><b>Signed link</b> <span class="pill warn">asks an admin</span><div class="muted xs">exposure_widening · password and expiry optional</div></div></div>
+        <div class="ap-rung off"><span class="b"></span><div><b>Public</b><div class="muted xs">Off for this workspace · an admin enables it in Admin → Published surfaces</div></div></div>
+      </div>
+      <div class="flex wrap mt8"><span class="btn sm primary">Publish to workspace</span><span class="btn sm">Signed link…</span></div>
+    </div>
+    <div class="section">
+      <div class="section-t">Bindings<span class="r muted">ceiling, not a grant</span></div>
+      <div class="col gap4 small">
+        <div class="flex"><span class="mono">PIPELINE</span><span class="muted">→ CRM · Deals</span><span class="pill right">read</span></div>
+        <div class="flex"><span class="mono">STALE</span><span class="muted">→ Deals view “No activity 14d”</span><span class="pill right">read</span></div>
+        <div class="flex"><span class="mono">TARGETS</span><span class="muted">→ Table · Sales targets</span><span class="pill right">read</span></div>
+      </div>
+      <div class="callout mt8 xs">A viewer sees bindings ∩ their own access. Jonas isn't in Sales, so the Deals view renders as “inaccessible” for him.</div>
+    </div>
+    <div class="section">
+      <div class="section-t">Lifecycle</div>
+      <dl class="kv small">
+        <dt>Owner</dt><dd>Rutger (sponsor) · Ada (author)</dd>
+        <dt>Refresh</dt><dd>Live; snapshot Mon 08:00 by routine</dd>
+        <dt>Last viewed</dt><dd>12 min ago · 9 views this week</dd>
+        <dt>Stale sweep</dt><dd>Flags after 30 days unviewed</dd>
+        <dt>VFS</dt><dd class="mono xs" style="word-break:break-all">/artifacts/sales/weekly-pipeline/</dd>
+        <dt>Export</dt><dd>Bundle ZIP · PDF (Typst)</dd>
+      </dl>
+    </div>
+    <div class="section">
+      <div class="section-t">Recent versions</div>
+      <div class="col gap4 small">
+        <div class="flex"><span class="mono">v14</span><span class="muted">routine · today 08:00</span><span class="pill ok right">live</span></div>
+        <div class="flex"><span class="mono">v13</span><span class="muted">Ada · added stale table · Fri</span></div>
+        <div class="flex"><span class="mono">v12</span><span class="muted">routine · Mon 16 Nov</span></div>
+      </div>
+    </div>
+  </div>
+</aside>

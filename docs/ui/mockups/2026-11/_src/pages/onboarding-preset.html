@@ -1,0 +1,92 @@
+<!--meta
+{"title": "Onboarding · 2 Preset", "area": "Onboarding", "order": 601, "layout": "solo", "min_height": 900,
+ "summary": "Choose Personal, Team or Company: defaults only, switch any time, never paywalled.",
+ "notes": [
+  ["k", "One engine, three presets", "Presets only set defaults: who approves, whether the Governance area appears, which roles exist. Switching keeps every explicit grant.", "PRODUCT_DIRECTION pillar 5 · governance “Presets”"],
+  ["s", "Security is never paywalled", "The always-on invariants are listed under every card because they are identical in all three presets, including self-hosted.", "governance “Always-on invariants”"],
+  ["p", "UI follows the preset", "Personal hides role and policy screens (not policy itself). Team and Company add Admin → Governance.", "messenger-ui “UI follows the preset”"],
+  ["q", "Open: recommending a preset", "The docs don't say whether onboarding pre-selects a preset. This mockup recommends Team when people were invited in step 1, Personal otherwise.", ""]
+ ]}
+-->
+<style>
+.onb{display:flex;flex-direction:column;align-items:center;padding:28px 0 40px;background:var(--background);min-height:100%}
+.onb .stepper{display:flex;align-items:center;gap:10px;margin-bottom:24px;font-size:12.5px}
+.onb .step{display:flex;align-items:center;gap:8px;color:var(--muted-foreground)}
+.onb .step .n{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border-strong);display:grid;place-items:center;font-size:11px;font-weight:700}
+.onb .step.on{color:var(--foreground);font-weight:650}
+.onb .step.on .n{background:var(--primary);border-color:var(--primary);color:#fff}
+.onb .step.done .n{background:var(--success);border-color:var(--success);color:#fff}
+.onb .line{width:56px;height:1px;background:var(--border-strong)}
+.onb .presets{display:grid;grid-template-columns:repeat(3,320px);gap:16px}
+.onb .preset{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.onb .preset.on{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.onb .preset ul{margin:0;padding-left:16px;line-height:1.65;font-size:12.5px}
+.onb .inv{width:992px;margin-top:18px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+.onb .inv .grid4 div{font-size:12px;display:flex;gap:6px;align-items:flex-start}
+</style>
+<main class="main">
+  <div class="onb">
+    <div class="stepper">
+      <div class="step done"><span class="n">✓</span>Workspace</div><span class="line"></span>
+      <div class="step on"><span class="n">2</span>Preset</div><span class="line"></span>
+      <div class="step"><span class="n">3</span>First agent</div><span class="line"></span>
+      <div class="step"><span class="n">4</span>Connect <span class="pill">optional</span></div>
+    </div>
+    <div class="h1">How should Acme be governed?</div>
+    <div class="muted mt4 mb16">Presets set defaults only. You can switch any time, every setting stays tunable, and all three are free and included in the self-hosted product.</div>
+
+    <div class="presets">
+      <div class="preset">
+        <div class="flex"><span class="ico lg">◔</span><div><div class="h2">Personal</div><div class="muted small">Just you and your agents</div></div><span class="radio right"></span></div>
+        <ul>
+          <li>You are the only approver</li>
+          <li>Approval cards in the agent's DM, on Home and Telegram</li>
+          <li>Per-agent “always allow” list and autonomy slider</li>
+          <li>No role or policy screens</li>
+          <li>Deletes go to a 30-day trash automatically</li>
+        </ul>
+        <div class="muted xs mt4">Like a personal agent app, with the same safety floor.</div>
+      </div>
+
+      <div class="preset on">
+        <div class="flex"><span class="ico lg info">◑</span><div><div class="h2">Team <span class="pill info" style="vertical-align:3px">Recommended</span></div><div class="muted small">About 2–50 people</div></div><span class="radio on right"></span></div>
+        <ul>
+          <li>Owner, Admin and Member roles; Spaces carry access</li>
+          <li>Each agent's <b>manager</b> is its default approver</li>
+          <li>Personal or shared connections; a budget per agent</li>
+          <li>Bulk edits over ~50 rows and schema changes become proposals</li>
+          <li>Adds <b>Admin → Governance</b>: policies, exceptions, approvers, budgets, audit</li>
+        </ul>
+        <div class="muted xs mt4">Recommended because you invited 2 people.</div>
+      </div>
+
+      <div class="preset">
+        <div class="flex"><span class="ico lg">●</span><div><div class="h2">Company</div><div class="muted small">Larger or regulated teams</div></div><span class="radio right"></span></div>
+        <ul>
+          <li>Approver policies per Space and action class</li>
+          <li><b>Two approvers</b> for purge, spend above a threshold and exposure</li>
+          <li>Admin-approved connection and MCP allowlists</li>
+          <li>Computer-attach policy and skill approval</li>
+          <li>Audit export and retention settings</li>
+        </ul>
+        <div class="muted xs mt4">Routine-started external sends only reach allowlisted targets.</div>
+      </div>
+    </div>
+
+    <div class="inv">
+      <div class="section-t">Included in every preset · can never be switched off</div>
+      <div class="grid4">
+        <div><span class="ok-t">✓</span>Encrypted vault; secrets never reach the model, logs or computer disks</div>
+        <div><span class="ok-t">✓</span>Hard-deny floor: no money transfers, password or 2FA changes, credential export</div>
+        <div><span class="ok-t">✓</span>An agent never approves anything, and never changes its own grants or budget</div>
+        <div><span class="ok-t">✓</span>Agents never exceed the human they act for (on-behalf-of)</div>
+        <div><span class="ok-t">✓</span>Untrusted content is labelled; a trigger is never consent</div>
+        <div><span class="ok-t">✓</span>Event and audit log always on</div>
+        <div><span class="ok-t">✓</span>Pinned MCP tool definitions and an egress allowlist on computers</div>
+        <div><span class="ok-t">✓</span>No phone-home on self-hosted installs</div>
+      </div>
+    </div>
+
+    <div class="flex mt16" style="width:992px"><span class="btn ghost">← Back</span><span class="muted small right">Change later in Admin → Governance</span><span class="btn primary">Use Team →</span></div>
+  </div>
+</main>

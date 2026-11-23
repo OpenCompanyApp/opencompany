@@ -1,0 +1,127 @@
+<!--meta
+{"title": "Admin · Skills & plugins", "area": "Admin", "order": 405, "rail": "admin", "layout": "three", "ctx_w": 360, "notes_cols": 5,
+ "summary": "SKILL.md skills and plugin imports with provenance, digest-bound approval, pinned versions and a re-approval diff.",
+ "notes": [
+  ["p", "SKILL.md under /skills", "Skills are SKILL.md bundles in the /skills VFS mount with progressive disclosure: agents see the catalog line and load the body only when they use the skill. Scripts run only in mruby or on the agent's computer.", "connections-events-routines §1 “Skills and plugins”"],
+  ["k", "Approval is bound to the digest", "Every version is approved by its content digest. A changed digest is disabled until re-approved, exactly like a changed MCP tool definition. In Team the owner or an admin approves; “always” is never offered.", "governance “MCP, API manifests, skills and plugins” · acceptance 13"],
+  ["a", "Skills never grant anything", "A skill adds instructions and scripts. It cannot grant tools, budgets, computers or egress; it runs inside the agent's existing grants and the on-behalf-of human's access.", "governance “MCP, API manifests, skills and plugins”"],
+  ["s", "Plugin import keeps two parts", "Agent Plugins 1.0 and .claude-plugin bundles import their skills and MCP config only. Hooks, commands, bin/ and monitors are dropped and listed. userConfig secrets go to the vault. No automatic install from public registries.", "PRODUCT_DIRECTION pillar 9 Tier 2 · connections §1"],
+  ["q", "Open: where skills live", "No rail slot exists for skills. Shown: the catalog in Admin, per-agent grants on the profile, and <span class=\"mono\">$</span> invocation in chat. Also open: per-Space skills versus workspace-wide only.", "not specified"]
+ ]}
+-->
+<main class="main">
+<style>
+.adm{display:flex;flex:1;min-height:0}
+.adm-nav{width:184px;flex:none;border-right:1px solid var(--border);padding:14px 8px;background:var(--card-2);display:flex;flex-direction:column;gap:1px}
+.adm-nav .adm-h{font-weight:700;font-size:14px;padding:2px 8px}
+.adm-nav .adm-s{font-size:11px;color:var(--muted-foreground);padding:0 8px 10px}
+.adm-nav .adm-i{white-space:nowrap;display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;font-size:12.5px;color:var(--muted-foreground)}
+.adm-nav .adm-i.on{background:var(--secondary);color:var(--foreground);font-weight:600}
+.adm-nav .adm-i .ic{width:16px;text-align:center;flex:none}
+.adm-nav .adm-g{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--subtle-foreground);padding:12px 8px 3px}
+.adm-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.sk-t{table-layout:fixed}.sk-t td{white-space:normal!important;overflow-wrap:anywhere}.sk-t .ref{white-space:normal}
+.sk-tree{font-family:var(--font-mono);font-size:11.5px;line-height:1.7}
+.sk-tree .d{color:var(--subtle-foreground)}
+</style>
+<div class="adm">
+  <nav class="adm-nav">
+    <div class="adm-h">Admin</div><div class="adm-s">Acme · Team preset · self-hosted</div>
+    <div class="adm-g">Workspace</div>
+    <a class="adm-i"><span class="ic">⌁</span>Connections</a>
+    <a class="adm-i on"><span class="ic">$</span>Skills &amp; plugins</a>
+    <a class="adm-i"><span class="ic">⚖</span>Governance</a>
+    <a class="adm-i"><span class="ic">☰</span>Audit</a>
+    <a class="adm-i"><span class="ic">◍</span>Members &amp; roles</a>
+    <a class="adm-i"><span class="ic">▣</span>Hosts</a>
+    <a class="adm-i"><span class="ic">€</span>Budgets</a>
+    <a class="adm-i"><span class="ic">◩</span>Published surfaces</a>
+    <a class="adm-i"><span class="ic">⇩</span>Export &amp; backups</a>
+    <a class="adm-i"><span class="ic">⚙</span>Workspace</a>
+  </nav>
+  <div class="adm-main">
+    <div class="pane-head"><div class="title">Skills &amp; plugins</div><span class="muted small">9 skills · 1 plugin · 2 need review</span>
+      <div class="acts"><span class="btn sm">New skill in chat</span><span class="btn primary sm">⇪ Import plugin or SKILL.md</span></div></div>
+    <div class="pane-sub"><span class="seg"><span class="on">All</span><span>Published</span><span>Drafts</span><span>Needs review · 2</span><span>Deprecated</span></span><span class="right chip">Provenance: any</span></div>
+    <div class="pane-body pad">
+
+      <div class="col gap8 mb16">
+        <div class="callout warn"><span>⚠</span><span style="flex:1;min-width:0"><b>support-macros changed.</b> The <span class="mono">acme-support-kit</span> plugin source has a new version (1.3.0). Its digest no longer matches, so v1.2 stays in use and v1.3 is disabled until an admin reviews the diff.</span><span class="btn sm">Review diff →</span></div>
+        <div class="callout ada"><span class="av agent ada">A</span><span style="flex:1;min-width:0"><b>Ada wrote a skill: lead-dedupe.</b> Drafted from run R-2240 last week. It is a draft that only Ada can preview; publishing it is your call.</span><span class="btn sm">Review draft</span></div>
+      </div>
+
+      <div class="card mb16">
+        <table class="list sk-t">
+          <colgroup><col style="width:37%"><col style="width:22%"><col style="width:17%"><col style="width:24%"></colgroup>
+          <tr><th>Skill</th><th>Source</th><th>Version · digest</th><th>Used by</th></tr>
+          <tr><td><b class="mono">weekly-pipeline-review</b> <span class="pill ok">published</span><div class="muted xs">Forecast by stage and stale deals, in the Acme format</div></td><td class="nowrap small"><span class="av sanne">S</span> Sanne</td><td class="mono small nowrap">v4 · 7c21…e9</td><td><span class="av agent ada">A</span> <span class="ref">pipeline-review</span> <span class="muted xs">pins v4</span></td></tr>
+          <tr><td><b class="mono">proposal-writer</b> <span class="pill ok">published</span><div class="muted xs">Proposal outline, price table and terms · mruby price_table.rb</div></td><td class="small"><span class="pill outline">plugin</span><div class="muted xs mono">agency-sales-kit</div></td><td class="mono small nowrap">v3 · a91c…04</td><td><span class="av agent ada">A</span></td></tr>
+          <tr><td><b class="mono">brand-voice</b> <span class="pill ok">published</span><div class="muted xs">Tone and wording rules · referenced by proposal-writer</div></td><td class="nowrap small"><span class="av rutger">R</span> Rutger</td><td class="mono small nowrap">v5 · 0d3e…b2</td><td><span class="stack-av"><span class="av agent ada">A</span><span class="av agent cleo">C</span></span></td></tr>
+          <tr><td><b class="mono">contract-review</b> <span class="pill ok">published</span><div class="muted xs">Renewal clauses, notice periods, auto-renew traps</div></td><td class="nowrap small"><span class="av rutger">R</span> Rutger</td><td class="mono small nowrap">v2 · 55aa…71</td><td><span class="av agent cleo">C</span> <span class="ref">contract-intake</span> <span class="muted xs">pins v2</span></td></tr>
+          <tr><td><b class="mono">invoice-chasing</b> <span class="pill ok">published</span><div class="muted xs">Reminder cadence and wording per overdue band</div></td><td class="nowrap small"><span class="av rutger">R</span> Rutger</td><td class="mono small nowrap">v2 · 9e10…3c</td><td><span class="av agent cleo">C</span> <span class="ref">invoice-reminders</span></td></tr>
+          <tr style="background:var(--warning-soft)"><td><b class="mono">support-macros</b> <span class="pill warn">new digest</span><div class="muted xs">Canned answers for the top 20 how-to questions</div></td><td class="small"><span class="pill outline">plugin</span><div class="muted xs mono">acme-support-kit</div></td><td class="mono small nowrap">v1.2 · 3b8f…d0<div class="warn-t">→ v1.3 · e402…19</div></td><td><span class="av agent finn">F</span></td></tr>
+          <tr style="background:var(--ada-soft)"><td><b class="mono">lead-dedupe</b> <span class="pill ada">awaits you</span><div class="muted xs">Find and merge duplicate leads · mruby dedupe.rb</div></td><td class="nowrap small"><span class="av agent ada">A</span> Ada · R-2240</td><td class="mono small nowrap">draft · 61f0…aa</td><td><span class="muted small">preview only</span></td></tr>
+          <tr><td><b class="mono">create-skill</b> <span class="pill ok">published</span><div class="muted xs">Turns a good run into a SKILL.md draft</div></td><td class="nowrap small"><span class="pill">built-in</span></td><td class="mono small nowrap">v1 · release</td><td><span class="muted small">all agents</span></td></tr>
+          <tr><td><b class="mono">quote-format-2025</b> <span class="pill">deprecated</span><div class="muted xs">Replaced by proposal-writer</div></td><td class="nowrap small"><span class="av sanne">S</span> Sanne</td><td class="mono small nowrap">v6 · 12bc…0f</td><td><span class="muted small">none since 2 Oct</span></td></tr>
+        </table>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-h"><b>Last import</b><span class="mono muted xs">agency-sales-kit 2.1.0</span><span class="pill ok right">imported</span></div>
+          <div class="card-b col gap8 small">
+            <div class="flex"><span class="check on"></span><span>2 skills: <span class="mono">proposal-writer</span>, <span class="mono">discovery-call</span> (left as draft)</span></div>
+            <div class="flex"><span class="check on"></span><span>1 MCP server config → added as a <b>pending connection</b>, an exposure action for an admin</span></div>
+            <div class="flex"><span class="check on"></span><span><span class="mono">userConfig.api_key</span> → asked through a secure form, stored in the vault</span></div>
+            <div class="flex top"><span class="check"></span><span class="muted">Dropped: 3 hooks, 2 commands, <span class="mono">bin/</span>, 1 monitor. Plugins can't bring code that runs outside a skill.</span></div>
+            <div class="flex"><span class="pill ok">scan clean</span><span class="muted xs">source: git.acme.example/sales/agency-sales-kit · no public registry</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><b>Rules on this workspace</b><span class="pill outline right">Team preset</span></div>
+          <div class="card-b"><dl class="kv small">
+            <dt>Who approves</dt><dd>Owner or an admin, on import and for every new version</dd>
+            <dt>Agent drafts</dt><dd>Any agent may draft with <span class="mono">create-skill</span>; drafts stay private to that agent until published</dd>
+            <dt>Scripts</dt><dd>mruby, or the agent's computer if it has one; never the web process</dd>
+            <dt>Pinning</dt><dd>Routines pin a version; chat uses the latest published, logged with its digest</dd>
+            <dt>Company adds</dt><dd>Skill approval as a separate admin control and an allowlist of import sources</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title"><span class="mono">support-macros</span></div><span class="pill warn">v1.3 disabled</span><div class="acts"><span class="icon-btn">✕</span></div></div>
+  <div class="tabs"><span class="tab on">Diff v1.2 → v1.3</span><span class="tab">Files</span><span class="tab">Usage</span><span class="tab">Versions</span></div>
+  <div class="pane-body" style="padding:12px 14px">
+    <dl class="kv small mb12">
+      <dt>Source</dt><dd>Plugin <span class="mono">acme-support-kit</span> · git.acme.example</dd>
+      <dt>Old digest</dt><dd class="mono">sha256:3b8f…d0 (approved by Sanne, 2 Oct)</dd>
+      <dt>New digest</dt><dd class="mono">sha256:e402…19</dd>
+      <dt>Used by</dt><dd>Finn, in chat and in his support routines (pinned to v1.2, which keeps working)</dd>
+    </dl>
+    <div class="section-t">SKILL.md</div>
+    <div class="card flat mb12" style="padding:4px 0">
+      <div class="diff-line">---</div>
+      <div class="diff-line">name: support-macros</div>
+      <div class="diff-line del">-description: Canned answers for the top 20 how-to questions</div>
+      <div class="diff-line add">+description: Canned answers for the top 25 how-to questions,</div>
+      <div class="diff-line add">+  and refund wording for annual plans</div>
+      <div class="diff-line">---</div>
+      <div class="diff-line add">+## Refunds</div>
+      <div class="diff-line add">+Offer a prorated refund when the customer asks within 30 days.</div>
+      <div class="diff-line add">+Always include the refund link from macros/refund.md.</div>
+    </div>
+    <div class="section-t">Files</div>
+    <div class="sk-tree mb12"><span class="d">/skills/support-macros/</span><br>&nbsp;&nbsp;SKILL.md <span class="warn-t">changed</span><br>&nbsp;&nbsp;macros/<br>&nbsp;&nbsp;&nbsp;&nbsp;refund.md <span class="ok-t">new</span><br>&nbsp;&nbsp;&nbsp;&nbsp;login-help.md<br>&nbsp;&nbsp;&nbsp;&nbsp;… 22 more unchanged</div>
+    <div class="callout warn mb12"><span>!</span><span>The new text tells Finn to <b>offer refunds</b>. That stays a draft answer: sending it is still an external send, and any refund is spend that asks Sanne.</span></div>
+    <div class="callout mb12"><span>ⓘ</span><span>Scan: no scripts, no links outside <span class="mono">acme.example</span>, no instructions to change grants. Skills can't grant tools, budgets, computers or egress.</span></div>
+    <div class="card approval">
+      <div class="card-h"><span class="k">Skill digest approval</span><span class="muted xs right">you can approve · admin</span></div>
+      <div class="card-b small">Approving publishes v1.3 for Finn. The routine stays pinned to v1.2 until its owner moves the pin.</div>
+      <div class="card-f"><span class="btn primary sm">Approve v1.3</span><span class="btn sm">Keep v1.2</span><span class="btn sm ghost">Reject…</span></div>
+    </div>
+  </div>
+</aside>

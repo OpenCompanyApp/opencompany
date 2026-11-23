@@ -1,0 +1,91 @@
+<!--meta
+{"title": "CRM · deal", "area": "Apps", "order": 311, "rail": "app:crm", "layout": "three", "ctx_w": 400,
+ "summary": "Deal record with Ada's proposed field changes from a call, a human-edited field kept, and the discount > 20% approval rule.",
+ "notes": [
+  ["a", "Proposed field changes as a change set", "After the call Ada proposes five field updates. Three apply on accept, the discount becomes a proposal, and Amount is kept because Sanne edited it after Ada read it.", "example-flows story 12 · ui-structure §4 “Human edits win”"],
+  ["k", "Field-level business rule", "The CRM manifest declares discount > 20% needs the sales lead. It applies to humans and agents alike and can only make a gate stricter, never looser.", "governance “Field-level approval rules” · example-flows story 14"],
+  ["p", "Object-first layout", "The deal is the main pane; the context pane is Ada scoped to this record and its selection. Opening the same deal from a chat card swaps the panes.", "ui-structure §3 “Three-pane layout”"],
+  ["s", "Timeline from the event log", "Calls, emails, meetings, stage changes and agent edits are one timeline with actor and run links; email bodies are untrusted.", "connections-events-routines “2. Events”"]
+ ]}
+-->
+<main class="main">
+  <div class="pane-head">
+    <div class="crumbs">CRM <span>›</span> Deals <span>›</span> <b>Northwind · Q1 rollout</b></div>
+    <span class="pill ok">Won</span><span class="pill">owner Sanne</span>
+    <div class="acts"><span class="btn sm">⇩ Export</span><span class="btn sm">Open in Sales</span><span class="icon-btn b">⋯</span></div>
+  </div>
+  <div class="pane-body pad">
+    <div class="flex top gap16">
+      <div class="col gap12" style="width:360px;flex:none">
+        <div class="card"><div class="card-h"><b>Fields</b><span class="presence right"><span class="av agent ada">A</span>5 proposed</span></div>
+          <div class="card-b">
+            <dl class="kv">
+              <dt>Company</dt><dd>Northwind · <span class="mono xs">northwind.example</span></dd>
+              <dt>Stage</dt><dd>Won <span class="muted xs">· Sanne · 07:41</span></dd>
+              <dt>Amount</dt><dd><span class="new human">€64,000</span> <div class="muted xs">edited by Sanne 07:41 · Ada's €68,500 not applied</div></dd>
+              <dt>Discount</dt><dd><span class="old">15%</span><span class="arrow">→</span><span class="new">22%</span> <div class="mt4"><span class="pill warn">rule: &gt; 20% needs sales lead</span></div></dd>
+              <dt>Term</dt><dd><span class="old">12 months</span><span class="arrow">→</span><span class="new">24 months</span></dd>
+              <dt>Next step</dt><dd><span class="old">Send countersigned MSA</span><span class="arrow">→</span><span class="new">Kickoff 8 Jan, first deliverable 19 Jan</span></dd>
+              <dt>Close date</dt><dd>23 Nov 2026</dd>
+              <dt>Stakeholders</dt><dd>Mo (sponsor) · <span class="new">+ Priya (IT lead)</span></dd>
+              <dt>Source</dt><dd>Referral · Kestrel Labs</dd>
+              <dt>Probability</dt><dd>100%</dd>
+            </dl>
+          </div>
+        </div>
+        <div class="card"><div class="card-h"><b>Contacts</b></div>
+          <div class="list-row"><span class="av ext">M</span><div class="grow">Mo<div class="muted xs">COO · mo@northwind.example</div></div><span class="pill ok">always allowed</span></div>
+          <div class="list-row"><span class="av ext">P</span><div class="grow">Priya<div class="muted xs">IT lead · new from call</div></div><span class="pill">new</span></div>
+        </div>
+        <div class="card"><div class="card-h"><b>Linked</b></div>
+          <div class="list-row"><span class="ico sm">◇</span><div class="grow">SAL-88 Northwind kickoff deck<div class="muted xs">Rutger · due Wed</div></div></div>
+          <div class="list-row"><span class="ico sm">◇</span><div class="grow">ENG-322 SSO for staff portal<div class="muted xs">feature request · Jonas · Triage</div></div></div>
+          <div class="list-row"><span class="ico sm">▤</span><div class="grow">Northwind_MSA_v3.pdf<div class="muted xs">Drive · Contracts · OPS-151</div></div></div>
+          <div class="list-row"><span class="ico sm warn">◩</span><div class="grow">Space “Client · Northwind”<div class="muted xs">proposed by onboard-won-deal · waiting</div></div></div>
+        </div>
+      </div>
+      <div class="col gap12" style="flex:1;min-width:0">
+        <div class="grid3">
+          <div class="kpi"><div class="l">Contract value</div><div class="v">€64,000</div><div class="d muted">€2,667/mo over 24 months if term accepted</div></div>
+          <div class="kpi"><div class="l">Days in pipeline</div><div class="v">47</div><div class="d muted">Lead → Won</div></div>
+          <div class="kpi"><div class="l">Next</div><div class="v" style="font-size:16px">Kickoff 8 Jan</div><div class="d muted">booking link sent by Ada</div></div>
+        </div>
+        <div class="card"><div class="card-h"><b>Activity</b><span class="right seg"><span class="on">All</span><span>Calls</span><span>Email</span><span>Changes</span></span></div>
+          <div class="card-b">
+            <div class="chain">
+              <div class="node hu"><div class="t">today 10:30 · call · 34 min</div><b>Contract walkthrough</b> with Mo and Priya (Sanne, Ada listening)<div class="muted small">Notes by Ada: wants 24-month term for 22% total discount; SSO for staff portal as add-on; first deliverable 19 Jan.</div><div class="flex mt4 gap4"><span class="pill ada">→ 5 field proposals</span><span class="pill ada">→ follow-up draft</span></div></div>
+              <div class="node ev"><div class="t">today 09:52 · email in</div>“Re: Q1 rollout: timeline and SSO” from Mo <span class="untrusted">untrusted</span></div>
+              <div class="node cs"><div class="t">today 07:41 · stage change</div>Sanne moved Negotiation → <b>Won</b> · Amount €61,500 → €64,000 (Sanne)<div class="muted xs">emitted crm.deal.updated → routine onboard-won-deal</div></div>
+              <div class="node ev"><div class="t">Fri 20 Nov · meeting</div>Pricing review · Sanne, Rutger, Mo · 45 min</div>
+              <div class="node cs"><div class="t">Thu 19 Nov · agent edit</div>Ada updated Next step and Close date after the call · CS-842 <span class="muted xs">· reverted 0×</span></div>
+              <div class="node ev"><div class="t">Mon 7 Oct · created</div>From Kestrel Labs referral · website-lead-intake</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title"><span class="av agent ada md">A</span>Ada <span class="muted small">· on this deal</span></div><div class="acts"><span class="icon-btn">⇥</span></div></div>
+  <div class="pane-body">
+    <div class="thread" style="padding:14px">
+      <div class="msg"><span class="av agent ada md">A</span><div class="body"><div class="meta"><span class="who">Ada</span><span class="agent-label">Agent</span><span class="time">11:06</span></div>
+        <div class="text">From the 10:30 call I'd update five fields. Amount I'm leaving alone: Sanne changed it this morning after I read the deal.</div>
+        <div class="card changeset">
+          <div class="card-h"><span class="k">Change set</span><b>CS-890</b><span class="pill warn right">1 needs Sanne</span></div>
+          <div class="card-b" style="padding:0">
+            <div class="list-row"><span class="check on"></span><span class="grow">Term <span class="old">12</span>→<b>24 months</b></span><span class="btn sm ghost">✕</span></div>
+            <div class="list-row"><span class="check on"></span><span class="grow">Next step → Kickoff 8 Jan…</span><span class="btn sm ghost">✕</span></div>
+            <div class="list-row"><span class="check on"></span><span class="grow">Stakeholders + Priya</span><span class="btn sm ghost">✕</span></div>
+            <div class="list-row"><span class="check on"></span><span class="grow">Discount <span class="old">15%</span>→<b>22%</b></span><span class="pill warn">proposal → Sanne</span></div>
+            <div class="list-row" style="opacity:.7"><span class="check"></span><span class="grow">Amount → €68,500</span><span class="pill">conflict · human edit kept</span></div>
+          </div>
+          <div class="card-f"><span class="btn primary sm">Apply 3</span><span class="btn sm">Send discount to Sanne</span><span class="btn sm ghost">Reject all</span></div>
+        </div>
+        <div class="callout warn mt8 xs"><span>⚖</span><span><b>Discount rule</b> from the CRM manifest: <span class="mono">discount &gt; 20 → role:sales-lead</span>. It would apply to you too: editing it by hand also becomes a proposal. <u>Why?</u></span></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="pane-foot"><div class="composer"><div class="ph">Ask Ada about this deal…</div><div class="bar"><span class="icon-btn">＋</span><span class="icon-btn">#</span><span class="send">↑</span></div></div></div>
+</aside>

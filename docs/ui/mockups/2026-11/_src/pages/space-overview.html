@@ -1,0 +1,113 @@
+<!--meta
+{"title": "Space overview · Sales", "area": "Spaces", "order": 100, "rail": "sales:overview", "layout": "three", "ctx_w": 360,
+ "summary": "A flat Space: members (people and agents), the six tools, scoped app views, review queue, activity and policy.",
+ "notes": [
+  ["p", "Flat Spaces, six fixed tools", "Every Space has Issues, Tables, Docs, Files, Artifacts and Routines, plus scoped views from installed apps (Deals from CRM). No nesting and no pages inside pages.", "ui-structure §2 rules 1–2 · PRODUCT_DIRECTION pillar 7"],
+  ["a", "Agents join like teammates", "“Add Ada to Sales” is the whole data-access model. Connections and computers are granted per agent on top. Access is Space-level only; there are no per-doc ACLs.", "PRODUCT_DIRECTION pillar 5 “Permissions are simple” · work-apps “Spaces”"],
+  ["k", "Owner, status, review", "Stale items (review date passed, no owner activity) surface here and in the stale-sweep routine. Archived items leave search and agent context.", "ui-structure §2 rule 4"],
+  ["q", "Open: Space home layout", "The docs fix the six tools but not what a Space's landing page shows. Proposal: tools + review queue + activity + policy summary, with the agent panel scoped to the Space.", "not specified in ui-structure or work-apps"]
+ ]}
+-->
+<style>
+.sov .tool{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-height:118px}
+.sov .tool .t{display:flex;align-items:center;gap:8px;font-weight:650}
+.sov .tool .big{font-size:20px;font-weight:700;letter-spacing:-.02em}
+.sov .tool .ln{font-size:12px;color:var(--muted-foreground)}
+.sov .tool.app{border-style:dashed}
+</style>
+<main class="main sov">
+  <div class="pane-head">
+    <div class="title"><span class="ico sm info">◆</span>Sales</div>
+    <span class="pill outline">🔓 Open to members</span>
+    <span class="muted small">Owner Sanne · 4 members</span>
+    <div class="acts"><span class="stack-av"><span class="av sanne">S</span><span class="av rutger">R</span><span class="av agent ada">A</span><span class="av agent cleo">C</span></span><span class="btn sm">+ Add member</span><span class="btn sm ghost">Pin</span><span class="icon-btn b">⋯</span></div>
+  </div>
+  <div class="pane-body" style="padding:18px 24px 28px">
+    <div class="col gap16" style="max-width:980px;margin:0 auto">
+      <div class="flex top gap16">
+        <div style="flex:1">
+          <div class="h1">Sales</div>
+          <p class="muted mt4" style="max-width:620px">Pipeline, leads and client follow-up for Acme's agency work. Deals live in the CRM app and show here as a scoped view. Ada does lead hygiene and drafts; Cleo owns the weekly pipeline numbers.</p>
+        </div>
+        <div class="card" style="width:270px">
+          <div class="card-b">
+            <div class="section-t">Members<span class="r muted">people &amp; agents</span></div>
+            <div class="col gap8 small">
+              <div class="flex"><span class="av sanne">S<i class="dot on"></i></span>Sanne<span class="pill right">owner · sales lead</span></div>
+              <div class="flex"><span class="av rutger">R<i class="dot on"></i></span>Rutger<span class="pill right">admin</span></div>
+              <div class="flex"><span class="av agent ada">A<i class="dot work"></i></span>Ada<span class="agent-label">Agent</span><span class="tag">🖥</span><span class="muted xs right">act</span></div>
+              <div class="flex"><span class="av agent cleo">C<i class="dot on"></i></span>Cleo<span class="agent-label cleo">Agent</span><span class="muted xs right">read-only</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-t">Tools</div>
+        <div class="grid4">
+          <div class="tool"><div class="t"><span class="ico sm">◇</span>Issues<span class="muted right small">SAL-</span></div><div class="big">12 <span class="muted small" style="font-weight:500">open</span></div><div class="ln"><span class="sdot needd"></span> 3 in Triage · 2 delegated to Ada</div><div class="ln">Next due: SAL-88 kickoff deck · Wed</div></div>
+          <div class="tool"><div class="t"><span class="ico sm">▦</span>Tables</div><div class="big">3</div><div class="ln">Leads · 214 rows · <span class="ada-t">Ada editing</span></div><div class="ln">Clients · 38 · Discount log · 112</div></div>
+          <div class="tool"><div class="t"><span class="ico sm">≡</span>Docs</div><div class="big">17</div><div class="ln">Policy 3 · Playbook 6 · Meeting notes 8</div><div class="ln warn-t">2 past review date</div></div>
+          <div class="tool"><div class="t"><span class="ico sm">▤</span>Files<span class="pill right">Drive</span></div><div class="big">412</div><div class="ln">/files/drive/Sales · synced 2 min ago</div><div class="ln">Proposals · Contracts · Decks</div></div>
+          <div class="tool"><div class="t"><span class="ico sm ada">◩</span>Artifacts</div><div class="big">3</div><div class="ln">Weekly pipeline (Page) · Quote calculator</div><div class="ln">Lead intake (Form) · signed link</div></div>
+          <div class="tool"><div class="t"><span class="ico sm">↻</span>Routines</div><div class="big">5 <span class="muted small" style="font-weight:500">active</span></div><div class="ln">pipeline-review · Mon 08:00</div><div class="ln">website-lead-intake · on form.submitted</div></div>
+          <div class="tool app"><div class="t"><span class="ico sm">◈</span>Deals<span class="pill right">CRM app</span></div><div class="big">€214k</div><div class="ln">19 open · 8 due this week</div><div class="ln">Scoped view; data lives in CRM records</div></div>
+          <div class="tool" style="border-style:dashed;align-items:center;justify-content:center;color:var(--muted-foreground)"><div>+ Add an app view</div><div class="xs">Calendar, Helpdesk… (admin installs)</div></div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-h"><b>Needs review</b><span class="muted">owner · status · review date</span><span class="pill warn right">4</span></div>
+          <div class="list-row"><span class="ico sm warn">≡</span><div class="grow"><b>Pricing policy</b><div class="muted xs">Policy · owner Sanne · review date 1 Nov passed</div></div><span class="pill warn">stale</span></div>
+          <div class="list-row"><span class="ico sm warn">≡</span><div class="grow"><b>Outbound playbook 2025</b><div class="muted xs">Playbook · owner Jonas (not a member) · no edits in 210 days</div></div><span class="btn sm">Archive…</span></div>
+          <div class="list-row"><span class="ico sm">▦</span><div class="grow"><b>Discount log</b><div class="muted xs">Table · status draft for 45 days</div></div><span class="btn sm ghost">Mark current</span></div>
+          <div class="list-row"><span class="ico sm">◇</span><div class="grow"><b>SAL-61 Update case studies</b><div class="muted xs">Issue · no owner since Jonas left Sales</div></div><span class="btn sm ghost">Assign owner</span></div>
+          <div class="card-f"><span class="muted xs">From routine <span class="ref">stale-sweep</span> (Cleo, Sundays). It proposes; humans decide.</span></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><b>Activity in Sales</b><span class="muted">event log</span><span class="right muted xs">filter ▾</span></div>
+          <div class="list-row"><span class="mono muted xs" style="width:36px">09:24</span><span class="av agent ada">A</span><div class="grow">Ada updated Contact on <b>Kestrel Labs</b><div class="muted xs">CS-882 · run R-2291 · auto-applied</div></div></div>
+          <div class="list-row"><span class="mono muted xs" style="width:36px">09:16</span><span class="av agent ada">A</span><div class="grow">Ada set 23 leads to stale<div class="muted xs">CS-881 · revertible</div></div><span class="btn sm ghost">Revert</span></div>
+          <div class="list-row"><span class="mono muted xs" style="width:36px">08:57</span><span class="ico sm">▭</span><div class="grow">Lead intake form: 3 submissions <span class="untrusted">untrusted</span></div></div>
+          <div class="list-row"><span class="mono muted xs" style="width:36px">07:41</span><span class="av sanne">S</span><div class="grow">Sanne moved <b>Northwind</b> deal to Won<div class="muted xs">crm.deal.updated → onboard-won-deal</div></div></div>
+          <div class="list-row"><span class="mono muted xs" style="width:36px">Mon</span><span class="ico sm ada">◩</span><div class="grow">Weekly pipeline Page v14 published to Sales</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><b>Space policy</b><span class="muted">Team preset defaults · set by Sanne</span><span class="btn sm right">Edit policy</span></div>
+        <div class="card-b">
+          <div class="grid3 small">
+            <div><div class="label">Reversible edits</div>Auto-apply with “revert this run”. <b>Bulk over 50 rows</b> and schema changes become proposals.</div>
+            <div><div class="label">Deletes</div>Move to trash for 30 days (auto). Purge needs an admin.</div>
+            <div><div class="label">Business rules</div><span class="ref">deals.discount &gt; 20%</span> needs the sales lead (CRM manifest). Applies to humans and agents.</div>
+          </div>
+          <div class="callout mt12"><span>ⓘ</span><span>Effective access for an agent here = Sales membership ∩ its grants ∩ the human it acts for ∩ Drive's ACL. <u>Why can't Finn see Sales?</u> → Finn is not a member.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title"><span class="av agent ada">A</span>Ada <span class="agent-label">Agent</span></div><span class="pill outline">scoped to Sales</span><div class="acts"><span class="icon-btn">⇥</span></div></div>
+  <div class="pane-body">
+    <div class="thread" style="padding:14px 14px">
+      <div class="msg"><span class="av rutger">R</span><div class="body"><div class="meta"><span class="who">Rutger</span><span class="time">10:02</span></div><div class="text">What's stuck in Sales this week?</div></div></div>
+      <div class="msg"><span class="av agent ada">A</span><div class="body"><div class="meta"><span class="who">Ada</span><span class="time">10:02</span></div><div class="text">
+        <p>Three things:</p>
+        <ol style="margin:0 0 6px;padding-left:18px;line-height:1.6">
+          <li><b>Pricing policy</b> is past its review date and two deals quote from it.</li>
+          <li><b>4 deals</b> have no activity for 14+ days (€61.5k), mostly Proposal.</li>
+          <li><b>SAL-61</b> has no owner since Jonas left the Space.</li>
+        </ol>
+        <p>I can draft a refreshed Pricing policy as suggestions for Sanne. Want that?</p>
+      </div>
+      <div class="flex wrap gap4 mt8"><span class="chip">Draft policy update</span><span class="chip">List stale deals</span><span class="chip">Assign SAL-61 to Sanne</span></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="pane-foot">
+    <div class="composer"><div class="ph">Ask Ada about Sales…</div><div class="bar"><span class="pill outline xs">context: Sales Space</span><span class="send">↑</span></div></div>
+  </div>
+</aside>

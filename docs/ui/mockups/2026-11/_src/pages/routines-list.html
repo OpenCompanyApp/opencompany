@@ -1,0 +1,92 @@
+<!--meta
+{"title": "Routines · list", "area": "Spaces · Routines", "order": 160, "rail": "operations:routines", "space": "operations", "layout": "three", "ctx_w": 350,
+ "summary": "The Operations Space's Routines tool: kind, triggers, mode, owner, next run, last outcome; new routines are authored in chat.",
+ "notes": [
+  ["p", "One list, readable cards", "Each routine shows kind (agent, script or hybrid), triggers, read-only or act, the human owner it runs on behalf of, notify policy, next run and last outcome.", "connections-events-routines “4. Routines”"],
+  ["s", "Authored in chat, no flow builder", "“New routine” opens a chat with an agent that drafts a routine card; a human confirms. Creating or changing a routine is governed.", "messenger-ui “Routines in chat” · PRODUCT_DIRECTION “nuclear decisions”"],
+  ["k", "Pause vs cancel schedule vs kill", "Paused keeps the definition and history; cancel schedule disables triggers; the kill switch also stops running runs. Separate controls, as the catalog asks.", "governance “Controls and kill switch”"],
+  ["q", "Open: team-owned routines", "Every routine here has one human owner. Whose access applies to a routine owned by a team is still open (last enabler vs designated owner).", "governance “Open questions”"]
+ ]}
+-->
+<style>
+.rl-tbl td{vertical-align:top}
+.rl-tbl .trg{display:flex;flex-direction:column;gap:3px}
+</style>
+<main class="main">
+  <div class="pane-head">
+    <div class="crumbs">Operations <span>›</span> <b>↻ Routines</b></div>
+    <span class="muted small">6 routines · 2 running today</span>
+    <div class="acts"><span class="seg"><span class="on">All</span><span>Mine</span><span>Paused · 1</span></span><span class="btn sm primary">＋ New routine in chat</span></div>
+  </div>
+  <div class="pane-sub"><div class="input ph" style="width:260px">⌕ Filter routines</div><span class="chip">Kind ▾</span><span class="chip">Trigger ▾</span><span class="chip">Agent ▾</span><span class="chip">Owner ▾</span><span class="muted xs right">No flow builder: describe it, an agent drafts it.</span></div>
+  <div class="pane-body">
+    <table class="list rl-tbl">
+      <tr><th>Routine</th><th>Kind</th><th>Triggers</th><th>Runs as</th><th>Next / last</th><th></th></tr>
+      <tr><td><div class="flex"><span class="ico sm ok">↻</span><b>contract-intake</b><span class="pill">v3</span></div><div class="muted small mt4">New or changed contract PDFs → summary, renewal-clause check, Issue if action is needed</div></td>
+        <td><span class="pill info">hybrid</span><div class="mt4"><span class="pill outline">act</span></div></td>
+        <td><div class="trg"><span class="mono xs">drive.file.changed</span><span class="muted xs">/files/drive/Contracts/**</span><span class="muted xs">debounce 2 min · coalesce</span></div></td>
+        <td><div class="flex"><span class="av agent cleo">C</span>Cleo</div><div class="muted xs mt4">for Sanne</div></td>
+        <td><div class="small">on change</div><div class="mt4"><span class="state done nowrap">09:31 ok</span></div><div class="muted xs">€0.04</div></td><td><span class="toggle on"></span></td></tr>
+      <tr><td><div class="flex"><span class="ico sm ok">↻</span><b>invoice-reminders</b><span class="pill">v5</span></div><div class="muted small mt4">Draft reminders for invoices over 14 days; one batched approval card to send</div></td>
+        <td><span class="pill ada">agent</span><div class="mt4"><span class="pill outline">act</span></div></td>
+        <td><div class="trg"><span class="mono xs">schedule</span><span class="muted xs">weekdays 14:00</span></div></td>
+        <td><div class="flex"><span class="av agent cleo">C</span>Cleo</div><div class="muted xs mt4">for Rutger</div></td>
+        <td><div class="small">today 14:00</div><div class="mt4"><span class="state done nowrap">Fri ok</span></div><div class="muted xs">2 drafts · €0.11</div></td><td><span class="toggle on"></span></td></tr>
+      <tr><td><div class="flex"><span class="ico sm ok">↻</span><b>expense-intake</b><span class="pill">v2</span></div><div class="muted small mt4">Receipts dropped in Drive → extract with a script, classify with Cleo → Expenses row</div></td>
+        <td><span class="pill info">hybrid</span><div class="mt4"><span class="pill outline">act</span></div></td>
+        <td><div class="trg"><span class="mono xs">drive.file.changed</span><span class="muted xs">/files/drive/Finance/Receipts/</span><span class="muted xs">coalesce 50 → 1 run</span></div></td>
+        <td><div class="flex"><span class="av agent cleo">C</span>Cleo</div><div class="muted xs mt4">for Rutger</div></td>
+        <td><div class="small">on change</div><div class="mt4"><span class="state done nowrap">Sat ok</span></div><div class="muted xs">7 rows</div></td><td><span class="toggle on"></span></td></tr>
+      <tr><td><div class="flex"><span class="ico sm ok">↻</span><b>vendor-portal-invoices</b><span class="pill">v4</span><span class="tag">🖥</span></div><div class="muted small mt4">Log in to 3 supplier portals, download last month's invoices into Drive, one Expenses row each</div></td>
+        <td><span class="pill ada">agent</span><div class="mt4"><span class="pill outline">act</span></div></td>
+        <td><div class="trg"><span class="mono xs">schedule</span><span class="muted xs">1st of month 07:00</span></div></td>
+        <td><div class="flex"><span class="av agent bram">B</span>Bram</div><div class="muted xs mt4">for Sanne</div></td>
+        <td><div class="small">1 Dec 07:00</div><div class="mt4"><span class="state done nowrap">1 Nov ok</span></div><div class="muted xs">1 takeover</div></td><td><span class="toggle on"></span></td></tr>
+      <tr><td><div class="flex"><span class="ico sm">↻</span><b>stale-sweep</b><span class="pill">built-in</span></div><div class="muted small mt4">Flag Docs past their review date and Tables with no owner; propose archive, never apply</div></td>
+        <td><span class="pill">script</span><div class="mt4"><span class="pill outline">read-only</span></div></td>
+        <td><div class="trg"><span class="mono xs">schedule</span><span class="muted xs">Mondays 06:00</span></div></td>
+        <td><div class="flex"><span class="ico sm">⚙</span>system</div><div class="muted xs mt4">for Sanne (Space owner)</div></td>
+        <td><div class="small">Mon 30 Nov</div><div class="mt4"><span class="state done nowrap">today ok</span></div><div class="muted xs">3 flagged</div></td><td><span class="toggle on"></span></td></tr>
+      <tr><td><div class="flex"><span class="ico sm warn">↻</span><b>renewal-monitor</b><span class="pill">v1</span><span class="pill warn">paused</span></div><div class="muted small mt4">Watch supplier contract end dates; DM the owner 60 days ahead, only if new</div></td>
+        <td><span class="pill ada">agent</span><div class="mt4"><span class="pill outline">read-only</span></div></td>
+        <td><div class="trg"><span class="mono xs">heartbeat</span><span class="muted xs">daily · only if new</span></div></td>
+        <td><div class="flex"><span class="av agent bram">B</span>Bram</div><div class="muted xs mt4">for Sanne</div></td>
+        <td><div class="small muted">paused by Sanne 18 Nov</div><div class="muted xs mt4">“overlaps contract-intake”</div></td><td><span class="toggle"></span></td></tr>
+    </table>
+    <div class="p16 grid3">
+      <div class="kpi"><div class="l">Runs this month</div><div class="v">143</div><div class="d muted">128 ok · 11 nothing new · 4 needed a human</div></div>
+      <div class="kpi"><div class="l">Routine spend</div><div class="v">€9.70</div><div class="d muted">script routines cost nothing in tokens</div></div>
+      <div class="kpi"><div class="l">Failures</div><div class="v">1</div><div class="d bad-t">expense-intake: unreadable scan, sent to dead-letter, replayable</div></div>
+    </div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title"><span class="av agent cleo md">C</span>New routine with Cleo</div><div class="acts"><span class="icon-btn">⇥</span></div></div>
+  <div class="pane-body">
+    <div class="thread" style="padding:14px 14px">
+      <div class="msg"><span class="av rutger md">R</span><div class="body"><div class="meta"><span class="who">Rutger</span><span class="time">10:40</span></div>
+        <div class="text">Every Friday at 16:00, list unpaid supplier invoices due next week and post them in #general. Read-only.</div></div></div>
+      <div class="msg"><span class="av agent cleo md">C</span><div class="body"><div class="meta"><span class="who">Cleo</span><span class="agent-label cleo">Agent</span><span class="time">10:40</span></div>
+        <div class="text">Here's the draft. Nothing runs until you confirm.</div>
+        <div class="card mt8">
+          <div class="card-h"><span class="k">Draft</span><b class="mono">supplier-due-next-week</b></div>
+          <div class="card-b">
+            <dl class="kv small">
+              <dt>Kind</dt><dd>Script + one agent summary (hybrid)</dd>
+              <dt>Trigger</dt><dd>schedule · Fridays 16:00 · quiet hours respected</dd>
+              <dt>Mode</dt><dd>Read-only · write tools not registered</dd>
+              <dt>Reads</dt><dd>Expenses (Operations)</dd>
+              <dt>Output</dt><dd>#general · header names the routine</dd>
+              <dt>Notify</dt><dd>Only if new</dd>
+              <dt>Runs as</dt><dd>Cleo, on behalf of Rutger</dd>
+              <dt>Budget</dt><dd>€1 / month cap</dd>
+            </dl>
+            <div class="callout mt8 xs">#general includes Jonas, who isn't in Operations. Cleo will post totals only, not supplier names, unless you allow it.</div>
+          </div>
+          <div class="card-f"><span class="btn primary sm">Create routine</span><span class="btn sm">Edit</span><span class="btn sm ghost">Run once now</span></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+  <div class="pane-foot"><div class="composer"><div class="ph">Describe a routine…</div><div class="bar"><span class="icon-btn">＋</span><span class="send">↑</span></div></div></div>
+</aside>

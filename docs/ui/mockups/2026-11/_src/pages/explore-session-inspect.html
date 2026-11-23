@@ -1,0 +1,81 @@
+<!--meta
+{"title": "Exploration · Session is inspect-only", "area": "Exploration (not locked)", "order": 820, "rail": "agent:ada", "layout": "three", "ctx_w": 520, "exploration": true,
+ "summary": "NOT LOCKED. The thread shows only messages posted for people plus collapsed activity; the raw agent session is a read-only debug view.",
+ "notes": [
+  ["q", "Exploration, not locked", "From GIN-2612 (backlog): the conversation is the UX, at the level of a Slack channel; the agent session is like reading a codebase: inspect and debug, not the everyday surface.", "Linear GIN-2612"],
+  ["a", "Messages come from a tool", "What people read is posted through a dedicated “message the user” tool. Intermediate tokens and tool calls never appear as chat text; typed run activity stays as a collapsed summary.", "Linear GIN-2612 scope · ui-structure §5"],
+  ["k", "Inspect is read-only", "The session view can be copied, downloaded and replayed (re-rendered from the event log, never re-executed). It changes nothing and shows which model provider handled the run.", "governance “Event log, audit and replay”, invariant 11 · data-sovereignty §1"],
+  ["q", "Open: who may inspect", "Proposed: the on-behalf-of human, the agent's manager and admins. Raw sessions can contain untrusted page text and other people's data, so the docs need an explicit rule. Secrets are already redacted by the broker.", ""]
+ ]}
+-->
+<style>
+.si .ev{border-bottom:1px solid var(--border);padding:7px 12px;font-size:12px}
+.si .ev .eh{display:flex;gap:8px;align-items:center}
+.si .ev .eh .t{font-family:var(--font-mono);font-size:10.5px;color:var(--subtle-foreground);width:58px}
+.si .ev .eh .k{font-family:var(--font-mono);font-size:11px;font-weight:600}
+.si .ev .eh .r{margin-left:auto;font-family:var(--font-mono);font-size:10.5px;color:var(--subtle-foreground)}
+.si .ev pre{margin:5px 0 0 66px;font-family:var(--font-mono);font-size:11px;line-height:1.5;color:var(--muted-foreground);white-space:pre-wrap;background:var(--code-bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px}
+.si .ev.msgout{background:var(--primary-soft)}
+.si .collapsed{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted-foreground);border:1px dashed var(--border-strong);border-radius:8px;padding:5px 10px;margin-top:6px;max-width:640px}
+</style>
+<main class="main si">
+  <div class="pane-head">
+    <div class="title"><span class="av agent ada md">A<i class="dot work"></i></span>Ada <span class="agent-label">Agent</span><span class="tag">🖥</span></div>
+    <span class="muted small">DM · conversation view</span>
+    <div class="acts"><span class="btn sm">⌕ Inspect session</span><span class="icon-btn b">⋯</span></div>
+  </div>
+  <div class="pane-body">
+    <div class="thread">
+      <div class="day">Today</div>
+      <div class="msg"><span class="av rutger md">R</span><div class="body"><div class="meta"><span class="who">Rutger</span><span class="time">14:05</span></div>
+        <div class="text">Which of our Q4 deals mention a competitor, and who should follow up?</div></div></div>
+
+      <div class="msg"><span class="av agent ada md">A</span><div class="body"><div class="meta"><span class="who">Ada</span><span class="agent-label">Agent</span><span class="time">14:05</span></div>
+        <div class="text">Looking through Deals and the last 60 days of call notes now.</div>
+        <div class="collapsed"><span class="state done">done</span>Searched Deals and Mail · 11 steps · 38 s · €0.04<span class="right">▸ show activity</span></div>
+      </div></div>
+
+      <div class="msg"><span class="av agent ada md">A</span><div class="body"><div class="meta"><span class="who">Ada</span><span class="agent-label">Agent</span><span class="time">14:06</span></div>
+        <div class="text"><p>Three Q4 deals mention a competitor:</p>
+          <ul style="margin:0 0 8px;padding-left:18px;line-height:1.7">
+            <li><b>Kestrel Labs</b> (€18,000, Proposal): comparing us on price in the 12 Nov call. Owner Jonas.</li>
+            <li><b>Orbit Coffee</b> (€9,500, Negotiation): their ops lead trialled another tool last year. Owner Sanne.</li>
+            <li><b>Halden &amp; Co</b> (€24,000, Qualified): asked for a feature comparison by email. Owner Sanne.</li>
+          </ul>
+          <p>I'd have Sanne take Halden first; it's the largest and the comparison request is 9 days old. Want me to draft the comparison as a Doc?</p></div>
+        <div class="flex gap4 mt8"><span class="card" style="display:inline-flex;padding:5px 9px;gap:6px;font-size:12px">◈ Kestrel Labs</span><span class="card" style="display:inline-flex;padding:5px 9px;gap:6px;font-size:12px">◈ Orbit Coffee</span><span class="card" style="display:inline-flex;padding:5px 9px;gap:6px;font-size:12px">◈ Halden &amp; Co</span></div>
+      </div></div>
+
+      <div class="msg"><span class="av rutger md">R</span><div class="body"><div class="meta"><span class="who">Rutger</span><span class="time">14:08</span></div>
+        <div class="text">Yes, draft it and ask Sanne in #sales.</div></div></div>
+
+      <div class="msg"><span class="av agent ada md">A</span><div class="body"><div class="meta"><span class="who">Ada</span><span class="agent-label">Agent</span><span class="time">14:09</span></div>
+        <div class="text">Draft is in Sales → Docs as <span class="ref">≡ Halden feature comparison</span> (owner: you, status draft). I posted a short note to Sanne in #sales.</div>
+        <div class="collapsed"><span class="state done">done</span>Created 1 Doc draft · posted 1 message · 6 steps · €0.02<span class="right">▸ show activity</span></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="pane-foot"><div class="composer"><div class="ph">Message Ada…</div><div class="bar"><span class="icon-btn">＋</span><span class="icon-btn">@</span><span class="icon-btn">#</span><span class="send">↑</span></div></div></div>
+</main>
+<aside class="ctx si">
+  <div class="pane-head"><div class="title">⌕ Inspect session</div><span class="pill warn">debug · read-only</span><div class="acts"><span class="icon-btn">✕</span></div></div>
+  <div class="pane-sub" style="flex-wrap:wrap;row-gap:4px"><span class="mono">run R-2311</span><span class="muted">·</span><span>Model: reasoning model · provider route <b>workspace default</b></span><span class="muted">·</span><span>in 41.2k · out 1.9k · cache 78%</span><span class="muted">·</span><span>€0.06 · 51 s</span></div>
+  <div class="pane-sub"><span class="seg"><span class="on">Timeline</span><span>Tool calls</span><span>Context</span><span>Raw JSON</span></span><span class="right flex gap4"><span class="btn sm">Copy</span><span class="btn sm">⇩ JSON</span><span class="btn sm">Replay</span></span></div>
+  <div class="pane-body">
+    <div class="callout" style="margin:10px 12px"><span>ⓘ</span><span>This is the agent's working session, kept for debugging and audit. People talk to Ada in the conversation; nothing here is posted or re-run. Replay re-renders from the event log.</span></div>
+    <div class="ev"><div class="eh"><span class="t">14:05:12</span><span class="k">input</span><span>message from Rutger · DM · on behalf of Rutger</span></div></div>
+    <div class="ev"><div class="eh"><span class="t">14:05:13</span><span class="k">context</span><span>identity · memory (4 items) · grants: Sales, Operations</span><span class="r">9.8k tok</span></div></div>
+    <div class="ev msgout"><div class="eh"><span class="t">14:05:14</span><span class="k">tool · message_user</span><span>→ posted as message</span><span class="r">m_7Q2…</span></div><pre>{ "text": "Looking through Deals and the last 60 days of call notes now.", "kind": "progress" }</pre></div>
+    <div class="ev"><div class="eh"><span class="t">14:05:15</span><span class="k">tool · crm.deals.search</span><span class="ok-t">allow · read</span><span class="r">0.2s</span></div><pre>{ "pipeline": "default", "close_quarter": "2026-Q4", "limit": 50 }
+→ 23 deals</pre></div>
+    <div class="ev"><div class="eh"><span class="t">14:05:17</span><span class="k">tool · mail.search</span><span class="ok-t">allow · read</span><span class="r">1.4s</span></div><pre>{ "query": "competitor OR alternative OR compare", "since": "60d", "linked_to": "crm.deal" }
+→ 14 messages <span class="untrusted">external mail content</span></pre></div>
+    <div class="ev"><div class="eh"><span class="t">14:05:20</span><span class="k">tool · vfs.read</span><span class="ok-t">allow · read</span><span class="r">×6 · 0.9s</span></div><pre>/apps/crm/deals/kestrel-labs/notes/2026-11-12.md  …and 5 more</pre></div>
+    <div class="ev"><div class="eh"><span class="t">14:05:41</span><span class="k">assistant · internal</span><span class="muted">reasoning tokens, not shown to people</span><span class="r">1.2k tok</span></div><pre>Three deals mention a competitor… Halden is largest and the request is 9 days old → recommend Sanne first…</pre></div>
+    <div class="ev msgout"><div class="eh"><span class="t">14:06:02</span><span class="k">tool · message_user</span><span>→ posted as message, 3 record cards</span><span class="r">m_7Q9…</span></div><pre>{ "text": "Three Q4 deals mention a competitor: …", "cards": ["crm.deal:kst-18", "crm.deal:orb-09", "crm.deal:hal-24"] }</pre></div>
+    <div class="ev"><div class="eh"><span class="t">14:08:40</span><span class="k">input</span><span>message from Rutger</span></div></div>
+    <div class="ev"><div class="eh"><span class="t">14:08:44</span><span class="k">tool · docs.create</span><span class="ok-t">auto-apply · reversible</span><span class="r">CS-905</span></div><pre>{ "space": "Sales", "type": "Spec", "title": "Halden feature comparison", "owner": "@rutger", "status": "draft" }</pre></div>
+    <div class="ev"><div class="eh"><span class="t">14:08:52</span><span class="k">tool · threads.post</span><span class="ok-t">allow · internal</span><span class="r">#sales</span></div><pre>{ "to": "#sales", "mention": "@sanne", "text": "Halden asked for a feature comparison…" }</pre></div>
+    <div class="ev msgout"><div class="eh"><span class="t">14:09:03</span><span class="k">tool · message_user</span><span>→ posted as message</span><span class="r">m_7QF…</span></div></div>
+  </div>
+</aside>

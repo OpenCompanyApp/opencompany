@@ -1,0 +1,110 @@
+<!--meta
+{"title": "Issue detail · ENG-311", "area": "Spaces", "order": 112, "rail": "engineering:issues", "space": "engineering", "layout": "three", "ctx_w": 380,
+ "summary": "ENG-311: human owner, agent delegate, an outside-agent run card with PR and CI, comments and field history.",
+ "notes": [
+  ["p", "Delegation to an outside agent", "Finn handed the fix to the Copilot coding agent. The live card shows provider, repo, state, latest events, reported cost (counted against Finn's budget), Follow up and Stop. Results come back as a PR link.", "messenger-ui “Delegation to outside agents” · example-flows story 17"],
+  ["k", "Say what can't be reverted", "Where OpenCompany can't undo a provider's result (a merged PR), the card says so. Field edits on the issue are change sets with revert.", "messenger-ui “Delegation” · ui-structure §4"],
+  ["s", "First time per provider and repo", "Launching sends company context outside, so the first launch for this provider and repository asked Jonas; he chose “always for this provider and repo”.", "governance “Action classes” (agent_delegation)"],
+  ["q", "Open: who closes on merge", "“Closes on merge” is an automatic state change by policy. Is that a Space policy, a routine, or a per-issue toggle? Here it is a per-issue toggle that Jonas set.", "work-apps “only a human, or a policy explicitly allowing it, closes an issue”"]
+ ]}
+-->
+<style>
+.isd .prop{display:grid;grid-template-columns:100px 1fr;gap:6px 10px;font-size:12.5px;align-items:center}
+.isd .prop dt{color:var(--muted-foreground)}
+.isd .prop dd{margin:0;display:flex;align-items:center;gap:6px}
+</style>
+<main class="main isd">
+  <div class="pane-head">
+    <div class="crumbs">Engineering <span>/</span> Issues <span>/</span> <b>ENG-311</b></div>
+    <div class="acts"><span class="btn sm ghost">⌥ Copy ref</span><span class="btn sm ghost">Subscribe</span><span class="icon-btn b">⋯</span></div>
+  </div>
+  <div class="pane-body">
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:0">
+      <div style="padding:20px 28px;border-right:1px solid var(--border)">
+        <div class="h1">Fix flaky checkout test</div>
+        <div class="text mt8" style="line-height:1.6;max-width:640px">
+          <p><span class="mono">checkout.spec.ts › applies discount before VAT</span> fails about 1 in 12 runs on CI since the pricing refactor. It passes locally. Suspect: the test reads the exchange-rate fixture before the mock server is ready.</p>
+          <p><b>Done when:</b> 50 consecutive green CI runs, a regression test for the race, no change to pricing behaviour.</p>
+        </div>
+
+        <div class="card mt16" style="border-color:var(--primary-border)">
+          <div class="card-h" style="background:var(--primary-soft)"><span class="k info-t">Outside agent</span><span class="ico sm info">↗</span><b>Copilot coding agent</b><span class="muted">repo <span class="mono">acme/web</span></span><span class="state done right">done</span></div>
+          <div class="card-b">
+            <dl class="kv">
+              <dt>Started</dt><dd>by Finn yesterday 17:42 · on behalf of Jonas · 38 min</dd>
+              <dt>Result</dt><dd><b>PR #482</b> “Await mock server before reading rate fixture” · +41 −9 · 3 files</dd>
+              <dt>Evidence</dt><dd><span class="pill ok">CI green ×50</span> <span class="pill ok">new test fails on main, passes on branch</span></dd>
+              <dt>Cost</dt><dd>€1.90 reported by provider · counted against <b>Finn's budget</b> (€60 reached)</dd>
+              <dt>Approval</dt><dd><span class="muted">No prompt: “always for Copilot on acme/web” granted by Jonas on 12 Nov</span></dd>
+            </dl>
+            <div class="mt12 small" style="border-top:1px solid var(--border);padding-top:8px">
+              <div class="act action"><span class="ai">↗</span><div>Pushed 2 commits to <span class="mono">fix/eng-311-flaky-checkout</span> <span class="det">· 18:11</span></div></div>
+              <div class="act result"><span class="ai">✓</span><div>CI: 50/50 green on the branch <span class="det">· 18:19</span></div></div>
+              <div class="act input"><span class="ai">?</span><div>Waiting for human review of PR #482</div></div>
+            </div>
+          </div>
+          <div class="card-f"><span class="btn sm primary">Review PR #482 ↗</span><span class="btn sm">Follow up…</span><span class="btn sm ghost">Logs</span><span class="muted xs right">⚠ Once merged, OpenCompany can't revert this. Revert it in Git.</span></div>
+        </div>
+
+        <div class="section-t mt24">Activity</div>
+        <div class="col gap12">
+          <div class="msg"><span class="av jonas md">J</span><div class="body"><div class="meta"><span class="who">Jonas</span><span class="time">yesterday 17:38</span></div><div class="text">@Finn can you get an outside agent on this? I don't have time before the release.</div></div></div>
+          <div class="msg"><span class="av agent finn md">F</span><div class="body"><div class="meta"><span class="who">Finn</span><span class="agent-label finn">Agent</span><span class="time">17:42</span></div><div class="text">Delegated to Copilot on acme/web with the failing test name, CI logs from the last 5 failures and the “done when” above. I'll post here when the PR lands.</div></div></div>
+          <div class="flex small muted" style="padding-left:38px"><span class="av agent finn">F</span>Finn changed <b>State</b> <span class="old">Todo</span> → <span class="new">In progress</span> · <span class="ref">CS-701</span> · <u>revert</u></div>
+          <div class="flex small muted" style="padding-left:38px"><span class="av agent finn">F</span>Finn added label <span class="chip">flaky-test</span> · <span class="ref">CS-701</span></div>
+          <div class="flex small muted" style="padding-left:38px"><span class="ico sm">↗</span>Copilot opened PR #482 · 18:11 · <span class="untrusted">provider event</span></div>
+          <div class="flex small muted" style="padding-left:38px"><span class="av agent finn">F</span>Finn paused at budget limit · today 08:02 · card sent to Sanne</div>
+          <div class="msg"><span class="av jonas md">J</span><div class="body"><div class="meta"><span class="who">Jonas</span><span class="time">09:40</span></div><div class="text">Looks right. Reviewing after standup. Turning on close-on-merge.</div></div></div>
+        </div>
+        <div class="composer mt16"><div class="ph">Comment, or @mention a teammate or agent…</div><div class="bar"><span class="icon-btn">＋</span><span class="icon-btn">@</span><span class="send">↑</span></div></div>
+      </div>
+
+      <div style="padding:20px 16px" class="col gap16">
+        <dl class="prop">
+          <dt>State</dt><dd><span class="pill warn">In progress</span></dd>
+          <dt>Owner</dt><dd><span class="av jonas">J</span>Jonas</dd>
+          <dt>Delegate</dt><dd><span class="av agent finn">F</span>Finn <span class="state paused">paused</span></dd>
+          <dt>Priority</dt><dd>▮▮▮ Urgent</dd>
+          <dt>Cycle</dt><dd>Cycle 47</dd>
+          <dt>Labels</dt><dd><span class="chip">bug</span><span class="chip">flaky-test</span></dd>
+          <dt>Estimate</dt><dd>3 pts</dd>
+          <dt>On merge</dt><dd><span class="toggle on"></span>close issue</dd>
+        </dl>
+        <div>
+          <div class="section-t">Related</div>
+          <div class="col gap4 small">
+            <div class="flex"><span class="ico sm">◇</span>ENG-301 Post-mortem: checkout 5xx</div>
+            <div class="flex"><span class="ico sm">≡</span>Testing guidelines · Doc</div>
+            <div class="flex"><span class="ico sm">▤</span>ci-failures-nov.zip · Files</div>
+            <div class="flex"><span class="ico sm">#</span>thread in #engineering</div>
+          </div>
+        </div>
+        <div>
+          <div class="section-t">Field history</div>
+          <div class="chain small">
+            <div class="node cs"><div>State → In progress</div><div class="t">Finn · CS-701 · R-1907</div></div>
+            <div class="node hu"><div>Delegate → Finn</div><div class="t">Jonas · 17:38</div></div>
+            <div class="node hu"><div>Priority → Urgent</div><div class="t">Jonas · 14 Nov</div></div>
+            <div class="node ev"><div>Created from Sentry alert</div><div class="t">issue-triage · 13 Nov</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title"><span class="av agent finn">F<i class="dot off"></i></span>Finn <span class="agent-label finn">Agent</span></div><span class="pill outline">on ENG-311</span><div class="acts"><span class="icon-btn">⇥</span></div></div>
+  <div class="pane-sub"><div class="callout warn" style="flex:1"><span>❚❚</span><span><b>Finn is paused</b> at his €60 monthly budget. Sanne (his manager) can raise it. You can still talk to him; new runs wait.</span></div></div>
+  <div class="pane-body">
+    <div class="thread" style="padding:14px">
+      <div class="day">Yesterday</div>
+      <div class="msg"><span class="av jonas">J</span><div class="body"><div class="meta"><span class="who">Jonas</span><span class="time">17:39</span></div><div class="text">Which outside agent would you use, and what will it see?</div></div></div>
+      <div class="msg"><span class="av agent finn">F</span><div class="body"><div class="meta"><span class="who">Finn</span><span class="time">17:40</span></div><div class="text">Copilot coding agent on <span class="mono">acme/web</span>, already allowed by you. It gets the issue text, the failing test name and the last 5 CI logs. No customer data, no other Spaces.</div></div></div>
+      <div class="day">Today</div>
+<div class="msg"><span class="av jonas">J</span><div class="body"><div class="meta"><span class="who">Jonas</span><span class="time">09:44</span></div><div class="text">After merge, check the last 20 CI runs on main and report.</div></div></div>
+      <div class="msg"><span class="av sys">❚❚</span><div class="body"><div class="meta"><span class="who muted">System</span><span class="time">09:44</span></div><div class="text muted"><i>Finn is paused, so this message is queued. It runs when Sanne raises his budget or the month rolls over (1 Dec).</i></div>
+        <div class="card mt8"><div class="card-b small flex"><span class="state paused">queued</span>Check 20 CI runs after merge<span class="btn sm ghost right">Cancel</span></div></div></div></div>
+    </div>
+  </div>
+  <div class="pane-foot"><div class="composer"><div class="ph">Ask Finn about ENG-311…</div><div class="bar"><span class="pill outline xs">context: ENG-311 + PR #482</span><span class="send">↑</span></div></div></div>
+</aside>

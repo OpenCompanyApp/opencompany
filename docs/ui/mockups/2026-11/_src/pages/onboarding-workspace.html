@@ -1,0 +1,72 @@
+<!--meta
+{"title": "Onboarding · 1 Workspace", "area": "Onboarding", "order": 600, "layout": "solo", "min_height": 900,
+ "summary": "Create the first workspace: name, where it runs, invite teammates. No computer or connection needed.",
+ "notes": [
+  ["p", "Four short steps", "Workspace → Preset → First agent → Connect. Every step after this one can be skipped; the product is complete with zero connections and zero computers.", "PRODUCT_DIRECTION pillar 2 · computer-provider-contract “Computerless mode”"],
+  ["s", "Your data stays yours", "The region choice and the self-host note come from the sovereignty promise: export and backups are free on every plan, and self-hosted installs send no telemetry.", "data-sovereignty §1–§5"],
+  ["a", "Invites are people, not agents", "Teammates are invited here; agents are hired in step 3 and later from the rail's “+ hire”.", "ui-structure Appendix A"],
+  ["q", "Open: workspace slug and product name", "The docs don't fix the workspace URL scheme or whether onboarding already says Avok (rename pending after Phase 0). This mockup shows neutral chrome and an Acme slug.", "PRODUCT_DIRECTION “Name: Avok”"]
+ ]}
+-->
+<style>
+.onb{display:flex;flex-direction:column;align-items:center;padding:28px 0 40px;background:var(--background);min-height:100%}
+.onb .stepper{display:flex;align-items:center;gap:10px;margin-bottom:28px;font-size:12.5px}
+.onb .step{display:flex;align-items:center;gap:8px;color:var(--muted-foreground)}
+.onb .step .n{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border-strong);display:grid;place-items:center;font-size:11px;font-weight:700}
+.onb .step.on{color:var(--foreground);font-weight:650}
+.onb .step.on .n{background:var(--primary);border-color:var(--primary);color:#fff}
+.onb .step.done .n{background:var(--success);border-color:var(--success);color:#fff}
+.onb .line{width:56px;height:1px;background:var(--border-strong)}
+.onb .panel{width:720px;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);overflow:hidden}
+.onb .panel .ph{padding:24px 28px 8px}
+.onb .panel .pb{padding:8px 28px 20px}
+.onb .panel .pf{display:flex;align-items:center;gap:8px;padding:14px 28px;border-top:1px solid var(--border);background:var(--card-2)}
+.onb .opt{border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start}
+.onb .opt.on{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+</style>
+<main class="main">
+  <div class="onb">
+    <div class="flex mb16" style="gap:10px"><div class="logo" style="width:28px;height:28px;font-size:14px">◆</div><b style="font-size:15px">Set up your workspace</b><span class="muted small">· about 3 minutes</span></div>
+    <div class="stepper">
+      <div class="step on"><span class="n">1</span>Workspace</div><span class="line"></span>
+      <div class="step"><span class="n">2</span>Preset</div><span class="line"></span>
+      <div class="step"><span class="n">3</span>First agent</div><span class="line"></span>
+      <div class="step"><span class="n">4</span>Connect <span class="pill">optional</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="ph">
+        <div class="h1">Name your workspace</div>
+        <div class="muted mt4">A workspace holds your people, agents, Spaces and everything they work on. You can create more later.</div>
+      </div>
+      <div class="pb">
+        <div class="grid2" style="grid-template-columns:1.4fr 1fr">
+          <div class="field"><span class="label">Workspace name</span><div class="input focus"><span class="logo" style="width:18px;height:18px;font-size:10px">A</span>Acme</div></div>
+          <div class="field"><span class="label">Address</span><div class="input"><span class="muted">app.example/</span><b>acme</b><span class="right ok-t xs">✓ available</span></div></div>
+        </div>
+
+        <span class="label">Where it runs</span>
+        <div class="grid2 mb12">
+          <div class="opt on"><span class="radio on mt4"></span><div><b>Cloud · EU region</b><div class="muted small">Same AGPL code as self-hosting. Export, backups to your own bucket and the move to self-host are free on every plan.</div></div></div>
+          <div class="opt"><span class="radio mt4"></span><div><b>This server (self-hosted)</b><div class="muted small">Everything included, no telemetry, no remote flags. Bring your own model keys or local models.</div></div></div>
+        </div>
+
+        <span class="label">Invite teammates <span class="subtle" style="font-weight:400">· people only; you'll hire agents next</span></span>
+        <div class="card flat mb12">
+          <div class="list-row"><span class="av sanne md">S</span><div class="grow"><b>Sanne</b> <span class="muted">sanne@acme.example</span></div><span class="pill">Admin ▾</span><span class="icon-btn">×</span></div>
+          <div class="list-row"><span class="av jonas md">J</span><div class="grow"><b>Jonas</b> <span class="muted">jonas@acme.example</span></div><span class="pill">Member ▾</span><span class="icon-btn">×</span></div>
+          <div class="list-row"><span class="ico">＋</span><div class="grow input ph" style="border:0;padding:0;background:transparent">Add an email or paste a list…</div><span class="btn sm ghost">Copy invite link</span></div>
+        </div>
+
+        <div class="grid3" style="gap:8px">
+          <div class="callout ok"><span>✓</span><span><b>No computer needed.</b> Agents work fully through the VFS; computers are optional per agent.</span></div>
+          <div class="callout ok"><span>✓</span><span><b>No connection needed.</b> Tables, Issues, Docs, Files and chat work out of the box.</span></div>
+          <div class="callout"><span>⇩</span><span><b>Your data is portable.</b> Download anything; full <span class="mono">.ocarchive</span> export any time.</span></div>
+        </div>
+      </div>
+      <div class="pf"><span class="muted small">You'll be the owner of Acme.</span><span class="right flex gap8"><span class="btn ghost">Import an .ocarchive instead</span><span class="btn primary">Continue →</span></span></div>
+    </div>
+
+    <div class="muted xs mt16">Signed in as Rutger · Not you? Switch account</div>
+  </div>
+</main>

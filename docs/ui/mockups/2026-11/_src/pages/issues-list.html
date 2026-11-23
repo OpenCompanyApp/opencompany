@@ -1,0 +1,92 @@
+<!--meta
+{"title": "Issues · list", "area": "Spaces", "order": 110, "rail": "sales:issues", "layout": "three", "ctx_w": 360,
+ "summary": "Linear-style list grouped by state, a Triage group with agent suggestion chips, owner and delegate columns.",
+ "notes": [
+  ["a", "Triage with suggestion chips", "issue-triage suggests labels, priority and duplicates as accept/reject chips. Nothing leaves Triage without a human unless Space policy auto-accepts low-risk labels.", "example-flows story 16 · crm-issues-flows mockup"],
+  ["p", "Owner and delegate", "A human always owns the issue; an agent works as delegate. Run state (working, needs you, done, stale) sits beside the human-owned workflow state.", "work-apps “Issues are built from the list model” · ui-structure §4"],
+  ["s", "Issues replace Lists", "One concept per job: Lists fold into Issues, agent Tasks become runs shown in threads, Home and the profile.", "ui-structure §2 rule 7"],
+  ["q", "Open: auto-accept scope", "Which labels count as “low-risk” for Triage auto-accept, and whether that is a Space policy toggle or a routine setting, is not defined.", "example-flows story 16"]
+ ]}
+-->
+<style>
+.isl .irow{display:grid;grid-template-columns:22px 72px minmax(0,1fr) auto 130px 110px 64px;gap:10px;align-items:center;padding:7px 16px;border-bottom:1px solid var(--border);font-size:12.5px}
+.isl .irow:hover{background:var(--hover)}
+.isl .irow.sel{background:var(--primary-soft)}
+.isl .ghead{display:flex;align-items:center;gap:8px;padding:7px 16px;background:var(--card-2);border-bottom:1px solid var(--border);font-weight:650;font-size:12.5px}
+.isl .pri{font-family:var(--font-mono);color:var(--muted-foreground);letter-spacing:-1px}
+.isl .st{width:13px;height:13px;border-radius:50%;border:2px solid var(--border-strong);display:inline-block}
+.isl .st.prog{border-color:var(--warning);border-right-color:transparent}
+.isl .st.rev{border-color:var(--success);border-left-color:transparent}
+.isl .st.tri{border-style:dashed;border-color:var(--muted-foreground)}
+.isl .id{font-family:var(--font-mono);font-size:11px;color:var(--subtle-foreground)}
+.isl .who{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden}
+</style>
+<main class="main isl">
+  <div class="pane-head">
+    <div class="crumbs">Sales <span>/</span> <b>◇ Issues</b></div>
+    <span class="seg"><span class="on">List</span><span>Board</span></span>
+    <div class="acts"><span class="btn sm">Filter</span><span class="btn sm ghost">Display ▾</span><span class="btn sm primary">+ New issue</span></div>
+  </div>
+  <div class="pane-sub"><span class="chip x">State ≠ Done</span><span class="chip x">Space: Sales</span><span class="chip">+ filter</span><span class="muted right">15 issues · grouped by state · sorted by priority</span></div>
+  <div class="pane-body">
+    <div class="ghead"><span class="st tri"></span>Triage <span class="muted" style="font-weight:500">3</span><span class="pill ada">suggestions by routine issue-triage · run by Ada</span><span class="right muted xs" style="font-weight:500">Accept all safe chips</span></div>
+
+    <div class="irow" style="grid-template-columns:22px 72px minmax(0,1fr) auto"><span class="st tri"></span><span class="id">SAL-97</span><div><b>Pricing page shows old Starter tier</b><div class="muted xs">from Mail · sales@ · Lumen Dental <span class="untrusted">untrusted</span></div></div>
+      <div class="flex gap4 wrap" style="justify-content:flex-end"><span class="chip sug">bug<span class="yn"><i>✓</i><i>✕</i></span></span><span class="chip sug">high<span class="yn"><i>✓</i><i>✕</i></span></span><span class="chip sug">owner: Sanne<span class="yn"><i>✓</i><i>✕</i></span></span></div></div>
+    <div class="irow" style="grid-template-columns:22px 72px minmax(0,1fr) auto"><span class="st tri"></span><span class="id">SAL-98</span><div><b>Quote calculator rounds VAT wrong</b><div class="muted xs">from form · Contact us · Pinecrest</div></div>
+      <div class="flex gap4 wrap" style="justify-content:flex-end"><span class="chip sug" style="border-color:var(--warning)">duplicate of SAL-92?<span class="yn"><i>✓</i><i>✕</i></span></span><span class="chip sug">medium<span class="yn"><i>✓</i><i>✕</i></span></span></div></div>
+    <div class="irow" style="grid-template-columns:22px 72px minmax(0,1fr) auto"><span class="st tri"></span><span class="id">SAL-99</span><div><b>Northwind wants SSO before rollout</b><div class="muted xs">from #sales · Sanne · 2 customers · €46k pipeline linked</div></div>
+      <div class="flex gap4 wrap" style="justify-content:flex-end"><span class="chip sug">feature request<span class="yn"><i>✓</i><i>✕</i></span></span><span class="chip sug">move to Engineering<span class="yn"><i>✓</i><i>✕</i></span></span></div></div>
+
+    <div class="ghead"><span class="st prog"></span>In progress <span class="muted" style="font-weight:500">4</span></div>
+    <div class="irow sel"><span class="pri">▮▮▮</span><span class="id">SAL-88</span><div class="ell"><b>Northwind kickoff deck</b> <span class="chip">client</span></div><span class="state working">Ada working</span><div class="who"><span class="av rutger">R</span>Rutger</div><div class="who"><span class="av agent ada">A</span>Ada</div><span class="muted xs">Wed</span></div>
+    <div class="irow"><span class="pri">▮▮▯</span><span class="id">SAL-84</span><div class="ell"><b>Re-engage stale leads (Q4)</b></div><span class="state needs">needs you</span><div class="who"><span class="av rutger">R</span>Rutger</div><div class="who"><span class="av agent ada">A</span>Ada</div><span class="muted xs">Fri</span></div>
+    <div class="irow"><span class="pri">▮▮▯</span><span class="id">SAL-79</span><div class="ell"><b>Halden &amp; Co renewal proposal</b></div><span class="muted xs">—</span><div class="who"><span class="av sanne">S</span>Sanne</div><div class="who muted">—</div><span class="muted xs">28 Nov</span></div>
+    <div class="irow"><span class="pri">▮▯▯</span><span class="id">SAL-75</span><div class="ell"><b>Weekly pipeline: add win-rate by source</b></div><span class="state done">Cleo done</span><div class="who"><span class="av sanne">S</span>Sanne</div><div class="who"><span class="av agent cleo">C</span>Cleo</div><span class="muted xs">—</span></div>
+
+    <div class="ghead"><span class="st rev"></span>In review <span class="muted" style="font-weight:500">2</span></div>
+    <div class="irow"><span class="pri">▮▮▯</span><span class="id">SAL-82</span><div class="ell"><b>Orbit Coffee case study draft</b> <span class="chip">doc</span></div><span class="state done">Ada done</span><div class="who"><span class="av sanne">S</span>Sanne</div><div class="who"><span class="av agent ada">A</span>Ada</div><span class="muted xs">Thu</span></div>
+    <div class="irow"><span class="pri">▮▯▯</span><span class="id">SAL-80</span><div class="ell"><b>Clean duplicate contacts in Clients</b></div><span class="state stale">run stale</span><div class="who"><span class="av rutger">R</span>Rutger</div><div class="who"><span class="av agent ada">A</span>Ada</div><span class="muted xs">—</span></div>
+
+    <div class="ghead"><span class="st"></span>Todo <span class="muted" style="font-weight:500">6</span></div>
+    <div class="irow"><span class="pri">▮▮▮</span><span class="id">SAL-92</span><div class="ell"><b>Quote calculator: VAT for reverse-charge clients</b></div><span class="muted xs">—</span><div class="who"><span class="av sanne">S</span>Sanne</div><div class="who muted">—</div><span class="muted xs">2 Dec</span></div>
+    <div class="irow"><span class="pri">▮▮▯</span><span class="id">SAL-90</span><div class="ell"><b>Prep Fjord Freight discovery call</b></div><span class="muted xs">—</span><div class="who"><span class="av rutger">R</span>Rutger</div><div class="who"><span class="av agent ada">A</span>Ada</div><span class="muted xs">Tue</span></div>
+    <div class="irow"><span class="pri">▮▯▯</span><span class="id">SAL-86</span><div class="ell"><b>Update Kestrel Labs contact roles</b></div><span class="muted xs">queued</span><div class="who"><span class="av sanne">S</span>Sanne</div><div class="who"><span class="av agent ada">A</span>Ada</div><span class="muted xs">—</span></div>
+    <div class="irow"><span class="pri">▮▯▯</span><span class="id">SAL-61</span><div class="ell"><b>Update case studies page</b></div><span class="muted xs">—</span><div class="who warn-t">no owner</div><div class="who muted">—</div><span class="muted xs">—</span></div>
+    <div class="irow"><span class="pri">▯▯▯</span><span class="id">SAL-58</span><div class="ell"><b>Pinecrest: send revised SOW</b></div><span class="muted xs">—</span><div class="who"><span class="av sanne">S</span>Sanne</div><div class="who muted">—</div><span class="muted xs">5 Dec</span></div>
+    <div class="irow"><span class="pri">▯▯▯</span><span class="id">SAL-55</span><div class="ell"><b>Bluefin Studio: confirm website status</b></div><span class="muted xs">—</span><div class="who"><span class="av rutger">R</span>Rutger</div><div class="who muted">—</div><span class="muted xs">—</span></div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><span class="id mono muted">SAL-88</span><div class="title ell">Northwind kickoff deck</div><div class="acts"><span class="icon-btn">⤢</span><span class="icon-btn">⇥</span></div></div>
+  <div class="pane-body">
+    <div class="section">
+      <dl class="kv">
+        <dt>State</dt><dd><span class="pill warn">In progress</span></dd>
+        <dt>Owner</dt><dd class="flex"><span class="av rutger">R</span>Rutger <span class="muted xs">(human, closes it)</span></dd>
+        <dt>Delegate</dt><dd class="flex"><span class="av agent ada">A</span>Ada <span class="state working">working</span></dd>
+        <dt>Priority</dt><dd>High</dd>
+        <dt>Due</dt><dd>Wed 25 Nov</dd>
+        <dt>Linked</dt><dd><span class="ref">◈ Northwind deal</span> <span class="ref">≡ Project brief</span></dd>
+      </dl>
+    </div>
+    <div class="section">
+      <div class="section-t">Ada's run <span class="ref">R-2296</span></div>
+      <ul class="plan">
+        <li class="done">Read deal notes and the 6-mail thread</li>
+        <li class="done">Outline 9 slides from the Project brief</li>
+        <li class="doing">Build slides on her computer (Typst → PDF)</li>
+        <li>Post PDF to Files and link here</li>
+      </ul>
+      <div class="flex mt8"><span class="btn sm">Open run</span><span class="btn sm ghost">Redirect</span><span class="btn sm danger right">Stop</span></div>
+    </div>
+    <div class="section">
+      <div class="section-t">Activity</div>
+      <div class="col gap8 small">
+        <div class="flex top"><span class="av rutger">R</span><div>Assigned Ada as delegate · “use the agency template, keep it to 10 slides” <div class="muted xs">yesterday 17:20</div></div></div>
+        <div class="flex top"><span class="av agent ada">A</span><div>Changed due date <span class="old">Fri</span> → <span class="new">Wed</span> <span class="muted xs">CS-860 · matches kickoff booking</span></div></div>
+        <div class="flex top"><span class="av sanne">S</span><div>@Ada add the SSO question from Northwind as an open point</div></div>
+      </div>
+    </div>
+  </div>
+</aside>

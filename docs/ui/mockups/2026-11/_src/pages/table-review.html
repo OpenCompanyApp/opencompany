@@ -1,0 +1,97 @@
+<!--meta
+{"title": "Table · staged edits review", "area": "Spaces", "order": 121, "rail": "sales:tables", "layout": "three", "ctx_w": 380, "height": 1080,
+ "summary": "Ada's bulk enrichment streams into the grid in her colour; review per cell, row or all, with a conflict where a human edit wins.",
+ "notes": [
+  ["a", "Plan → dry run → live staging", "Over the Team bulk threshold (50 rows), so the change set is a proposal: plan card with scope, sample old→new and cost, then edits stream in highlighted in Ada's colour with a presence chip.", "ui-structure §4 steps 2–3 · PRODUCT_DIRECTION pillar 5 table"],
+  ["p", "Review per cell, row or all", "Filter to changed only, hover a cell for old→new, accept or reject per cell, per row or everything. Applying commits with Ada's attribution and a run link.", "ui-structure §4 steps 4–5"],
+  ["k", "Human edits win", "Sanne changed Halden & Co's size after Ada read it, so that cell is a conflict: Ada's value is never written over hers unless a human picks it.", "ui-structure §4 step 7"],
+  ["q", "Open: stale presence", "A crashed run should show as stale via a presence timeout. The timeout value and whether a stale proposal can still be applied are not set.", "ui-structure §4 step 3 · open questions"]
+ ]}
+-->
+<style>
+.trv .rv{display:inline-flex;gap:3px}
+.trv .rv i{font-style:normal;width:20px;height:20px;border-radius:5px;display:grid;place-items:center;font-size:11px;border:1px solid var(--border);background:var(--card)}
+.trv .rv i.y{color:var(--success-text)}.trv .rv i.n{color:var(--danger-text)}
+.trv .tip{position:absolute;z-index:5;background:var(--popover);border:1px solid var(--border-strong);border-radius:8px;box-shadow:var(--shadow);padding:8px 10px;font-size:12px;width:250px}
+.trv .tip::before{content:"";position:absolute;top:-6px;left:28px;width:10px;height:10px;background:var(--popover);border-left:1px solid var(--border-strong);border-top:1px solid var(--border-strong);transform:rotate(45deg)}
+.trv .gridwrap{position:relative;flex:1;overflow:hidden;min-height:0}
+.trv .dgrid td.staged .old{font-size:11px;margin-right:2px}
+.trv tr.streaming td{background:linear-gradient(90deg,var(--ada-soft),transparent 70%)}
+.trv tr.pending td{color:var(--subtle-foreground)}
+</style>
+<main class="main trv">
+  <div class="pane-head">
+    <div class="crumbs">Sales <span>/</span> Tables <span>/</span> <b>▦ Leads</b></div>
+    <span class="pill warn">proposal · in review</span>
+    <div class="acts"><span class="presence"><span class="av agent ada">A</span>Ada · editing row 12 of 214</span><span class="btn sm ghost">⇩ Export</span><span class="icon-btn b">⋯</span></div>
+  </div>
+  <div class="pane-sub" style="background:var(--ada-soft)">
+    <span class="av agent ada">A</span><b class="nowrap">CS-890</b><span class="muted nowrap">run R-2302</span>
+    <div class="prog ada" style="width:140px"><i style="width:6%"></i></div><span class="muted xs nowrap">12 / 214 rows · 31 cells</span>
+    <span class="right flex gap4"><span class="seg"><span class="on">Changed only</span><span>All</span></span><span class="btn sm">Reject all</span><span class="btn sm ada">Accept all 30</span></span>
+  </div>
+  <div class="gridwrap">
+    <table class="dgrid">
+      <tr><th class="n">#</th><th><span class="ty">Aa</span>Company</th><th><span class="ty">◉</span>Industry</th><th><span class="ty">◉</span>Size</th><th><span class="ty">◉</span>Country</th><th><span class="ty">Aa</span>Source</th><th style="width:90px">Review</th></tr>
+      <tr><td class="n">1</td><td><b>Orbit Coffee</b></td><td class="staged"><span class="old">—</span>Hospitality</td><td class="staged"><span class="old">—</span>11–50</td><td>NL</td><td class="muted">website · about</td><td><span class="rv"><i class="y">✓</i><i class="n">✕</i></span></td></tr>
+      <tr><td class="n">2</td><td><b>Kestrel Labs</b></td><td class="staged"><span class="old">Software</span>Life sciences</td><td class="staged"><span class="old">1–10</span>51–200</td><td>BE</td><td class="muted">website · team page</td><td><span class="rv"><i class="y">✓</i><i class="n">✕</i></span></td></tr>
+      <tr><td class="n">4</td><td><b>Bluefin Studio</b></td><td>Design</td><td>1–10</td><td class="staged"><span class="old">—</span>?</td><td class="muted">site down, skipped</td><td><span class="rv"><i class="y">✓</i><i class="n">✕</i></span></td></tr>
+      <tr><td class="n">5</td><td><b>Halden &amp; Co</b></td><td class="staged"><span class="old">—</span>Professional services</td><td class="conflict">201–500 <span class="xs warn-t">⚠ Sanne</span></td><td>NL</td><td class="muted">website · careers</td><td><span class="rv"><i class="y">✓</i><i class="n">✕</i></span></td></tr>
+      <tr><td class="n">6</td><td><b>Pinecrest</b></td><td class="staged"><span class="old">—</span>Construction</td><td>11–50</td><td class="staged"><span class="old">—</span>DE</td><td class="muted">website · imprint</td><td><span class="rv"><i class="y">✓</i><i class="n">✕</i></span></td></tr>
+      <tr class="sel"><td class="n">7</td><td><b>Lumen Dental</b></td><td class="staged focus"><span class="old">Health</span>Healthcare</td><td class="staged"><span class="old">—</span>51–200</td><td>BE</td><td class="muted">enrichment API</td><td><span class="rv"><i class="y">✓</i><i class="n">✕</i></span></td></tr>
+      <tr><td class="n">8</td><td><b>Fjord Freight</b></td><td class="staged"><span class="old">—</span>Logistics</td><td class="staged"><span class="old">—</span>201–500</td><td class="staged"><span class="old">—</span>NO</td><td class="muted">enrichment API</td><td><span class="rv"><i class="y">✓</i><i class="n">✕</i></span></td></tr>
+      <tr><td class="n">9</td><td><b>Marlow Bakery</b></td><td class="staged"><span class="old">—</span>Food &amp; beverage</td><td class="staged"><span class="old">—</span>1–10</td><td>UK</td><td class="muted">website · about</td><td><span class="rv"><i class="y">✓</i><i class="n">✕</i></span></td></tr>
+      <tr><td class="n">10</td><td><b>Tidewater Legal</b></td><td class="staged"><span class="old">Legal</span>Legal services</td><td class="staged"><span class="old">—</span>11–50</td><td>NL</td><td class="muted">website · about</td><td><span class="rv"><i class="y">✓</i><i class="n">✕</i></span></td></tr>
+      <tr><td class="n">11</td><td><b>Copperleaf Hotels</b></td><td class="staged"><span class="old">—</span>Hospitality</td><td class="staged"><span class="old">—</span>201–500</td><td class="staged"><span class="old">—</span>PT</td><td class="muted">enrichment API</td><td><span class="rv"><i class="y">✓</i><i class="n">✕</i></span></td></tr>
+      <tr class="streaming"><td class="n">12</td><td><b>Ashgrove School</b></td><td class="staged"><span class="old">—</span>Education</td><td class="muted">reading…</td><td class="muted">…</td><td><span class="presence"><span class="av agent ada">A</span>Ada here</span></td><td></td></tr>
+      <tr class="pending"><td class="n">13</td><td>Brightline Optics</td><td>—</td><td>—</td><td>BE</td><td>queued</td><td></td></tr>
+      <tr class="pending"><td class="n">14</td><td>Quarry Studio</td><td>Design</td><td>—</td><td>NL</td><td>queued</td><td></td></tr>
+      <tr class="pending"><td class="n">15</td><td>Redwood Clinics</td><td>—</td><td>—</td><td>UK</td><td>queued</td><td></td></tr>
+      <tr class="pending"><td class="n">16</td><td>Saltmarsh Media</td><td>—</td><td>—</td><td>UK</td><td>queued</td><td></td></tr><tr class="pending"><td class="n">17</td><td>Veldt Outdoor</td><td>Retail</td><td>—</td><td>NL</td><td>queued</td><td></td></tr><tr class="pending"><td class="n">18</td><td>Harbor &amp; Pine</td><td>—</td><td>51–200</td><td>BE</td><td>queued</td><td></td></tr><tr class="pending"><td class="n">19</td><td>Ironbridge Co-op</td><td>—</td><td>—</td><td>UK</td><td>queued</td><td></td></tr><tr class="pending"><td class="n">20</td><td>Larkspur Events</td><td>Events</td><td>—</td><td>NL</td><td>queued</td><td></td></tr><tr class="pending"><td class="n">21</td><td>Northgate Dental</td><td>—</td><td>—</td><td>BE</td><td>queued</td><td></td></tr><tr class="pending"><td class="n">22</td><td>Oakfield Farms</td><td>—</td><td>11–50</td><td>FR</td><td>queued</td><td></td></tr><tr class="pending"><td class="n">23</td><td>Silverline Gyms</td><td>—</td><td>—</td><td>NL</td><td>queued</td><td></td></tr><tr class="pending"><td class="n">24</td><td>Umber Architects</td><td>—</td><td>—</td><td>DK</td><td>queued</td><td></td></tr><tr class="pending"><td class="n">25</td><td>Ashford Bikes</td><td>—</td><td>—</td><td>NL</td><td>queued</td><td></td></tr><tr class="pending"><td class="n">26</td><td>Beacon Payroll</td><td>Software</td><td>—</td><td>UK</td><td>queued</td><td></td></tr><tr class="ghost"><td class="n">…</td><td colspan="6">188 more rows queued · Ada stages about 40 rows a minute · you can review while she works</td></tr>
+    </table>
+    <div class="tip" style="left:214px;top:240px">
+      <div class="flex"><span class="av agent ada">A</span><b>Industry</b> · Lumen Dental</div>
+      <div class="mt4"><span class="old">Health</span><span class="arrow">→</span><span class="new">Healthcare</span></div>
+      <div class="muted xs mt4">Source: enrichment API (read-only connection), matches the site footer. Read at 09:42, unchanged since.</div>
+      <div class="flex mt8"><span class="btn sm ada">Accept cell</span><span class="btn sm">Reject</span><span class="btn sm ghost">Edit…</span></div>
+    </div>
+  </div>
+  <div class="pane-foot flex small"><span class="pill warn">1 conflict</span><span class="muted">Halden &amp; Co · Size: Sanne set 201–500 at 09:52, after Ada read 11–50. Keeping Sanne's value unless you pick Ada's.</span><span class="right flex gap4"><span class="btn sm">Keep Sanne's</span><span class="btn sm ghost">Use Ada's</span></span></div>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title"><span class="av agent ada">A</span>Ada <span class="agent-label">Agent</span></div><span class="pill outline">on Leads · selection: all rows</span><div class="acts"><span class="icon-btn">⇥</span></div></div>
+  <div class="pane-body">
+    <div class="thread" style="padding:14px">
+      <div class="msg"><span class="av sanne">S</span><div class="body"><div class="meta"><span class="who">Sanne</span><span class="time">09:38</span></div><div class="text">Fill in industry, size and country for every lead. Use their websites; the enrichment API is fine too.</div></div></div>
+      <div class="msg"><span class="av agent ada">A</span><div class="body"><div class="meta"><span class="who">Ada</span><span class="time">09:39</span></div><div class="text">That touches all 214 rows, so it's a proposal. Here's the plan.</div>
+        <div class="card mt8">
+          <div class="card-h"><span class="k">Plan</span><b>Leads (Sales)</b><span class="pill right">bulk · over 50 rows</span></div>
+          <div class="card-b small">
+            <div><b>Scope:</b> update up to 214 rows × 3 fields (Industry, Size, Country). Never overwrite a value a human changed after I read it.</div>
+            <div class="section-t mt8">Dry run · 3 of 10 samples</div>
+            <div class="col gap4">
+              <div class="flex"><span class="ell" style="width:100px">Kestrel Labs</span><span class="old">Software</span>→<span class="new">Life sciences</span></div>
+              <div class="flex"><span class="ell" style="width:100px">Lumen Dental</span><span class="old">Health</span>→<span class="new">Healthcare</span></div>
+              <div class="flex"><span class="ell" style="width:100px">Fjord Freight</span><span class="old">—</span>→<span class="new">Logistics · 201–500 · NO</span></div>
+            </div>
+            <dl class="kv mt8"><dt>Reads</dt><dd>Lead websites (browser, allowlisted per run) and the enrichment API connection (read-only)</dd><dt>Estimate</dt><dd>~€2.10 · 6 min · Ada has €41.20 left</dd></dl>
+          </div>
+          <div class="card-f"><span class="pill ok">Approved by Sanne 09:40</span><span class="muted xs">edit plan · cancel</span></div>
+        </div>
+      </div></div>
+      <div class="msg"><span class="av agent ada">A</span><div class="body"><div class="meta"><span class="who">Ada</span><span class="time">09:53</span></div><div class="text">Heads-up: Sanne changed Halden &amp; Co's size while I was working. I've left hers in place and flagged it.</div></div></div>
+    </div>
+    <div class="section">
+      <div class="section-t">Review so far</div>
+      <dl class="kv small">
+        <dt>Staged</dt><dd>31 cells in 11 rows</dd>
+        <dt>Conflicts</dt><dd class="warn-t">1 (human edit wins)</dd>
+        <dt>Skipped</dt><dd>1 row, website down</dd>
+        <dt>Accepted</dt><dd>0 · nothing applied yet</dd>
+      </dl>
+      <div class="flex mt12"><span class="btn sm ada">Accept all 30</span><span class="btn sm">Reject all</span><span class="btn sm ghost">Pause staging</span></div>
+      <div class="callout ada mt12"><span>↶</span><span>After you apply, <b>Revert this run</b> stays available on CS-890 and in each row's history, as long as the cells haven't changed since.</span></div>
+    </div>
+  </div>
+  <div class="pane-foot"><div class="composer"><div class="ph">Ask Ada about this change set…</div><div class="bar"><span class="pill outline xs">context: Leads · CS-890</span><span class="send">↑</span></div></div></div>
+</aside>

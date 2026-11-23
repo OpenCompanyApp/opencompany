@@ -1,0 +1,111 @@
+<!--meta
+{"title": "Exploration · Adaptive coding mode", "area": "Exploration (not locked)", "order": 800, "rail": "agent:ada", "layout": "three", "ctx_w": 600, "exploration": true,
+ "agent_status": {"ada": ["work", "ENG-311 fix…", ""]},
+ "summary": "NOT LOCKED. A chat that turns technical switches itself into coding mode: wide diff/terminal pane, grouped tool steps, code-aware composer, manual override.",
+ "notes": [
+  ["q", "Exploration, not locked", "From GIN-2545 (backlog). The chat detects a shift into code and widens the context pane; Auto / On / Off overrides it. Nothing here changes the locked three-pane layout: only the pane widths and the composer change.", "Linear GIN-2545 · GIN-2542"],
+  ["a", "Still a conversation", "Ada's replies stay first-class messages; tool steps are grouped and collapsed. Coding mode is a mode of the thread, not a wrapped coding-agent session.", "Linear GIN-2612 · ui-structure §5"],
+  ["k", "Governance does not change", "Pushing a branch and opening a PR is still an external action: the first time per repository asks, then offers “always for this repo”. Merged PRs can't be reverted by OpenCompany.", "messenger-ui “Delegation to outside agents” · governance “Action classes”"],
+  ["q", "Open: what triggers the switch", "Proposed signals: a repository or file reference, a diff or stack trace in the thread, or a coding run on the agent's computer. Does the mode stick per thread, per person or per agent? Not the mruby Code Mode.", "Linear GIN-2545 acceptance sketch"]
+ ]}
+-->
+<style>
+.cm .modebar{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--ada-soft);font-size:12.5px}
+.cm .schem{display:grid;gap:2px;width:64px;height:34px;border:1px solid var(--border-strong);border-radius:4px;padding:2px;background:var(--card)}
+.cm .schem i{background:var(--secondary);border-radius:2px;display:block}
+.cm .schem i.c{background:var(--ada-soft);border:1px solid var(--ada-border)}
+.cm .grp{border:1px solid var(--border);border-radius:8px;background:var(--card);margin-top:6px}
+.cm .grp .gh{display:flex;gap:8px;align-items:center;padding:6px 10px;font-size:12px}
+.cm .grp .gb{border-top:1px solid var(--border);padding:4px 10px 6px}
+.cm .mcomp .ph{font-family:var(--font-mono);font-size:12px}
+.cmx .diff{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--code-bg)}
+.cmx .diff .fh{display:flex;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:11.5px;background:var(--card-2)}
+.cmx .diff .ln{display:grid;grid-template-columns:36px 36px 1fr;font-family:var(--font-mono);font-size:11.5px;line-height:1.6}
+.cmx .diff .ln span{color:var(--subtle-foreground);text-align:right;padding-right:8px}
+.cmx .diff .ln code{white-space:pre;padding-left:6px;font-family:inherit}
+.cmx .diff .ln.add{background:var(--success-soft)}.cmx .diff .ln.add code{color:var(--success-text)}
+.cmx .diff .ln.del{background:var(--danger-soft)}.cmx .diff .ln.del code{color:var(--danger-text)}
+.cmx .diff .ln.hunk{background:var(--primary-soft)}.cmx .diff .ln.hunk code{color:var(--primary-text)}
+</style>
+<main class="main cm">
+  <div class="pane-head">
+    <div class="title"><span class="av agent ada md">A<i class="dot work"></i></span>Ada <span class="agent-label">Agent</span></div>
+    <div class="acts"><span class="pill ada">⌨ Coding mode · auto</span><span class="seg"><span class="on">Auto</span><span>On</span><span>Off</span></span></div>
+  </div>
+  <div class="modebar">
+    <div class="schem" style="grid-template-columns:2fr 1fr"><i></i><i></i></div><span class="muted">→</span>
+    <div class="schem" style="grid-template-columns:1fr 1.6fr"><i></i><i class="c"></i></div>
+    <span style="flex:1"><b>Coding mode on</b> · this thread now has a repo, a diff and test output. Same chat, wider side pane. <u>Back to normal</u></span>
+  </div>
+  <div class="pane-body">
+    <div class="thread">
+      <div class="msg"><span class="av rutger md">R</span><div class="body"><div class="meta"><span class="who">Rutger</span><span class="time">10:02</span></div>
+        <div class="text">Thanks for the leads. Different thing: <span class="ref">◇ ENG-311</span> the checkout test keeps flaking in CI. Finn is paused, can you take a look? Jonas owns it.</div></div></div>
+
+      <div class="msg"><span class="av agent ada md">A</span><div class="body"><div class="meta"><span class="who">Ada</span><span class="agent-label">Agent</span><span class="time">10:03</span></div>
+        <div class="text">Sure. I've added myself as delegate on ENG-311 (Jonas stays owner) and cloned <span class="mono">acme/checkout-service</span> on my computer. I'll reproduce it before changing anything.</div>
+        <div class="grp"><div class="gh"><span class="state done">done</span><b>Reproduce</b><span class="muted">· 6 steps · 2 min</span><span class="right muted xs">▸ expand</span></div></div>
+        <div class="grp"><div class="gh"><span class="state done">done</span><b>Find the cause</b><span class="muted">· 9 steps · read 7 files · 1 thought</span><span class="right muted xs">▾</span></div>
+          <div class="gb">
+            <div class="act action"><span class="ai">$</span><div><span class="mono">npm test -- checkout.spec.ts --repeat 50</span> <span class="det">· 7 of 50 failed</span></div></div>
+            <div class="act action"><span class="ai">↗</span><div>Read <span class="mono">src/payment/confirm.ts</span>, <span class="mono">tests/checkout.spec.ts</span> <span class="det">+5 files</span></div></div>
+            <div class="act result"><span class="ai">✓</span><div>The test asserts before the payment promise settles; it passes only when the mock resolves first.</div></div>
+          </div></div>
+      </div></div>
+
+      <div class="msg"><span class="av agent ada md">A</span><div class="body"><div class="meta"><span class="who">Ada</span><span class="agent-label">Agent</span><span class="time">10:11</span></div>
+        <div class="text"><p>Found it: a race in the test, not in checkout itself. The fix awaits the confirmation and uses fake timers for the 3-second retry. 50 of 50 runs pass now. Diff is on the right.</p>
+        <p>Next I'd push a branch and open a draft PR for Jonas to review.</p></div>
+        <div class="grp"><div class="gh"><span class="state done">done</span><b>Fix and verify</b><span class="muted">· 1 file changed · +6 −3 · 50/50 passing</span><span class="right muted xs">▸</span></div></div>
+        <div class="card approval">
+          <div class="card-h"><span class="k">Approval</span><b>Push branch, open draft PR</b><span class="muted xs right">first time · this repo</span></div>
+          <div class="card-b"><dl class="kv"><dt>What</dt><dd>Push <span class="mono">fix/eng-311-await-confirm</span> to <span class="mono">acme/checkout-service</span>; open a draft PR assigned to Jonas</dd><dt>Why</dt><dd>ENG-311 · run <span class="ref">R-2304</span> · on behalf of Rutger</dd><dt>Risk</dt><dd><span class="pill warn">external_send</span> <span class="muted">· a merged PR can't be reverted by OpenCompany</span></dd></dl></div>
+          <div class="card-f"><span class="btn primary sm">Approve once</span><span class="btn sm">Always for this repo</span><span class="btn sm ghost">Deny</span></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+  <div class="pane-foot" style="border-top:0;padding-top:0">
+    <div class="composer mcomp">
+      <div class="flex gap4 mb8"><span class="chip">⎇ acme/checkout-service</span><span class="chip">branch fix/eng-311-await-confirm</span><span class="chip">◇ ENG-311</span></div>
+      <div class="ph">Message Ada… paste a stack trace, @file, /test, /diff, /pr</div>
+      <div class="bar"><span class="icon-btn">＋</span><span class="icon-btn">@</span><span class="icon-btn">/</span><span class="xs muted">Code blocks keep formatting · ⌘↵ to send</span><span class="send">↑</span></div>
+    </div>
+  </div>
+</main>
+<aside class="ctx cmx">
+  <div class="tabs" style="padding-top:8px"><span class="tab on">± Diff · 1</span><span class="tab">$ Terminal</span><span class="tab">▤ Files</span><span class="tab">✓ Tests</span><span class="tab">⎇ PR</span><span class="tab">◇ ENG-311</span></div>
+  <div class="pane-sub"><span class="sdot on"></span><b>Ada's computer</b><span class="muted xs">cloud · repo cloned at <span class="mono">~/work/checkout-service</span></span><span class="right pill">👁 view only</span><span class="btn sm">Take over</span></div>
+  <div class="pane-body" style="padding:12px">
+    <div class="diff">
+      <div class="fh"><b>tests/checkout.spec.ts</b><span class="ok-t">+6</span><span class="bad-t">−3</span><span class="right muted">unstaged → committed 3a91f2c</span></div>
+      <div class="ln hunk"><span></span><span></span><code>@@ -41,12 +41,15 @@ describe("checkout confirm", () =&gt; {</code></div>
+      <div class="ln"><span>41</span><span>41</span><code>  it("marks the order paid after confirmation", async () =&gt; {</code></div>
+      <div class="ln add"><span></span><span>42</span><code>    vi.useFakeTimers();</code></div>
+      <div class="ln"><span>42</span><span>43</span><code>    const order = await createOrder({ total: 4900 });</code></div>
+      <div class="ln del"><span>43</span><span></span><code>    confirmPayment(order.id);</code></div>
+      <div class="ln add"><span></span><span>44</span><code>    const pending = confirmPayment(order.id);</code></div>
+      <div class="ln add"><span></span><span>45</span><code>    await vi.advanceTimersByTimeAsync(3000); // retry window</code></div>
+      <div class="ln add"><span></span><span>46</span><code>    await pending;</code></div>
+      <div class="ln del"><span>44</span><span></span><code>    await sleep(50);</code></div>
+      <div class="ln"><span>45</span><span>47</span><code>    expect(await getOrder(order.id)).toMatchObject({ status: "paid" });</code></div>
+      <div class="ln del"><span>46</span><span></span><code>  });</code></div>
+      <div class="ln add"><span></span><span>48</span><code>    vi.useRealTimers();</code></div>
+      <div class="ln add"><span></span><span>49</span><code>  });</code></div>
+      <div class="ln"><span>47</span><span>50</span><code></code></div>
+    </div>
+
+    <div class="section-t mt16">Terminal · last run</div>
+    <div class="term"><span class="d">~/work/checkout-service $</span> npm test -- checkout.spec.ts --repeat 50
+<span class="d"> RUN  v2.1  ~/work/checkout-service</span>
+ <span class="g">✓</span> tests/checkout.spec.ts (50 × 4 tests) 6.82s
+<span class="d"> Test Files</span>  <span class="g">1 passed</span> (1)
+<span class="d">      Tests</span>  <span class="g">200 passed</span> (200)
+<span class="d">~/work/checkout-service $</span> git commit -am "Fix ENG-311 test race"
+[fix/eng-311-await-confirm 3a91f2c] 1 file, +6 −3</div>
+
+    <div class="section-t mt16">Files touched</div>
+    <div class="card"><div class="list-row"><span class="ico sm ok">M</span><span class="mono grow">tests/checkout.spec.ts</span><span class="muted xs">+6 −3</span></div>
+      <div class="list-row"><span class="ico sm">R</span><span class="mono grow">src/payment/confirm.ts</span><span class="muted xs">read only</span></div></div>
+  </div>
+</aside>

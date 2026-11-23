@@ -1,0 +1,370 @@
+[
+ {
+  "slug": "admin-audit",
+  "title": "Admin \u00b7 Audit log",
+  "area": "Admin",
+  "order": 411,
+  "summary": "Who allowed what, at what cost: policy decisions, approvals, exceptions and one entry traced through its causality chain.",
+  "exploration": null
+ },
+ {
+  "slug": "admin-budgets",
+  "title": "Admin \u00b7 Budgets",
+  "area": "Admin",
+  "order": 440,
+  "summary": "Workspace, agent and routine budgets for tokens, compute and spend; Finn paused at his limit; visible model routing.",
+  "exploration": null
+ },
+ {
+  "slug": "admin-connections",
+  "title": "Admin \u00b7 Connections",
+  "area": "Admin",
+  "order": 400,
+  "summary": "Deep connectors, MCP servers with pinned definitions, API manifests, signed webhooks and per-agent grants.",
+  "exploration": null
+ },
+ {
+  "slug": "admin-export",
+  "title": "Admin \u00b7 Export & backups",
+  "area": "Admin",
+  "order": 450,
+  "summary": "Object downloads, the round-trippable .ocarchive, backups to your own bucket, a Git mirror, import and restore.",
+  "exploration": null
+ },
+ {
+  "slug": "admin-governance",
+  "title": "Admin \u00b7 Governance",
+  "area": "Admin",
+  "order": 410,
+  "summary": "Presets (Personal, Team, Company), the reversibility table, hard-deny floor, Space overrides, exceptions and approvers.",
+  "exploration": null
+ },
+ {
+  "slug": "admin-hosts",
+  "title": "Admin \u00b7 Connected hosts",
+  "area": "Admin",
+  "order": 430,
+  "summary": "Bring-your-own machines: outbound-only hosts, sandbox modes, per-agent capabilities, a pending approval and the disconnect kill switch.",
+  "exploration": null
+ },
+ {
+  "slug": "admin-members",
+  "title": "Admin \u00b7 Members & roles",
+  "area": "Admin",
+  "order": 420,
+  "summary": "Owner, Admin and Member roles, agents with their managers, the Space membership matrix, invites and guest exceptions.",
+  "exploration": null
+ },
+ {
+  "slug": "admin-skills",
+  "title": "Admin \u00b7 Skills & plugins",
+  "area": "Admin",
+  "order": 405,
+  "summary": "SKILL.md skills and plugin imports with provenance, digest-bound approval, pinned versions and a re-approval diff.",
+  "exploration": null
+ },
+ {
+  "slug": "agent-profile-vfs",
+  "title": "Agent profile \u00b7 Finn (VFS-only)",
+  "area": "Team",
+  "order": 56,
+  "summary": "A VFS-only agent with a non-blocking \u201crecommend a computer\u201d state, paused at its budget, and distinct pause/stop/kill controls.",
+  "exploration": null
+ },
+ {
+  "slug": "agent-profile",
+  "title": "Agent profile \u00b7 Ada",
+  "area": "Team",
+  "order": 55,
+  "summary": "Identity, manager, Spaces, autonomy slider capped by the preset, always-allow list, grants, budget, computer, routines, memory.",
+  "exploration": null
+ },
+ {
+  "slug": "approval-batch",
+  "title": "Approvals and change-set review",
+  "area": "Governance",
+  "order": 200,
+  "summary": "Home filtered to Needs you: a batched send card opened in full with a learned-exception offer, and a bulk-edit proposal reviewed per cell, row or all.",
+  "exploration": null
+ },
+ {
+  "slug": "approval-field-rule",
+  "title": "Field rule and decision trace",
+  "area": "Governance",
+  "order": 210,
+  "summary": "A business rule (discount over 20% needs the sales lead) turns one field of a change set into a proposal; the decision trace explains why.",
+  "exploration": null
+ },
+ {
+  "slug": "artifact-interactive",
+  "title": "Artifacts \u00b7 Interactive",
+  "area": "Spaces \u00b7 Artifacts",
+  "order": 151,
+  "summary": "Ada builds an interactive Quote calculator in a DM; the context pane shows the sandboxed live preview and its mruby endpoint.",
+  "exploration": null
+ },
+ {
+  "slug": "artifact-page",
+  "title": "Artifacts \u00b7 Page",
+  "area": "Spaces \u00b7 Artifacts",
+  "order": 150,
+  "summary": "The Space Artifacts tool with the live \u201cWeekly pipeline\u201d Page: blocks, bindings, versions and the publishing ladder.",
+  "exploration": null
+ },
+ {
+  "slug": "channel",
+  "title": "Channel \u00b7 #launch-q4",
+  "area": "Messenger",
+  "order": 30,
+  "summary": "A channel mixing agents and people: mentions, reply threads, issue/record/artifact cards, a handoff, and approvals shown only as \u201cwaiting for\u201d.",
+  "exploration": null
+ },
+ {
+  "slug": "crm-deal",
+  "title": "CRM \u00b7 deal",
+  "area": "Apps",
+  "order": 311,
+  "summary": "Deal record with Ada's proposed field changes from a call, a human-edited field kept, and the discount > 20% approval rule.",
+  "exploration": null
+ },
+ {
+  "slug": "crm-pipeline",
+  "title": "CRM \u00b7 pipeline",
+  "area": "Apps",
+  "order": 310,
+  "summary": "The CRM pipeline board: deals by stage with values, stale markers, agent suggestion chips and forecast totals.",
+  "exploration": null
+ },
+ {
+  "slug": "dm-agent",
+  "title": "Agent DM \u00b7 Ada",
+  "area": "Messenger",
+  "order": 20,
+  "summary": "Typed run activity, live plan, stop/redirect, inline approval, change-set card and the computer panel.",
+  "exploration": null
+ },
+ {
+  "slug": "doc-editor",
+  "title": "Doc \u00b7 suggestion mode",
+  "area": "Spaces",
+  "order": 130,
+  "summary": "A typed Policy doc with owner, status and review date; Ada edits as tracked suggestions; version-checked saves.",
+  "exploration": null
+ },
+ {
+  "slug": "empty-states",
+  "title": "Empty states",
+  "area": "Onboarding",
+  "order": 650,
+  "summary": "A sheet of empty states: quiet Home, empty Space tools with agent-first actions, no agents, no apps, no results, VFS-only computer section.",
+  "exploration": null
+ },
+ {
+  "slug": "explore-coding-mode",
+  "title": "Exploration \u00b7 Adaptive coding mode",
+  "area": "Exploration (not locked)",
+  "order": 800,
+  "summary": "NOT LOCKED. A chat that turns technical switches itself into coding mode: wide diff/terminal pane, grouped tool steps, code-aware composer, manual override.",
+  "exploration": true
+ },
+ {
+  "slug": "explore-master-minions",
+  "title": "Exploration \u00b7 Master + Minions",
+  "area": "Exploration (not locked)",
+  "order": 810,
+  "summary": "NOT LOCKED. Each person has one personal Master that launches scoped Minions; a roster with scope, model, state and Wake.",
+  "exploration": true
+ },
+ {
+  "slug": "explore-session-inspect",
+  "title": "Exploration \u00b7 Session is inspect-only",
+  "area": "Exploration (not locked)",
+  "order": 820,
+  "summary": "NOT LOCKED. The thread shows only messages posted for people plus collapsed activity; the raw agent session is a read-only debug view.",
+  "exploration": true
+ },
+ {
+  "slug": "files-drive",
+  "title": "Files \u00b7 Drive mount",
+  "area": "Spaces",
+  "order": 140,
+  "summary": "One Files store with folders and a Google Drive mount, effective access, sync state, preview and governed sharing.",
+  "exploration": null
+ },
+ {
+  "slug": "form-builder",
+  "title": "Form view \u00b7 builder",
+  "area": "Apps \u00b7 Forms",
+  "order": 320,
+  "summary": "A Form view on the Leads table: typed field mapping, logic, hidden prefill, consent, ALTCHA, retention, render modes and publish level.",
+  "exploration": null
+ },
+ {
+  "slug": "form-public",
+  "title": "Form \u00b7 public render",
+  "area": "Apps \u00b7 Forms",
+  "order": 321,
+  "summary": "The public \u201cContact us\u201d form on the cookie-less user-content origin, its ALTCHA check, consent and thank-you page.",
+  "exploration": null
+ },
+ {
+  "slug": "home",
+  "title": "Home",
+  "area": "Messenger",
+  "order": 10,
+  "summary": "The attention page: daily brief, then Needs you, Results and FYI from the event log.",
+  "exploration": null
+ },
+ {
+  "slug": "issue-detail",
+  "title": "Issue detail \u00b7 ENG-311",
+  "area": "Spaces",
+  "order": 112,
+  "summary": "ENG-311: human owner, agent delegate, an outside-agent run card with PR and CI, comments and field history.",
+  "exploration": null
+ },
+ {
+  "slug": "issues-board",
+  "title": "Issues \u00b7 board",
+  "area": "Spaces",
+  "order": 111,
+  "summary": "Engineering board by state with a cycle header, filters and agent-delegated cards showing run state.",
+  "exploration": null
+ },
+ {
+  "slug": "issues-list",
+  "title": "Issues \u00b7 list",
+  "area": "Spaces",
+  "order": 110,
+  "summary": "Linear-style list grouped by state, a Triage group with agent suggestion chips, owner and delegate columns.",
+  "exploration": null
+ },
+ {
+  "slug": "mail",
+  "title": "Mail app",
+  "area": "Apps",
+  "order": 300,
+  "summary": "Mail with the shared sales@ inbox and Ada's own agent inbox; a drafted reply waits on a first-send approval.",
+  "exploration": null
+ },
+ {
+  "slug": "mobile",
+  "title": "Mobile",
+  "area": "Mobile",
+  "order": 700,
+  "summary": "Phone width: Home, Chats, a chat with Ada, the approval as a full-screen sheet and the takeover screen; bottom bar Home \u00b7 Chats \u00b7 Spaces \u00b7 Team.",
+  "exploration": null
+ },
+ {
+  "slug": "onboarding-agent",
+  "title": "Onboarding \u00b7 3 First agent",
+  "area": "Onboarding",
+  "order": 602,
+  "summary": "Hire the first agent: template, manager, Spaces, Balanced autonomy, and the computer choice (recommended, never required).",
+  "exploration": null
+ },
+ {
+  "slug": "onboarding-preset",
+  "title": "Onboarding \u00b7 2 Preset",
+  "area": "Onboarding",
+  "order": 601,
+  "summary": "Choose Personal, Team or Company: defaults only, switch any time, never paywalled.",
+  "exploration": null
+ },
+ {
+  "slug": "onboarding-workspace",
+  "title": "Onboarding \u00b7 1 Workspace",
+  "area": "Onboarding",
+  "order": 600,
+  "summary": "Create the first workspace: name, where it runs, invite teammates. No computer or connection needed.",
+  "exploration": null
+ },
+ {
+  "slug": "palette",
+  "title": "\u2318K palette",
+  "area": "Search",
+  "order": 500,
+  "summary": "The command palette over Home: jump to anything, agents, records, and commands such as \u201cAsk Ada\u2026\u201d or \u201cNew routine\u201d.",
+  "exploration": null
+ },
+ {
+  "slug": "routine-detail",
+  "title": "Routine detail",
+  "area": "Spaces \u00b7 Routines",
+  "order": 161,
+  "summary": "contract-intake: triggers, mode, output, load control, limits, the mruby source (v3), run history and the separate stop controls.",
+  "exploration": null
+ },
+ {
+  "slug": "routines-list",
+  "title": "Routines \u00b7 list",
+  "area": "Spaces \u00b7 Routines",
+  "order": 160,
+  "summary": "The Operations Space's Routines tool: kind, triggers, mode, owner, next run, last outcome; new routines are authored in chat.",
+  "exploration": null
+ },
+ {
+  "slug": "run-detail",
+  "title": "Run detail",
+  "area": "Spaces \u00b7 Routines",
+  "order": 162,
+  "summary": "Run R-2288: causality chain from a Drive change to OPS-151, typed activity, policy decisions, cost and model provider, replay.",
+  "exploration": null
+ },
+ {
+  "slug": "search",
+  "title": "Search results",
+  "area": "Search",
+  "order": 510,
+  "summary": "Full search with filters by type, Space, owner and status; archived items excluded; inaccessible records and agent runs handled.",
+  "exploration": null
+ },
+ {
+  "slug": "skill-invoke",
+  "title": "Skills in chat \u00b7 $skill",
+  "area": "Messenger",
+  "order": 25,
+  "summary": "$ autocomplete in the composer, loaded skills in run activity, and an agent-drafted skill waiting for publish approval.",
+  "exploration": null
+ },
+ {
+  "slug": "space-overview",
+  "title": "Space overview \u00b7 Sales",
+  "area": "Spaces",
+  "order": 100,
+  "summary": "A flat Space: members (people and agents), the six tools, scoped app views, review queue, activity and policy.",
+  "exploration": null
+ },
+ {
+  "slug": "table-grid",
+  "title": "Table \u00b7 Leads grid",
+  "area": "Spaces",
+  "order": 120,
+  "summary": "Object-first Leads table: virtualized grid, typed columns, views, filters, and the row detail pane.",
+  "exploration": null
+ },
+ {
+  "slug": "table-review",
+  "title": "Table \u00b7 staged edits review",
+  "area": "Spaces",
+  "order": 121,
+  "summary": "Ada's bulk enrichment streams into the grid in her colour; review per cell, row or all, with a conflict where a human edit wins.",
+  "exploration": null
+ },
+ {
+  "slug": "takeover",
+  "title": "Takeover and secure form",
+  "area": "Governance",
+  "order": 250,
+  "summary": "Bram's computer in the main pane with you in control for a 2FA step, plus a secure-form card for a secret Bram must never see.",
+  "exploration": null
+ },
+ {
+  "slug": "team",
+  "title": "Team directory",
+  "area": "Team",
+  "order": 50,
+  "summary": "People and agents in one directory with managers, Spaces, computer or VFS-only, status and budget use.",
+  "exploration": null
+ }
+]

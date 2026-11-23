@@ -1,0 +1,44 @@
+<!--meta
+{"title": "⌘K palette", "area": "Search", "order": 500, "rail": "home", "layout": "two",
+ "summary": "The command palette over Home: jump to anything, agents, records, and commands such as “Ask Ada…” or “New routine”.",
+ "notes": [
+  ["p", "One palette for jump and do", "⌘K searches every object the viewer may see (threads, issues, records, docs, files, artifacts, routines, agents, people) and runs commands. Agents beyond the ~5 in the rail are reached here.", "ui-structure Appendix A · messenger-ui “Shell and navigation”"],
+  ["a", "Commands hand off to chat", "“Ask Ada…” opens a DM with the typed text and the current object as context. “New routine” starts authoring in chat; there is no flow builder.", "connections-events-routines “Routines” · ui-structure §3"],
+  ["s", "Server decides visibility", "Results come from the API with the viewer's access; archived items are excluded unless you type “archived:”. Nothing is filtered only in the client.", "messenger-ui “The rule” item 4 · ui-structure §2 rule 4"],
+  ["q", "Open: palette scope keys", "Prefix keys (> for commands, @ for agents and people, # for records) are a proposal; no doc fixes them.", "not specified in docs"]
+ ]}
+-->
+<main class="main">
+  <div class="pane-head"><div class="title">◉ Home</div><span class="muted small">Monday 23 November</span></div>
+  <div class="pane-body" style="padding:18px 28px">
+    <div class="col gap16" style="max-width:860px;margin:0 auto">
+      <div class="card"><div class="card-h"><span class="av agent cleo">C</span><b>Morning brief</b><span class="muted">from Cleo · 08:00</span></div><div class="card-b"><div class="grid3"><div class="kpi"><div class="l">Overdue invoices</div><div class="v">2 · €3,480</div></div><div class="kpi"><div class="l">Stale deals</div><div class="v">4</div></div><div class="kpi"><div class="l">Agent spend</div><div class="v">€148</div></div></div></div></div>
+      <div class="card approval"><div class="card-h"><span class="k">Approval</span><b>Ada wants to send 23 re-engage emails</b></div><div class="card-b muted">…</div></div>
+      <div class="card takeover"><div class="card-h"><span class="k">Takeover</span><b>Bram needs you for a 2FA prompt</b></div><div class="card-b muted">…</div></div>
+      <div class="card approval"><div class="card-h"><span class="k">Proposal</span><b>New Space “Client · Northwind”</b></div><div class="card-b muted">…</div></div>
+    </div>
+  </div>
+</main>
+<div class="scrim"></div>
+<div class="palette">
+  <div class="flex" style="padding:14px 16px;border-bottom:1px solid var(--border)"><span class="muted" style="font-size:16px">⌕</span><span style="font-size:15px">north</span><span class="pk-caret"></span><span class="right flex gap4"><span class="chip">All</span><span class="chip">&gt; Commands</span><span class="chip">@ Agents &amp; people</span><span class="chip"># Records</span></span></div>
+  <div style="max-height:600px;overflow:hidden;padding:6px">
+    <div class="pk-sec">Best match</div>
+    <div class="pk on"><span class="ico sm">◈</span><div class="grow"><b>North</b>wind · Rollout 2027<div class="muted xs">Deal · CRM · Won · owner Sanne</div></div><span class="kbd">↵</span></div>
+    <div class="pk-sec">Records &amp; objects</div>
+    <div class="pk"><span class="ico sm">▦</span><div class="grow"><b>North</b>wind<div class="muted xs">Clients · Operations · onboarding 1 / 5</div></div></div>
+    <div class="pk"><span class="ico sm">◇</span><div class="grow">SAL-88 <b>North</b>wind kickoff deck<div class="muted xs">Issue · Sales · owner Rutger · due Wed</div></div></div>
+    <div class="pk"><span class="ico sm">▤</span><div class="grow"><b>North</b>wind_MSA_v3.pdf<div class="muted xs">File · Drive · Contracts · changed 09:31</div></div></div>
+    <div class="pk"><span class="ico sm">✉</span><div class="grow">Re: Quick follow-up on the Q1 rollout<div class="muted xs">Mail thread · mo@<b>north</b>wind.example · 2 h ago</div></div></div>
+    <div class="pk-sec">Agents &amp; people</div>
+    <div class="pk"><span class="av agent ada">A</span><div class="grow">Ada<div class="muted xs">working · last talked about <b>North</b>wind 40 min ago</div></div><span class="muted xs">DM</span></div>
+    <div class="pk-sec">Commands</div>
+    <div class="pk"><span class="ico sm ada">✦</span><div class="grow">Ask Ada… <span class="muted">“north”</span><div class="muted xs">Opens a DM with this text and the selected item as context</div></div><span class="kbd">⌘↵</span></div>
+    <div class="pk"><span class="ico sm">↻</span><div class="grow">New routine…<div class="muted xs">Describe it in chat; an agent drafts the routine card</div></div></div>
+    <div class="pk"><span class="ico sm">◇</span><div class="grow">New issue in Client · <b>North</b>wind<div class="muted xs">Space proposal pending · will be available after approval</div></div><span class="pill">pending</span></div>
+    <div class="pk-sec">Recent</div>
+    <div class="pk"><span class="ico sm">#</span><div class="grow">launch-q4</div><span class="muted xs">10 min</span></div>
+  </div>
+  <div class="flex xs muted" style="padding:8px 14px;border-top:1px solid var(--border);background:var(--card-2)"><span class="kbd">↑↓</span> move <span class="kbd">↵</span> open <span class="kbd">⌘↵</span> side pane <span class="kbd">tab</span> filter<span class="right">Archived items hidden · type archived: to include</span></div>
+</div>
+<style>.pk-sec{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--subtle-foreground);padding:8px 10px 4px}.pk{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:8px;font-size:13px}.pk .grow{flex:1;min-width:0}.pk.on{background:var(--secondary)}.pk-caret{display:inline-block;width:2px;height:18px;background:var(--primary);margin-left:-6px}</style>

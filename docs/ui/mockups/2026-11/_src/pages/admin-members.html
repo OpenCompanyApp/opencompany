@@ -1,0 +1,117 @@
+<!--meta
+{"title": "Admin · Members & roles", "area": "Admin", "order": 420, "rail": "admin", "layout": "two",
+ "summary": "Owner, Admin and Member roles, agents with their managers, the Space membership matrix, invites and guest exceptions.",
+ "notes": [
+  ["p", "Simple on purpose", "Team has three roles: Owner, Admin, Member. Access is set per Space; there are no per-document ACLs. Custom roles are a later Company feature.", "PRODUCT_DIRECTION pillar 5 “Permissions are simple on purpose” · governance “Presets”"],
+  ["a", "Agents join Spaces like teammates", "“Add Ada to Sales” is the whole data-access model for company data. Connections and computers are granted per agent on top, on the agent profile.", "agent-native-work-apps “Spaces and the anti-mess rules”"],
+  ["k", "Guests are an audited exception", "A single object may be shared with a guest only as an explicit exception with an expiry. It is not a Space role.", "agent-native-work-apps “Permissions are Space-level only”"],
+  ["q", "Open: guest expiry default", "The docs don't set a default expiry or allowed access level for guest shares. This mockup uses comment access and a required end date.", "not specified"]
+ ]}
+-->
+<main class="main">
+<style>
+.adm{display:flex;flex:1;min-height:0}
+.adm-nav{width:184px;flex:none;border-right:1px solid var(--border);padding:14px 8px;background:var(--card-2);display:flex;flex-direction:column;gap:1px}
+.adm-nav .adm-h{font-weight:700;font-size:14px;padding:2px 8px}
+.adm-nav .adm-s{font-size:11px;color:var(--muted-foreground);padding:0 8px 10px}
+.adm-nav .adm-i{white-space:nowrap;display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;font-size:12.5px;color:var(--muted-foreground)}
+.adm-nav .adm-i.on{background:var(--secondary);color:var(--foreground);font-weight:600}
+.adm-nav .adm-i .ic{width:16px;text-align:center;flex:none}
+.adm-nav .adm-g{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--subtle-foreground);padding:12px 8px 3px}
+.adm-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.mm td{text-align:center}.mm td:first-child,.mm th:first-child{text-align:left;white-space:nowrap}
+.mm th{text-align:center}
+.mm .in{color:var(--success-text);font-weight:700}.mm .no{color:var(--subtle-foreground)}
+</style>
+<div class="adm">
+  <nav class="adm-nav">
+    <div class="adm-h">Admin</div><div class="adm-s">Acme · Team preset · self-hosted</div>
+    <div class="adm-g">Workspace</div>
+    <a class="adm-i"><span class="ic">⌁</span>Connections</a>
+    <a class="adm-i"><span class="ic">$</span>Skills &amp; plugins</a>
+    <a class="adm-i"><span class="ic">⚖</span>Governance</a>
+    <a class="adm-i"><span class="ic">☰</span>Audit</a>
+    <a class="adm-i on"><span class="ic">◍</span>Members &amp; roles</a>
+    <a class="adm-i"><span class="ic">▣</span>Hosts</a>
+    <a class="adm-i"><span class="ic">€</span>Budgets</a>
+    <a class="adm-i"><span class="ic">◩</span>Published surfaces</a>
+    <a class="adm-i"><span class="ic">⇩</span>Export &amp; backups</a>
+    <a class="adm-i"><span class="ic">⚙</span>Workspace</a>
+  </nav>
+  <div class="adm-main">
+    <div class="pane-head"><div class="title">Members &amp; roles</div><span class="muted small">3 people · 4 agents · 1 guest share</span>
+      <div class="acts"><span class="btn sm">＋ Hire agent</span><span class="btn primary sm">＋ Invite people</span></div></div>
+    <div class="pane-body pad">
+
+      <div class="grid2 gap16 mb16" style="grid-template-columns:1.25fr 1fr">
+        <div>
+          <div class="section-t">People</div>
+          <div class="card">
+            <table class="list">
+              <tr><th>Name</th><th>Role</th><th>Manages</th><th>Last active</th><th></th></tr>
+              <tr><td><div class="flex"><span class="av rutger md">R<i class="dot on"></i></span><div><b>Rutger</b> <span class="muted xs">(you)</span><div class="muted xs mono">rutger@acme.example</div></div></div></td><td><span class="pill info">Owner</span></td><td>Ada, Cleo</td><td class="muted">now</td><td>⋯</td></tr>
+              <tr><td><div class="flex"><span class="av sanne md">S<i class="dot on"></i></span><div><b>Sanne</b><div class="muted xs mono">sanne@acme.example</div></div></div></td><td><span class="pill info">Admin</span> <span class="pill outline">sales-lead</span></td><td>Bram, Finn</td><td class="muted">now</td><td>⋯</td></tr>
+              <tr><td><div class="flex"><span class="av jonas md">J<i class="dot off"></i></span><div><b>Jonas</b><div class="muted xs mono">jonas@acme.example</div></div></div></td><td><span class="pill">Member</span></td><td class="muted">—</td><td class="muted">yesterday</td><td>⋯</td></tr>
+              <tr><td><div class="flex"><span class="av md" style="background:var(--secondary);color:var(--muted-foreground)">M</span><div><b class="muted">mila@acme.example</b><div class="muted xs">invited by Sanne · 2 days ago</div></div></div></td><td><span class="pill">Member</span></td><td class="muted">—</td><td><span class="pill warn">pending</span></td><td><span class="btn sm ghost">Resend</span></td></tr>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div class="section-t">Roles in the Team preset</div>
+          <div class="card"><div class="card-b small col gap8">
+            <div><b>Owner</b> · <span class="muted">everything Admin can do, plus full exports with secrets, workspace deletion and transferring ownership.</span></div>
+            <div><b>Admin</b> · <span class="muted">connections, hosts, governance, budgets, members, exposure approvals. Cannot approve their own requests.</span></div>
+            <div><b>Member</b> · <span class="muted">works in the Spaces they belong to, manages the agents they are manager of, grants “always” on their own personal connections.</span></div>
+            <div class="callout"><span>ⓘ</span><span>Business roles such as <b>sales-lead</b> only name approvers for field rules. They grant no extra access.</span></div>
+          </div></div>
+        </div>
+      </div>
+
+      <div class="section-t">Agents <span class="r muted">profiles live in Team · managers are their default approvers</span></div>
+      <div class="card mb16">
+        <table class="list">
+          <tr><th>Agent</th><th>Manager</th><th>Spaces</th><th>Computer</th><th>Autonomy</th><th>Budget</th><th>State</th></tr>
+          <tr><td><div class="flex"><span class="av agent ada md">A</span><div><b>Ada</b> <span class="agent-label">Agent</span><div class="muted xs">Sales &amp; ops</div></div></div></td><td>Rutger</td><td>Sales, Operations</td><td>🖥 cloud</td><td>Balanced</td><td>€18.80 / €60</td><td><span class="state working">working</span></td></tr>
+          <tr><td><div class="flex"><span class="av agent bram md">B</span><div><b>Bram</b> <span class="agent-label bram">Agent</span><div class="muted xs">Operations</div></div></div></td><td>Sanne</td><td>Operations, Sales</td><td>🖥 office-mini</td><td>Ask first</td><td>€31.40 / €80</td><td><span class="state needs">needs you</span></td></tr>
+          <tr><td><div class="flex"><span class="av agent cleo md">C</span><div><b>Cleo</b> <span class="agent-label cleo">Agent</span><div class="muted xs">Finance &amp; reporting</div></div></div></td><td>Rutger</td><td>Operations, Sales</td><td><span class="muted">VFS-only (admin choice)</span></td><td>Balanced</td><td>€37.80 / €40</td><td><span class="state done">idle</span></td></tr>
+          <tr><td><div class="flex"><span class="av agent finn md">F</span><div><b>Finn</b> <span class="agent-label finn">Agent</span><div class="muted xs">Support &amp; eng. triage</div></div></div></td><td>Sanne</td><td>Engineering</td><td><span class="muted">VFS-only</span></td><td>Balanced</td><td><span class="bad-t">€60 / €60</span></td><td><span class="state paused">paused</span></td></tr>
+        </table>
+      </div>
+
+      <div class="grid2 gap16" style="grid-template-columns:1.25fr 1fr">
+        <div>
+          <div class="section-t">Space membership <span class="r muted">the only access control</span></div>
+          <div class="card">
+            <table class="list mm">
+              <tr><th></th><th>Sales</th><th>Engineering</th><th>Operations</th><th>Client · Northwind 🔒</th></tr>
+              <tr><td>Rutger</td><td class="in">●</td><td class="in">●</td><td class="in">●</td><td class="in">●</td></tr>
+              <tr><td>Sanne</td><td class="in">●</td><td class="no">○</td><td class="in">●</td><td class="in">●</td></tr>
+              <tr><td>Jonas</td><td class="no">○</td><td class="in">●</td><td class="no">○</td><td class="no">○</td></tr>
+              <tr><td><span class="av agent ada">A</span> Ada</td><td class="in">●</td><td class="no">○</td><td class="in">●</td><td class="in">●</td></tr>
+              <tr><td><span class="av agent bram">B</span> Bram</td><td class="in">●</td><td class="no">○</td><td class="in">●</td><td class="in">●</td></tr>
+              <tr><td><span class="av agent cleo">C</span> Cleo</td><td class="in">●</td><td class="no">○</td><td class="in">●</td><td class="no">○</td></tr>
+              <tr><td><span class="av agent finn">F</span> Finn</td><td class="no">○</td><td class="in">●</td><td class="no">○</td><td class="no">○</td></tr>
+            </table>
+            <div class="card-f small muted">In a group chat an agent's access is also capped by the least-privileged human who invoked it. <u class="right">Why can't Cleo see Client · Northwind?</u></div>
+          </div>
+        </div>
+        <div>
+          <div class="section-t">Guest shares <span class="r muted">single object · audited exception</span></div>
+          <div class="card mb12">
+            <div class="list-row"><span class="ico">≡</span><div class="grow"><b>Orbit Coffee proposal v2</b> <span class="muted">· Doc · Sales</span><div class="muted xs"><span class="mono">lena@orbit-coffee.example</span> · comment · shared by Sanne · ends 31 Dec</div></div><span class="btn sm ghost">Revoke</span></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><b>Invite people</b></div>
+            <div class="card-b">
+              <div class="field"><span class="label">Emails</span><div class="input ph">name@acme.example, …</div></div>
+              <div class="flex gap12 small"><span class="flex"><span class="radio on"></span>Member</span><span class="flex"><span class="radio"></span>Admin</span></div>
+              <div class="field mt12"><span class="label">Spaces</span><div class="flex wrap gap4"><span class="chip x">Sales</span><span class="chip x">Operations</span><span class="chip">＋</span></div></div>
+              <div class="flex"><span class="muted xs">Invitations are events in the audit log.</span><span class="btn primary sm right">Send invites</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</main>

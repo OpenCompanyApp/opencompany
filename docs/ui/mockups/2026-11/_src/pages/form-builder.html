@@ -1,0 +1,99 @@
+<!--meta
+{"title": "Form view · builder", "area": "Apps · Forms", "order": 320, "rail": "sales:tables", "layout": "three", "ctx_w": 360,
+ "summary": "A Form view on the Leads table: typed field mapping, logic, hidden prefill, consent, ALTCHA, retention, render modes and publish level.",
+ "notes": [
+  ["p", "A form is a view on a Table", "Every field maps to a typed Leads column, and each submission is a Leads row created as a change set by the form-visitor principal. No separate app, no own storage.", "artifacts-and-forms “Forms” · PRODUCT_DIRECTION pillar 7"],
+  ["s", "One submission pipeline", "Public origin without cookies → ALTCHA, honeypot, rate limits → schema and consent validation → upload quarantine → record → untrusted form.submitted event.", "artifacts-and-forms “Submission pipeline”"],
+  ["a", "Render modes from one definition", "Page, one question at a time, conversational intake (its only tool is submit), embed, and internal or Telegram. Same validation for all.", "artifacts-and-forms “Render modes”"],
+  ["k", "Publishing is governed", "Contact us is public: an admin enabled public publishing for Acme and approved this form once. Every later widening (a new field type that uploads files) asks again.", "governance “Published surfaces” · artifacts-and-forms “Publishing and governance”"]
+ ]}
+-->
+<style>
+.fb-f{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);font-size:12.5px}
+.fb-f.sel{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.fb-f .grip{color:var(--subtle-foreground);cursor:grab}
+.fb-prev{background:#fff;color:#18181b;border-radius:10px;padding:22px 24px;font-size:13px}
+.fb-prev .q{font-weight:650;margin:14px 0 6px}
+.fb-prev .in{border:1px solid #d4d4d8;border-radius:8px;padding:8px 10px;color:#a1a1aa;background:#fafafa}
+.fb-prev .opt{display:inline-block;border:1px solid #d4d4d8;border-radius:8px;padding:5px 10px;margin:0 6px 6px 0}
+.fb-prev .opt.on{border-color:#0f766e;background:#ecfdf5;color:#0f766e;font-weight:600}
+.fb-prev .bt{display:inline-block;background:#18181b;color:#fff;border-radius:8px;padding:8px 16px;font-weight:600;margin-top:14px}
+</style>
+<main class="main">
+  <div class="pane-head">
+    <div class="crumbs nowrap">Leads <span>›</span> <b>▭ Contact us</b></div>
+    <span class="pill bad">Public</span><span class="pill">v6</span>
+    <div class="acts"><span class="btn sm">Submissions · 96</span><span class="btn sm">⇩ Definition JSON</span><span class="btn sm primary">Publish v7…</span></div>
+  </div>
+  <div class="tabs"><span class="tab">▦ Grid</span><span class="tab">Board</span><span class="tab">Calendar</span><span class="tab on">▭ Contact us</span><span class="tab">▭ Plan request</span><span class="tab">＋ View</span></div>
+  <div class="pane-sub"><span class="seg"><span class="on">Page</span><span>One at a time</span><span>Conversational</span><span>Embed</span><span>Internal / Telegram</span></span><span class="right muted xs nowrap">v7 draft</span></div>
+  <div class="pane-body pad">
+    <div class="grid2" style="grid-template-columns:minmax(0,1fr) 250px;gap:16px">
+      <div class="col gap8">
+        <div class="section-t">Fields → Leads columns</div>
+        <div class="fb-f"><span class="grip">⠿</span><b class="ell" style="width:118px;flex:none">Your name</b><span class="mono xs muted ell" style="flex:1">→ Contact name</span><span class="pill">text</span><span class="pill warn" title="required">*</span></div>
+        <div class="fb-f"><span class="grip">⠿</span><b class="ell" style="width:118px;flex:none">Work email</b><span class="mono xs muted ell" style="flex:1">→ Contact email</span><span class="pill">email</span><span class="pill warn" title="required">*</span></div>
+        <div class="fb-f"><span class="grip">⠿</span><b class="ell" style="width:118px;flex:none">Company</b><span class="mono xs muted ell" style="flex:1">→ Company</span><span class="pill">text</span></div>
+        <div class="fb-f sel"><span class="grip">⠿</span><b class="ell" style="width:118px;flex:none">What do you need?</b><span class="mono xs muted ell" style="flex:1">→ Interest</span><span class="pill">multi-select</span><span class="pill warn" title="required">*</span></div>
+        <div class="fb-f"><span class="grip">⠿</span><b class="ell" style="width:118px;flex:none">Budget</b><span class="mono xs muted ell" style="flex:1">→ Budget band</span><span class="pill">select</span><span class="pill info">show if</span></div>
+        <div class="fb-f"><span class="grip">⠿</span><b class="ell" style="width:118px;flex:none">Timeline</b><span class="mono xs muted ell" style="flex:1">→ Wanted by</span><span class="pill">date</span></div>
+        <div class="fb-f"><span class="grip">⠿</span><b class="ell" style="width:118px;flex:none">Anything else?</b><span class="mono xs muted ell" style="flex:1">→ Notes</span><span class="pill">long text</span></div>
+        <div class="fb-f" style="border-style:dashed"><span class="grip">⠿</span><b class="ell" style="width:118px;flex:none">utm_source</b><span class="mono xs muted ell" style="flex:1">→ Source</span><span class="pill">hidden · URL</span></div>
+        <div class="fb-f"><span class="grip">⠿</span><b class="ell" style="width:118px;flex:none">Consent</b><span class="mono xs muted ell" style="flex:1">→ Consent (v3)</span><span class="pill">consent block</span><span class="pill warn" title="required">*</span></div>
+        <div class="flex"><span class="btn sm">＋ Field</span><span class="btn sm">＋ Section</span><span class="btn sm">＋ Logic</span><span class="btn sm ghost">Ask Ada</span></div>
+        <div class="callout ada mt8"><span>✎</span><span><b>Ada proposed v7</b> (plan → preview → approve): add “Budget” with a show-if rule and move Timeline after it. The two changes are highlighted in the preview. <span class="btn sm">Review</span></span></div>
+      </div>
+      <div class="col gap12">
+        <div class="card"><div class="card-h"><b>Field · What do you need?</b></div><div class="card-b">
+          <div class="field"><span class="label">Column</span><div class="input">Interest · multi-select</div></div>
+          <div class="field"><span class="label">Options</span><div class="flex wrap gap4"><span class="chip">Website</span><span class="chip">Care plan</span><span class="chip">Intranet</span><span class="chip">Just asking</span></div></div>
+          <div class="flex small"><span class="toggle on"></span>Required</div>
+        </div></div>
+        <div class="card"><div class="card-h"><b>Protection &amp; data</b></div><div class="card-b">
+          <dl class="kv small">
+            <dt>Captcha</dt><dd>ALTCHA (self-hosted, no third party)</dd>
+            <dt>Honeypot</dt><dd>on</dd>
+            <dt>Rate limit</dt><dd>5 / IP / hour · 500 / form / day</dd>
+            <dt>Uploads</dt><dd>none in this form</dd>
+            <dt>Retention</dt><dd>Delete unconverted leads after 12 months</dd>
+            <dt>Data rights</dt><dd>Export and erasure for submitters</dd>
+            <dt>On submit</dt><dd>Thank-you message · confirmation email via Mail</dd>
+          </dl>
+        </div></div>
+        <div class="card"><div class="card-h"><b>Publish level</b></div><div class="card-b small">
+          <div class="flex"><span class="radio"></span>Space</div>
+          <div class="flex mt4"><span class="radio"></span>Workspace</div>
+          <div class="flex mt4"><span class="radio"></span>Signed link</div>
+          <div class="flex mt4"><span class="radio on"></span><b>Public</b> <span class="muted xs">approved by Sanne (admin), 2 Nov</span></div>
+          <div class="muted xs mt8">Listed in Admin → Published surfaces with a kill switch.</div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title">Preview</div><span class="seg"><span class="on">Desktop</span><span>Phone</span></span><div class="acts"><span class="pill ada">v7 draft</span></div></div>
+  <div class="pane-body" style="padding:14px">
+    <div class="fb-prev">
+      <div style="font-size:20px;font-weight:700">Let's talk</div>
+      <div style="color:#71717a">Tell us what you need. We reply within one working day.</div>
+      <div class="q">Your name *</div><div class="in">Jane Doe</div>
+      <div class="q">Work email *</div><div class="in">jane@company.example</div>
+      <div class="q">What do you need? *</div>
+      <span class="opt on">Website</span><span class="opt">Care plan</span><span class="opt on">Intranet</span><span class="opt">Just asking</span>
+      <div style="outline:2px dashed var(--ada);outline-offset:4px;border-radius:6px;margin-top:6px">
+        <div class="q">Budget</div><span class="opt">&lt; €10k</span><span class="opt on">€10–30k</span><span class="opt">€30k+</span>
+      </div>
+      <div class="q">Timeline</div><div class="in">dd / mm / yyyy</div>
+      <div style="display:flex;gap:8px;margin-top:14px;font-size:12px;color:#52525b"><span style="width:15px;height:15px;border:1px solid #a1a1aa;border-radius:4px;flex:none"></span>I agree that Acme stores these details to reply to me (privacy notice v3).</div>
+      <div style="margin-top:12px;border:1px solid #e4e4e7;border-radius:8px;padding:8px 10px;font-size:12px;display:flex;gap:8px;align-items:center"><span style="width:15px;height:15px;border:1px solid #a1a1aa;border-radius:4px"></span>I'm not a robot <span style="margin-left:auto;color:#a1a1aa;font-size:10px">ALTCHA</span></div>
+      <span class="bt">Send</span>
+    </div>
+    <div class="section-t mt16">Last submissions</div>
+    <div class="card flat">
+      <div class="list-row"><span class="mono xs muted ell" style="flex:1">08:57</span><span class="grow ell">Lumen Dental · Intranet · €10–30k</span><span class="untrusted">untrusted</span></div>
+      <div class="list-row"><span class="mono xs muted ell" style="flex:1">08:41</span><span class="grow ell">(spam) blocked by honeypot</span><span class="pill">dropped</span></div>
+      <div class="list-row"><span class="mono xs muted ell" style="flex:1">Sun</span><span class="grow ell">Pinecrest · Website · €30k+</span><span class="pill ok">→ lead</span></div>
+    </div>
+  </div>
+</aside>

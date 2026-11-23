@@ -1,0 +1,100 @@
+<!--meta
+{"title": "Admin · Budgets", "area": "Admin", "order": 440, "rail": "admin", "layout": "two",
+ "summary": "Workspace, agent and routine budgets for tokens, compute and spend; Finn paused at his limit; visible model routing.",
+ "notes": [
+  ["p", "Reserve, settle, pause", "Every model call, computer minute and payment is a usage event. Cost is reserved before a call and settled after. At the limit the run pauses with reason “budget” and computers stop with a snapshot.", "governance “Budgets”"],
+  ["k", "Budget cards go to the manager", "Finn hit €60, so the budget card went to Sanne, his manager, who holds budget.raise. An agent can never raise its own budget: that is on the floor.", "governance “Budgets”, “Hard-deny floor”"],
+  ["s", "Model routing is visible", "The run log records which provider handled each run. “Send nothing to third-party models” restricts routing to local or explicitly allowed endpoints and denies instead of falling back.", "governance invariant 11 · data-sovereignty §6"],
+  ["q", "Open: per-model budgets", "Budgets per provider or model are listed as “later”. Shown here as a read-only breakdown only.", "governance “Budgets” scopes"]
+ ]}
+-->
+<main class="main">
+<style>
+.adm{display:flex;flex:1;min-height:0}
+.adm-nav{width:184px;flex:none;border-right:1px solid var(--border);padding:14px 8px;background:var(--card-2);display:flex;flex-direction:column;gap:1px}
+.adm-nav .adm-h{font-weight:700;font-size:14px;padding:2px 8px}
+.adm-nav .adm-s{font-size:11px;color:var(--muted-foreground);padding:0 8px 10px}
+.adm-nav .adm-i{white-space:nowrap;display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;font-size:12.5px;color:var(--muted-foreground)}
+.adm-nav .adm-i.on{background:var(--secondary);color:var(--foreground);font-weight:600}
+.adm-nav .adm-i .ic{width:16px;text-align:center;flex:none}
+.adm-nav .adm-g{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--subtle-foreground);padding:12px 8px 3px}
+.adm-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.bud td{vertical-align:middle}
+.bud .m{width:150px}
+</style>
+<div class="adm">
+  <nav class="adm-nav">
+    <div class="adm-h">Admin</div><div class="adm-s">Acme · Team preset · self-hosted</div>
+    <div class="adm-g">Workspace</div>
+    <a class="adm-i"><span class="ic">⌁</span>Connections</a>
+    <a class="adm-i"><span class="ic">$</span>Skills &amp; plugins</a>
+    <a class="adm-i"><span class="ic">⚖</span>Governance</a>
+    <a class="adm-i"><span class="ic">☰</span>Audit</a>
+    <a class="adm-i"><span class="ic">◍</span>Members &amp; roles</a>
+    <a class="adm-i"><span class="ic">▣</span>Hosts</a>
+    <a class="adm-i on"><span class="ic">€</span>Budgets</a>
+    <a class="adm-i"><span class="ic">◩</span>Published surfaces</a>
+    <a class="adm-i"><span class="ic">⇩</span>Export &amp; backups</a>
+    <a class="adm-i"><span class="ic">⚙</span>Workspace</a>
+  </nav>
+  <div class="adm-main">
+    <div class="pane-head"><div class="title">Budgets</div><span class="muted small">November · day 23 of 30 · resets 1 Dec</span>
+      <div class="acts"><span class="seg"><span class="on">This month</span><span>Last month</span><span>Custom</span></span></div></div>
+    <div class="pane-body pad">
+      <div class="callout info mb16"><span>ⓘ</span><span><b>Self-hosted: nothing is billed by OpenCompany.</b> Budgets here are spend control and reporting over your own model keys, computer providers and payment tools.</span></div>
+
+      <div class="grid4 mb16">
+        <div class="kpi"><div class="l">Workspace total</div><div class="v">€148 <span class="muted small" style="font-weight:500">/ €400</span></div><div class="prog mt8"><i style="width:37%"></i></div><div class="d muted">on track for ~€193</div></div>
+        <div class="kpi"><div class="l">Model tokens</div><div class="v">€135</div><div class="d muted">18.4 M tokens · 612 runs</div></div>
+        <div class="kpi"><div class="l">Compute</div><div class="v">€13</div><div class="d muted">Ada's cloud computer 61 h · office-mini 44 h (€0)</div></div>
+        <div class="kpi"><div class="l">Spend (payments)</div><div class="v">€0</div><div class="d muted">no payment tools connected</div></div>
+      </div>
+
+      <div class="callout warn mb16"><span>❚❚</span><span><b>Finn is paused at his budget (€60).</b> His 2 queued runs are held. The budget card went to <b>Sanne</b> (manager) 08:02; she hasn't answered yet.</span><span class="btn sm right">View card</span></div>
+
+      <div class="section-t">Per agent <span class="r muted">monthly · managers raise, agents never</span></div>
+      <div class="card mb16">
+        <table class="list bud">
+          <tr><th>Agent</th><th>Manager</th><th class="m">Used</th><th class="num">Tokens</th><th class="num">Compute</th><th class="num">Spend cap</th><th>At limit</th><th></th></tr>
+          <tr><td><span class="av agent ada">A</span> <b>Ada</b></td><td>Rutger</td><td class="m"><div class="meter"><div class="top"><span>€18.80</span><span class="muted">€60</span></div><div class="prog ada"><i style="width:31%"></i></div></div></td><td class="num">€6.10</td><td class="num">€12.70</td><td class="num">€0</td><td>pause, ask manager</td><td><span class="btn sm ghost">Edit</span></td></tr>
+          <tr><td><span class="av agent bram">B</span> <b>Bram</b></td><td>Sanne</td><td class="m"><div class="meter"><div class="top"><span>€31.40</span><span class="muted">€80</span></div><div class="prog"><i style="width:39%;background:var(--bram)"></i></div></div></td><td class="num">€31.40</td><td class="num">€0 <span class="muted xs">office-mini</span></td><td class="num">€0</td><td>pause, ask manager</td><td><span class="btn sm ghost">Edit</span></td></tr>
+          <tr><td><span class="av agent cleo">C</span> <b>Cleo</b></td><td>Rutger</td><td class="m"><div class="meter"><div class="top"><span class="warn-t">€37.80</span><span class="muted">€40</span></div><div class="prog warn"><i style="width:94%"></i></div></div></td><td class="num">€37.80</td><td class="num muted">VFS-only</td><td class="num">€0</td><td>pause, ask manager</td><td><span class="btn sm ghost">Edit</span></td></tr>
+          <tr><td><span class="av agent finn">F</span> <b>Finn</b></td><td>Sanne</td><td class="m"><div class="meter"><div class="top"><span class="bad-t">€60.00</span><span class="muted">€60</span></div><div class="prog bad"><i style="width:100%"></i></div></div></td><td class="num">€60.00</td><td class="num muted">VFS-only</td><td class="num">€0</td><td><span class="state paused">paused 08:02</span></td><td><span class="btn sm ghost">Edit</span></td></tr>
+        </table>
+        <div class="card-f small muted">Alert at 80% to the manager (Cleo's alert went to Rutger yesterday). Unallocated workspace budget: €160.</div>
+      </div>
+
+      <div class="grid2 gap16">
+        <div>
+          <div class="section-t">Routine budgets</div>
+          <div class="card">
+            <table class="list">
+              <tr><th>Routine</th><th>Owner</th><th class="num">Used / cap</th></tr>
+              <tr><td><span class="ref">morning-brief</span> <span class="muted xs">read-only</span></td><td>Rutger</td><td class="num">€1.15 / €3</td></tr>
+              <tr><td><span class="ref">pipeline-review</span></td><td>Sanne</td><td class="num">€2.40 / €5</td></tr>
+              <tr><td><span class="ref">populate-client-space</span></td><td>Sanne</td><td class="num">€0.88 / €10</td></tr>
+              <tr><td><span class="ref">incident-triage</span></td><td>Jonas</td><td class="num">€4.10 / €15</td></tr>
+              <tr><td><span class="ref">website-lead-intake</span> <span class="muted xs">script, no AI</span></td><td>Sanne</td><td class="num">€0.00 / —</td></tr>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div class="section-t">Model routing <span class="r muted">this month, by provider</span></div>
+          <div class="card mb12">
+            <table class="list">
+              <tr><th>Provider (from catalog)</th><th class="num">Runs</th><th class="num">Cost</th></tr>
+              <tr><td>Hosted provider A · your key</td><td class="num">431</td><td class="num">€110.10</td></tr>
+              <tr><td>Hosted provider B · your key</td><td class="num">96</td><td class="num">€25.20</td></tr>
+              <tr><td>Local model on office-mini</td><td class="num">85</td><td class="num">€0.00</td></tr>
+            </table>
+          </div>
+          <div class="card"><div class="card-b col gap8">
+            <div class="flex"><span class="toggle"></span><b>Send nothing to third-party models</b></div>
+            <div class="muted small">When on, only local models and explicitly allowed endpoints are used. A call that would leave is denied, never silently rerouted. This month, 527 runs would have been affected.</div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</main>

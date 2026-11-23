@@ -1,0 +1,109 @@
+<!--meta
+{"title": "Admin · Export & backups", "area": "Admin", "order": 450, "rail": "admin", "layout": "two",
+ "summary": "Object downloads, the round-trippable .ocarchive, backups to your own bucket, a Git mirror, import and restore.",
+ "notes": [
+  ["s", "Your workspace is yours", "Download any object, export the whole workspace, back up to storage you own and move between Cloud and self-hosting either way, on any plan, at no extra cost, in documented open formats.", "data-sovereignty “Promise”"],
+  ["k", "Full exports are gated and audited", "Team: an admin approves a full .ocarchive, and no one approves their own request, so Rutger's export waits for Sanne. Links expire. Secrets are excluded unless the owner adds a passphrase and re-authenticates.", "governance “Export, backups and portability”"],
+  ["p", "Destinations are governance", "Backup and mirror targets are a governance action. Agents can never add or change them, even at Autopilot or with an exception. Backups are encrypted with a key the customer holds.", "data-sovereignty §3, §7"],
+  ["q", "Open: bulk-download threshold", "When a set of downloads counts as “bulk” for audit and alerting is not decided. Shown here as 50 objects.", "governance “Open questions”"]
+ ]}
+-->
+<main class="main">
+<style>
+.adm{display:flex;flex:1;min-height:0}
+.adm-nav{width:184px;flex:none;border-right:1px solid var(--border);padding:14px 8px;background:var(--card-2);display:flex;flex-direction:column;gap:1px}
+.adm-nav .adm-h{font-weight:700;font-size:14px;padding:2px 8px}
+.adm-nav .adm-s{font-size:11px;color:var(--muted-foreground);padding:0 8px 10px}
+.adm-nav .adm-i{white-space:nowrap;display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;font-size:12.5px;color:var(--muted-foreground)}
+.adm-nav .adm-i.on{background:var(--secondary);color:var(--foreground);font-weight:600}
+.adm-nav .adm-i .ic{width:16px;text-align:center;flex:none}
+.adm-nav .adm-g{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--subtle-foreground);padding:12px 8px 3px}
+.adm-main{flex:1;min-width:0;display:flex;flex-direction:column}
+</style>
+<div class="adm">
+  <nav class="adm-nav">
+    <div class="adm-h">Admin</div><div class="adm-s">Acme · Team preset · self-hosted</div>
+    <div class="adm-g">Workspace</div>
+    <a class="adm-i"><span class="ic">⌁</span>Connections</a>
+    <a class="adm-i"><span class="ic">$</span>Skills &amp; plugins</a>
+    <a class="adm-i"><span class="ic">⚖</span>Governance</a>
+    <a class="adm-i"><span class="ic">☰</span>Audit</a>
+    <a class="adm-i"><span class="ic">◍</span>Members &amp; roles</a>
+    <a class="adm-i"><span class="ic">▣</span>Hosts</a>
+    <a class="adm-i"><span class="ic">€</span>Budgets</a>
+    <a class="adm-i"><span class="ic">◩</span>Published surfaces</a>
+    <a class="adm-i on"><span class="ic">⇩</span>Export &amp; backups</a>
+    <a class="adm-i"><span class="ic">⚙</span>Workspace</a>
+  </nav>
+  <div class="adm-main">
+    <div class="pane-head"><div class="title">Export &amp; backups</div><span class="muted small">free and unlimited · open formats</span>
+      <div class="acts"><span class="btn sm">Import or restore…</span></div></div>
+    <div class="pane-body pad">
+
+      <div class="grid2 gap16 mb16" style="grid-template-columns:1.2fr 1fr">
+        <div class="card">
+          <div class="card-h"><span class="ico sm info">⇩</span><b>Full workspace export</b><span class="pill outline right">.ocarchive · zstd tar</span></div>
+          <div class="card-b">
+            <div class="muted small mb12">Everything round-trippable: NDJSON per primitive with JSON Schemas, versions and change sets, the event and audit log, files as content-addressed blobs, agents, Spaces, members, policies and app definitions. Imports into self-hosted or Cloud.</div>
+            <div class="field"><span class="label">Scope</span><div class="flex gap12 small"><span class="flex"><span class="radio on"></span>Whole workspace</span><span class="flex"><span class="radio"></span>One Space</span><span class="flex"><span class="radio"></span>Date range</span><span class="flex"><span class="radio"></span>Selected primitives</span></div></div>
+            <div class="flex top small mb8"><span class="check"></span><span><b>Include secrets</b> <span class="muted">· owner only · encrypted with a passphrase (age) · re-authentication required · never by an agent</span></span></div>
+            <div class="callout warn small"><span>⏳</span><span><b>Requested by you at 10:02.</b> Team preset: an admin approves, and it can't be you. Waiting for <b>Sanne</b>. The download link expires 24 h after the archive is ready.</span></div>
+          </div>
+          <div class="card-f"><span class="btn sm">Cancel request</span><span class="muted xs right">Last export: 1 Nov · 2.1 GB · approved by Sanne</span></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><b>Object downloads</b><span class="muted xs right">anyone, for what they can see</span></div>
+          <table class="list">
+            <tr><td>Doc</td><td class="muted">Markdown · PDF · DOCX · HTML</td></tr>
+            <tr><td>Table</td><td class="muted">CSV · XLSX · JSON with schema</td></tr>
+            <tr><td>Issues</td><td class="muted">CSV · JSON · Markdown</td></tr>
+            <tr><td>Thread</td><td class="muted">Markdown · JSON incl. runs and approvals</td></tr>
+            <tr><td>Artifact · Form</td><td class="muted">bundle ZIP · definition + submissions</td></tr>
+            <tr><td>Agent</td><td class="muted">agent pack: identity, memory, skills, routines, grants</td></tr>
+          </table>
+          <div class="card-f small muted">More than 50 objects at once counts as bulk and is audited. An agent sending objects outside is an external action.</div>
+        </div>
+      </div>
+
+      <div class="section-t">Backups to storage you own <span class="r"><span class="btn sm">＋ Add destination</span></span></div>
+      <div class="card mb16">
+        <div class="list-row"><span class="ico ok lg">⛁</span><div class="grow"><div class="flex"><b class="mono">r2://acme-backups</b><span class="pill ok">healthy</span><span class="pill outline">S3-compatible · via connection</span></div><div class="muted small">Nightly 02:00 · incremental, deduplicated · encrypted client-side to age recipient <span class="mono">age1q9…7xk</span> (key held by Acme) · keep 30 daily, 12 monthly</div></div>
+          <div class="col gap4 small" style="width:220px"><div class="flex"><span class="muted">Last backup</span><span class="right">Sun 02:00 · 1.8 GB</span></div><div class="flex"><span class="muted">Verification restore</span><span class="right ok-t">passed Sat</span></div><div class="flex"><span class="muted">Next</span><span class="right">tonight 02:00</span></div></div></div>
+        <div class="list-row"><span class="ico lg">⛁</span><div class="grow"><div class="flex"><b>Drive folder</b> <span class="mono">/files/drive/Backups/</span><span class="pill">paused</span></div><div class="muted small">Weekly · paused by Rutger on 4 Nov · second copy</div></div><span class="btn sm">Resume</span></div>
+      </div>
+
+      <div class="grid2 gap16 mb16">
+        <div class="card">
+          <div class="card-h"><span class="ico sm mono">git</span><b>Continuous Git mirror</b><span class="toggle on right"></span></div>
+          <div class="card-b small">
+            <dl class="kv">
+              <dt>Target</dt><dd class="mono">git.acme.example/acme/workspace-mirror</dd>
+              <dt>Host</dt><dd>Forgejo · deploy key in vault</dd>
+              <dt>Contents</dt><dd>Docs as Markdown, Tables as CSV, Issues as Markdown + JSON, artifacts as source</dd>
+              <dt>Spaces</dt><dd>Sales, Engineering, Operations</dd>
+              <dt>Last push</dt><dd>09:40 · 14 files changed · on change</dd>
+            </dl>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><b>Move or restore</b></div>
+          <div class="card-b small col gap8">
+            <div class="muted">Imports and restores are owner actions and become events in the target workspace.</div>
+            <div class="code">oc admin backup                 <span class="c"># db, files, config, key</span>
+oc admin restore --from r2://acme-backups
+oc admin import acme-2026-11.ocarchive
+oc admin import --from cloud     <span class="c"># Cloud → self-host</span></div>
+            <div class="muted">Connections import as “needs re-authorization”; IDs, relations, history and the event log keep their meaning.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid3">
+        <div class="callout"><span>🔒</span><span><b>Agents can't touch this page.</b> Adding or changing a backup or mirror destination is a governance action; credential export is on the floor.</span></div>
+        <div class="callout ok"><span>✓</span><span><b>No phone-home.</b> This instance sends no telemetry and has no remotely flippable flags or egress switches.</span></div>
+        <div class="callout"><span>ⓘ</span><span>Every member can export their own data (messages, personal items, profile) from their user menu.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</main>

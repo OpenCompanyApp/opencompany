@@ -1,0 +1,108 @@
+<!--meta
+{"title": "Field rule and decision trace", "area": "Governance", "order": 210, "rail": "app:crm", "layout": "three", "ctx_w": 430,
+ "summary": "A business rule (discount over 20% needs the sales lead) turns one field of a change set into a proposal; the decision trace explains why.",
+ "notes": [
+  ["k", "Business rules apply to everyone", "The CRM manifest declares “discount > 20 needs role:sales-lead”. It applies to humans and agents alike; Jonas hit the same rule last week. The rest of Ada's change set auto-applied.", "PRODUCT_DIRECTION pillar 5 “Business rules on record fields” · example-flows story 14"],
+  ["p", "Strictest gate wins", "Step 14 said “allow” (small reversible edit); rule 14a said “propose to sales lead”. The final gate is the stricter one; a rule can never loosen a gate.", "governance “Decision order” step 14a"],
+  ["s", "Why can't Ada see this?", "One click from a denied read names the failing term of Space ∩ grants ∩ on-behalf-of ∩ external ACL, with a direct fix when the viewer may apply one.", "messenger-ui “Autonomy slider and ‘why can't Ada see this?’” · governance “Permissions and effective access”"],
+  ["q", "Open: who sees a rule-blocked approval", "Rutger is an admin but not in role sales-lead, so the card says “you can't approve this”. Whether admins may override a business rule is not specified; mockup says no.", "governance “Approval authority” (silent on admin override of rules)"]
+ ]}
+-->
+<main class="main">
+  <div class="pane-head">
+    <div class="crumbs">◈ CRM <span>/</span> Deals <span>/</span> <b>Pinecrest · Retainer 2027</b></div>
+    <div class="acts"><span class="btn sm">Ask Ada</span><span class="btn sm">History</span><span class="icon-btn b">⋯</span></div>
+  </div>
+  <div class="pane-body" style="padding:18px 24px 28px">
+    <div class="flex gap12"><span class="ico lg">◈</span><div><div class="h2">Pinecrest · Retainer 2027</div><div class="muted small">Deal · owner Sanne · Sales · stage Negotiation · €42,000 / year</div></div><span class="pill warn right">1 field waiting for the sales lead</span></div>
+
+    <div class="card changeset mt16">
+      <div class="card-h"><span class="k">Change set</span><b>CS-902</b><span class="muted">from Ada · after the 14:00 call · 3 fields</span><span class="muted xs right">run <span class="ref">R-2318</span> · on behalf of Sanne</span></div>
+      <table class="dgrid">
+        <tr><th>Field</th><th>Old</th><th>New</th><th>Gate</th><th>Status</th></tr>
+        <tr><td>Next step</td><td class="muted">Send pricing</td><td class="staged">Revised SOW by Thu</td><td class="muted small">reversible_edit · allow</td><td><span class="pill ok">applied</span></td></tr>
+        <tr><td>Close date</td><td class="muted">2026-12-19</td><td class="staged">2026-12-12</td><td class="muted small">reversible_edit · allow</td><td><span class="pill ok">applied</span></td></tr>
+        <tr><td><b>Discount</b></td><td class="muted">15%</td><td class="conflict"><b>25%</b></td><td class="small warn-t">field rule → sales lead</td><td><span class="pill warn">proposal</span></td></tr>
+      </table>
+      <div class="card-f"><span class="small">Waiting for <b>Sanne</b> (role sales-lead). <span class="muted">You are an admin but not in this role, so you can't approve it.</span></span><span class="btn sm ghost right">Revert the 2 applied fields</span></div>
+    </div>
+
+    <div class="grid2 mt16">
+      <div class="card">
+        <div class="card-h"><b>Deal</b></div>
+        <div class="card-b"><dl class="kv">
+          <dt>Company</dt><dd>Pinecrest · Ghent, Belgium</dd>
+          <dt>Contact</dt><dd>Jules D. · jules@pinecrest.example</dd>
+          <dt>Stage</dt><dd><span class="pill info">Negotiation</span></dd>
+          <dt>Amount</dt><dd>€42,000 / year <span class="muted xs">· Sanne edited 11 Nov</span></dd>
+          <dt>Discount</dt><dd>15% <span class="new">25% proposed</span></dd>
+          <dt>Next step</dt><dd>Revised SOW by Thu</dd>
+          <dt>Close date</dt><dd>2026-12-12</dd>
+          <dt>Probability</dt><dd>60%</dd>
+        </dl></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><b>Ada's reason</b></div>
+        <div class="card-b small col gap8">
+          <div>“On the call Jules said a competitor offered 25% for a 2-year term. Sanne said she'd consider matching if they sign before 12 Dec. I've proposed 25% so the SOW draft is ready; it needs Sanne's OK.”</div>
+          <div class="muted xs">Source: call notes (Meetings) · 14:00–14:40 · attendees Sanne, Jules D.</div>
+          <div class="hr" style="margin:6px 0"></div>
+          <div class="section-t" style="margin:0">Same rule, last week</div>
+          <div class="flex"><span class="av jonas">J</span><span>Jonas set Halden &amp; Co discount to 22% → proposal → Sanne approved</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt16">
+      <div class="card-h"><b>Activity</b></div>
+      <div class="card-b"><div class="chain">
+        <div class="node cs"><span class="t">14:46</span> Ada staged CS-902 (3 fields) · 2 applied, 1 proposal</div>
+        <div class="node ev"><span class="t">14:41</span> <span class="mono xs">calendar.event.ended</span> “Pinecrest pricing call” → routine <span class="ref">log-meeting-to-crm</span></div>
+        <div class="node hu"><span class="t">11 Nov</span> Sanne changed Amount €38,000 → €42,000</div>
+        <div class="node ap"><span class="t">10 Nov</span> First email to @pinecrest.example approved by Sanne</div>
+      </div></div>
+    </div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><div class="title">Why did this need approval?</div><div class="acts"><span class="icon-btn">✕</span></div></div>
+  <div class="pane-body">
+    <div class="section">
+      <div class="small mb8">Decision trace for <b>Discount 15% → 25%</b> · CS-902 item 3 · evaluated 14:46:12</div>
+      <div class="ft-steps">
+        <div class="ft ok"><span>1</span>Workspace boundary<i>Acme</i></div>
+        <div class="ft ok"><span>2</span>Kill switch<i>none</i></div>
+        <div class="ft ok"><span>3</span>Hard-deny floor<i>not a floor action</i></div>
+        <div class="ft ok"><span>4</span>Run mode<i>act</i></div>
+        <div class="ft ok"><span>5</span>Supply-chain guards<i>n/a (internal)</i></div>
+        <div class="ft ok"><span>6</span>Explicit deny<i>none</i></div>
+        <div class="ft ok"><span>7</span>Enablement<i>CRM app enabled</i></div>
+        <div class="ft ok"><span>8</span>Agent grant<i>Sales member · CRM act</i></div>
+        <div class="ft ok"><span>9</span>On-behalf-of<i>Sanne can edit deal</i></div>
+        <div class="ft ok"><span>10</span>External ACL<i>n/a</i></div>
+        <div class="ft ok"><span>11</span>Budget and depth<i>€0.01 · depth 2</i></div>
+        <div class="ft ok"><span>12</span>Taint and trigger<i>clean · internal edit</i></div>
+        <div class="ft ok"><span>13</span>Exceptions<i>none match</i></div>
+        <div class="ft"><span>14</span>Preset default<i>reversible_edit → allow</i></div>
+        <div class="ft hit"><span>14a</span><em>Field rule · crm.discount_over_20</em><i>→ propose to sales lead</i></div>
+      </div>
+      <div class="callout warn mt12"><span>⚖</span><span><b>Strictest gate wins:</b> allow (14) vs propose (14a) → <b>propose</b>. Declared in the CRM app manifest; applies to humans and agents.</span></div>
+      <div class="code mt8"><span class="k">approval_rules</span>: [{ <span class="k">when</span>: <span class="s">"discount &gt; 20"</span>,
+  <span class="k">applies_to</span>: [human, agent],
+  <span class="k">approver</span>: <span class="s">role:sales-lead</span> }]</div>
+    </div>
+    <div class="section">
+      <div class="section-t">Why can't Ada see this?</div>
+      <div class="card flat">
+        <div class="card-b small col gap8">
+          <div>Ada tried to read <b>Pinecrest payment terms</b> in <span class="ref">▦ Contracts</span> (Operations) while drafting the SOW.</div>
+          <div class="mono xs">Space ✕ ∩ grants ✓ ∩ on-behalf-of Sanne ✓ ∩ external ACL —</div>
+          <div class="callout bad"><span>✕</span><span>Denied at <b>step 8 · Agent grant</b>: Ada is not a member of <b>Operations</b>. Sanne could read it; Ada can't exceed her own access.</span></div>
+          <div class="muted xs">Adding an agent to a Space is a governance action (admin in Team).</div>
+          <div class="flex"><span class="btn sm primary">Add Ada to Operations</span><span class="btn sm">Share just this answer</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <style>.ft-steps{display:flex;flex-direction:column;gap:2px;font-size:12px}.ft{display:grid;grid-template-columns:30px 1fr auto;gap:8px;align-items:center;padding:3px 8px;border-radius:6px}.ft span{font-family:var(--font-mono);font-size:11px;color:var(--subtle-foreground)}.ft em{font-style:normal}.ft i{font-style:normal;color:var(--muted-foreground);font-size:11.5px}.ft.ok::after{content:"";}.ft.ok span::before{content:"✓ ";color:var(--success-text)}.ft.hit{background:var(--warning-soft);border:1px solid var(--warning-border);font-weight:600}.ft.hit i{color:var(--warning-text)}</style>
+</aside>

@@ -1,0 +1,93 @@
+<!--meta
+{"title": "Doc · suggestion mode", "area": "Spaces", "order": 130, "rail": "sales:docs", "layout": "three", "ctx_w": 380,
+ "summary": "A typed Policy doc with owner, status and review date; Ada edits as tracked suggestions; version-checked saves.",
+ "notes": [
+  ["a", "Agent as a collaborator in suggestion mode", "Ada never edits the text directly: inserts and deletes are tracked suggestions that the owner accepts or rejects, singly or all at once.", "ui-structure §4 “Docs” · work-apps “Change sets”"],
+  ["k", "Version check on every save", "Every save carries the version it was based on, which ends today's silent-overwrite bug where an open editor could erase an agent's edit.", "ui-structure §1 Docs, §4"],
+  ["p", "Typed, owned, reviewed", "Docs have a template type (Policy) with properties, a human owner, a status (draft, current, archived) and a review date. Past the date, the doc shows as stale and the stale sweep flags it.", "ui-structure §2 rules 3–4"],
+  ["q", "Open: collaboration engine", "Yjs with Hocuspocus versus alternatives, and the canonical stored format (structured editor JSON with a markdown projection for the VFS), are still open.", "ui-structure “Open questions”"]
+ ]}
+-->
+<style>
+.dce .page{max-width:600px;margin:0 auto;padding:26px 0 40px;font-size:14px;line-height:1.7}
+.dce .page h2{font-size:17px;margin:22px 0 6px}
+.dce .props{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;padding:10px 0 14px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.dce .props span.k{color:var(--muted-foreground);margin-right:4px}
+.dce .mark{position:relative}
+.dce .gut{position:absolute;right:-92px;top:0;font-size:11px;display:flex;gap:3px;align-items:center}
+.dce .gut i{font-style:normal;width:18px;height:18px;border-radius:5px;display:grid;place-items:center;border:1px solid var(--border);background:var(--card)}
+.dce table{border-collapse:collapse;width:100%;font-size:13px}
+.dce td,.dce th{border:1px solid var(--border);padding:5px 9px;text-align:left}
+.dce th{background:var(--card-2);font-weight:600}
+.dce .cursor{display:inline-block;width:2px;height:16px;background:var(--sanne);vertical-align:-3px;position:relative}
+.dce .cursor::after{content:"Sanne";position:absolute;top:-15px;left:0;font-size:9.5px;background:var(--sanne);color:#fff;padding:0 3px;border-radius:3px;line-height:13px}
+</style>
+<main class="main dce">
+  <div class="pane-head">
+    <div class="crumbs">Sales <span>/</span> Docs <span>/</span> <b class="nowrap">≡ Pricing policy</b></div>
+        <div class="acts"><span class="presence"><span class="av agent ada">A</span>Ada · suggesting</span><span class="stack-av"><span class="av sanne">S</span><span class="av rutger">R</span></span><span class="seg"><span>Editing</span><span class="on">Suggesting</span><span>Viewing</span></span><span class="btn sm ghost">⇩ Export</span><span class="icon-btn b">⋯</span></div>
+  </div>
+  <div class="pane-sub" style="background:var(--card-2)"><span class="ok-t">✓</span><span>Saved <b>v13</b>, based on v12</span><span class="muted">· every save is version-checked, so no edit silently overwrites another</span><span class="right muted xs nowrap">History · 13</span></div>
+  <div class="pane-body">
+    <div class="page">
+      <div class="h1" style="font-size:26px">Pricing policy</div>
+      <div class="props">
+        <div><span class="k">Type</span><span class="chip">Policy</span></div>
+        <div><span class="k">Owner</span><span class="av sanne">S</span> Sanne</div>
+        <div><span class="k">Status</span><span class="pill ok">current</span></div>
+        <div><span class="k">Review date</span><span class="warn-t">1 Nov 2026 · passed 22 days ago</span></div>
+        <div><span class="k">Applies to</span><span class="ref">◈ Deals</span> <span class="ref">◩ Quote calculator</span></div>
+        <div><span class="k">Replaces</span><span class="muted">Pricing 2025 (archived)</span></div>
+      </div>
+
+      <h2>1. Purpose</h2>
+      <p>This policy sets list prices, discount limits and payment terms for all Acme agency work, so that quotes are consistent whether a person or an agent drafts them.</p>
+
+      <h2>2. Price list</h2>
+      <table>
+        <tr><th>Package</th><th>Scope</th><th>Price</th></tr>
+        <tr><td>Starter</td><td>Discovery + one-page site</td><td><span class="sug-del">€4,500</span> <span class="sug-ins">€4,900</span></td></tr>
+        <tr><td>Growth</td><td>Site, booking flow, 3 integrations</td><td>€12,000</td></tr>
+        <tr><td>Platform</td><td>Custom portal, SSO, retainer</td><td>from €24,000</td></tr>
+      </table>
+      <p class="muted small mt4">Prices exclude VAT. Reverse-charge clients: see the quote calculator.</p>
+
+      <h2>3. Discounts</h2>
+      <p class="mark">Account owners may give up to <span class="sug-del">15%</span><span class="sug-ins">10%</span> without approval.
+        <span class="sug-ins">Discounts above 20% need the sales lead. This is enforced as a business rule on the Deals discount field, for people and agents alike.</span>
+        <span class="gut"><i class="ok-t">✓</i><i class="bad-t">✕</i><span class="av agent ada" style="width:16px;height:16px;font-size:9px">A</span></span>
+      </p>
+      <p>Multi-year contracts get an extra 5% per year committed, capped at 10%.<span class="cursor"></span></p>
+
+      <h2>4. Payment terms</h2>
+      <p class="mark">Invoices are due in <span class="sug-del">30</span><span class="sug-ins">14</span> days. Reminders go out at 7 and 14 days overdue <span class="sug-ins">as drafts for the account owner to send</span>.
+        <span class="gut"><i class="ok-t">✓</i><i class="bad-t">✕</i><span class="av agent ada" style="width:16px;height:16px;font-size:9px">A</span></span></p>
+
+      <h2>5. Review</h2>
+      <p>The owner reviews this policy every six months. <span class="sug-del">Next review: 1 Nov 2026.</span><span class="sug-ins">Next review: 1 May 2027.</span></p>
+    </div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="tabs" style="padding-top:8px"><span class="tab on">Suggestions · 5</span><span class="tab">Comments · 2</span><span class="tab">Agent</span></div>
+  <div class="pane-sub"><span class="av agent ada">A</span><span class="small">5 from Ada · <span class="ref">R-2305</span></span><span class="right flex gap4"><span class="btn sm">Reject all</span><span class="btn sm primary">Accept all</span></span></div>
+  <div class="pane-body">
+    <div class="list-row"><div class="grow"><div class="small"><b>Starter price</b> <span class="sug-del">€4,500</span> → <span class="sug-ins">€4,900</span></div><div class="muted xs">“Matches the quote calculator since 3 Nov (SAL-97 reports the mismatch).”</div></div><span class="rv flex gap4"><span class="btn sm">✓</span><span class="btn sm">✕</span></span></div>
+    <div class="list-row"><div class="grow"><div class="small"><b>Discount limit</b> <span class="sug-del">15%</span> → <span class="sug-ins">10%</span></div><div class="muted xs">“The CRM rule triggers at 20%; Sanne's note from Oct says 10% is the real practice.”</div></div><span class="flex gap4"><span class="btn sm">✓</span><span class="btn sm">✕</span></span></div>
+    <div class="list-row"><div class="grow"><div class="small"><b>Insert</b> sentence about the 20% business rule</div><div class="muted xs">Links the policy to the CRM approval rule so people see why a deal asks.</div></div><span class="flex gap4"><span class="btn sm">✓</span><span class="btn sm">✕</span></span></div>
+    <div class="list-row"><div class="grow"><div class="small"><b>Payment terms</b> <span class="sug-del">30</span> → <span class="sug-ins">14</span> days, reminders as drafts</div><div class="muted xs">“Invoices since August already say 14 days.”</div></div><span class="flex gap4"><span class="btn sm">✓</span><span class="btn sm">✕</span></span></div>
+    <div class="list-row"><div class="grow"><div class="small"><b>Next review</b> → 1 May 2027</div><div class="muted xs">Accepting also clears the stale flag.</div></div><span class="flex gap4"><span class="btn sm">✓</span><span class="btn sm">✕</span></span></div>
+
+    <div class="section">
+      <div class="section-t">Comments</div>
+      <div class="col gap8 small">
+        <div class="flex top"><span class="av sanne">S</span><div><b>Sanne</b> <span class="muted xs">10:12 · on “10%”</span><div>Yes, 10% is right. Keep the multi-year line as is.</div></div></div>
+        <div class="flex top"><span class="av rutger">R</span><div><b>Rutger</b> <span class="muted xs">10:15</span><div>@Ada also check the quote calculator uses the new Starter price after Sanne accepts.</div></div></div>
+        <div class="flex top"><span class="av agent ada">A</span><div><b>Ada</b> <span class="muted xs">10:15</span><div>Will do. The calculator reads the Price list table, not this doc, so after Sanne accepts I'll stage the same change there as a change set and post the result here.</div></div></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="callout"><span>ⓘ</span><span>Only Sanne (owner) or an admin can accept. Accepted suggestions are attributed “Ada, accepted by Sanne” in the version history.</span></div>
+    </div>
+  </div>
+</aside>

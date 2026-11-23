@@ -1,0 +1,121 @@
+<!--meta
+{"title": "Skills in chat · $skill", "area": "Messenger", "order": 25, "rail": "agent:ada", "layout": "three", "ctx_w": 400, "notes_cols": 5,
+ "summary": "$ autocomplete in the composer, loaded skills in run activity, and an agent-drafted skill waiting for publish approval.",
+ "notes": [
+  ["p", "$ invokes a skill", "<span class=\"mono\">$</span> is for skills, <span class=\"mono\">@</span> for people and agents, <span class=\"mono\">#</span> for records. Several skills can be stacked in order; later ones refine earlier ones. The same invocation works from Telegram, routines and mruby.", "skill-system “Invocation: $skill-name” (direction-adjusted)"],
+  ["a", "Skills show in run activity", "The run says which skills it loaded, with version and digest, and which skill script ran. Composed skills (brand-voice under proposal-writer) are listed too.", "skill-system “Approval UX”, “Observability”"],
+  ["k", "Agent-drafted skills need a human", "Ada can draft a skill from a good run, but publishing is a skill digest approval for the owner or an admin. Each new version asks again, so “always” is not offered.", "messenger-ui “Few, good approvals” variants · governance “MCP, API manifests, skills and plugins”"],
+  ["s", "Unavailable skills are shown, not hidden", "In the picker, a skill not granted to Ada or blocked by a changed digest is greyed out with the reason, like disallowed outside agents.", "messenger-ui “Delegation to outside agents” (same pattern)"],
+  ["q", "Open: $ prefix and draft visibility", "<span class=\"mono\">$</span> comes from the older skill-system plan, which the direction partly supersedes; confirm it. Also: can a draft be shared with the requesting human before it is published?", "skill-system status note"]
+ ]}
+-->
+<main class="main">
+  <div class="pane-head">
+    <div class="title"><span class="av agent ada md">A<i class="dot on"></i></span>Ada <span class="agent-label">Agent</span><span class="tag">🖥</span></div>
+    <span class="muted small">Sales &amp; ops teammate · manager Rutger · 4 skills</span>
+    <div class="acts"><span class="btn sm ghost">Profile</span><span class="icon-btn b">⋯</span></div>
+  </div>
+  <div class="pane-body" style="position:relative">
+    <div class="thread">
+      <div class="day">Yesterday</div>
+      <div class="msg"><span class="av rutger md">R</span><div class="body">
+        <div class="meta"><span class="who">Rutger</span><span class="time">16:02</span></div>
+        <div class="text"><span class="mention">$proposal-writer</span> for <span class="ref">◈ Pinecrest · Retainer 2027</span>. Three tiers, keep it to two pages.</div>
+      </div></div>
+      <div class="msg"><span class="av agent ada md">A</span><div class="body">
+        <div class="meta"><span class="who">Ada</span><span class="agent-label">Agent</span><span class="time">16:06</span></div>
+        <div class="text">Draft is in Sales Docs as a Spec owned by you. Prices come from the Price list table; I didn't invent any.</div>
+        <div class="run mt8">
+          <div class="run-h"><span class="state done">done</span><b>Pinecrest proposal</b><span class="ref">R-2297</span><span class="muted xs">· 4 min · €0.14</span></div>
+          <div class="run-b">
+            <div class="act action"><span class="ai">$</span><div>Loaded skill <b class="mono">proposal-writer</b> v3 <span class="det">· a91c…04 · plugin agency-sales-kit</span></div></div>
+            <div class="act action"><span class="ai">$</span><div>Loaded skill <b class="mono">brand-voice</b> v5 <span class="det">· 0d3e…b2 · referenced by proposal-writer</span></div></div>
+            <div class="act action"><span class="ai">◆</span><div>Ran <span class="mono">scripts/price_table.rb</span> in mruby <span class="det">· read Price list · 18 ms · no writes</span></div></div>
+            <div class="act result"><span class="ai">✓</span><div>Created doc draft <span class="ref">≡ Pinecrest proposal 2027</span> <span class="det">· reversible · owner Rutger</span></div></div>
+          </div>
+        </div>
+      </div></div>
+
+      <div class="day">Today</div>
+      <div class="msg"><span class="av agent ada md">A</span><div class="body">
+        <div class="meta"><span class="who">Ada</span><span class="agent-label">Agent</span><span class="time">09:41</span></div>
+        <div class="text">Last week's duplicate clean-up in Leads worked well, so I wrote it down as a skill: <b class="mono">lead-dedupe</b>. It finds duplicates by domain and company name and proposes merges as a change set. I ran it once as a dry run (nothing written). Want me to publish it so I can use it from the leads-hygiene routine?</div>
+        <div class="card approval">
+          <div class="card-h"><span class="k">Approval · skill digest</span><b>Publish lead-dedupe v1</b><span class="muted xs right">expires in 7 days</span></div>
+          <div class="card-b">
+            <dl class="kv">
+              <dt>What</dt><dd>Publish a new skill to the workspace: <span class="mono">SKILL.md</span> + <span class="mono">scripts/dedupe.rb</span> · digest <span class="mono">sha256:61f0…aa</span></dd>
+              <dt>What will run</dt><dd>mruby script reading <span class="ref">Leads</span>; merges are proposed as a change set (reversible, &gt;50 rows becomes a proposal). No connections, no external sends.</dd>
+              <dt>Why</dt><dd>Repeat of run <span class="ref">R-2240</span> (you asked for it on 16 Nov)</dd>
+              <dt>Where from</dt><dd>Agent-created by Ada with <span class="mono">create-skill</span> · <span class="pill ok">scan clean</span></dd>
+              <dt>Grants</dt><dd>None added. Skills can't grant tools, budgets, computers or egress.</dd>
+              <dt>Who answers</dt><dd>You (owner) or Sanne (admin)</dd>
+            </dl>
+          </div>
+          <div class="card-f"><span class="btn primary sm">Publish v1</span><span class="btn sm">Open files</span><span class="btn sm ghost">Reject…</span><span class="muted xs right">Each new version asks again</span></div>
+        </div>
+      </div></div>
+      <div style="height:230px"></div>
+    </div>
+  </div>
+  <div class="pane-foot" style="border-top:0;padding-top:0;position:relative">
+    <div class="menu" style="position:absolute;left:16px;right:16px;bottom:100%;margin-bottom:-6px;z-index:5">
+      <div class="flex small muted" style="padding:4px 8px 6px"><b class="strong" style="color:var(--foreground)">Skills</b><span>· type to filter · Tab to add another</span><span class="right kbd">esc</span></div>
+      <div class="mi on"><span class="ico sm ada">$</span><b class="mono">weekly-pipeline-review</b><span class="muted small ell" style="flex:1">Forecast by stage and stale deals, in the Acme format</span><span class="pill outline">v4 · Sanne</span></div>
+      <div class="mi"><span class="ico sm ada">$</span><b class="mono">proposal-writer</b><span class="muted small ell" style="flex:1">Proposal outline, price table and terms</span><span class="pill outline">v3 · plugin</span></div>
+      <div class="mi"><span class="ico sm ada">$</span><b class="mono">brand-voice</b><span class="muted small ell" style="flex:1">Tone and wording rules</span><span class="pill outline">v5 · Rutger</span></div>
+      <div class="mi" style="opacity:.55"><span class="ico sm">$</span><b class="mono">invoice-chasing</b><span class="muted small ell" style="flex:1">Reminder cadence per overdue band</span><span class="pill">not granted to Ada</span></div>
+      <div class="mi" style="opacity:.55"><span class="ico sm">$</span><b class="mono">lead-dedupe</b><span class="muted small ell" style="flex:1">Find and merge duplicate leads</span><span class="pill ada">draft · waiting for approval</span></div>
+    </div>
+    <div class="composer" style="border-color:var(--primary)">
+      <div><span class="mention">$weekly-pipeline-review</span> <span class="mention">$brand-voice</span> focus on Northwind and anything over €20k <span class="mention" style="background:var(--secondary);color:var(--foreground)">$we</span>▍</div>
+      <div class="bar"><span class="icon-btn">＋</span><span class="icon-btn">@</span><span class="icon-btn">#</span><span class="icon-btn">$</span><span class="xs muted">2 skills, in this order</span><span class="send">↑</span></div>
+    </div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="tabs" style="padding-top:8px"><span class="tab">Run</span><span class="tab on">$ Skill</span><span class="tab">🖥 Computer</span><span class="tab">Details</span></div>
+  <div class="pane-sub"><b class="mono">lead-dedupe</b><span class="pill ada">draft</span><span class="muted xs nowrap">by Ada · R-2240</span></div>
+  <div class="pane-sub"><span class="seg"><span class="on">SKILL.md</span><span>dedupe.rb</span><span>Dry run</span></span></div>
+  <div class="pane-body" style="padding:12px 14px">
+    <div class="code"><span class="c">---</span>
+<span class="k">name</span>: lead-dedupe
+<span class="k">description</span>: Find duplicate leads by email domain
+  and normalised company name; propose merges.
+<span class="k">scripts</span>: [scripts/dedupe.rb]
+<span class="k">uses</span>: [tables.read, tables.change_set]
+<span class="c">---</span>
+## When to use
+When Leads has rows that share a domain, or
+names that differ only in legal suffix (BV, Ltd).
+
+## Steps
+1. Run <span class="s">scripts/dedupe.rb</span> on the Leads table.
+2. Keep the row with the most recent activity.
+3. Move notes and attachments onto it.
+4. Propose the merge as one change set.
+   Never merge rows a human edited this week.
+
+## Never
+- Email anyone about the merge.
+- Delete rows; merged rows go to trash.</div>
+
+    <div class="section-t mt16">Dry run · 09:38</div>
+    <div class="card flat">
+      <div class="list-row"><span class="ico sm ok">✓</span><div class="grow">9 duplicate pairs found in 214 rows<div class="muted xs">e.g. “Kestrel Labs” + “Kestrel Labs BV” (kestrel-labs.example)</div></div></div>
+      <div class="list-row"><span class="ico sm warn">!</span><div class="grow">2 pairs skipped: Sanne edited them on Monday</div></div>
+      <div class="list-row"><span class="ico sm">◇</span><div class="grow">Nothing written · 31 ms · €0.00</div></div>
+    </div>
+
+    <div class="section-t mt16">Files</div>
+    <div class="mono small" style="line-height:1.8"><span class="muted">/skills/lead-dedupe/</span><br>&nbsp;&nbsp;SKILL.md<br>&nbsp;&nbsp;scripts/dedupe.rb<br>&nbsp;&nbsp;tests/sample-leads.json</div>
+
+    <div class="section-t mt16">Ada's skills</div>
+    <div class="col gap4 small">
+      <div class="flex"><span class="mono">weekly-pipeline-review</span><span class="right muted xs">v4 · routine pinned</span></div>
+      <div class="flex"><span class="mono">proposal-writer</span><span class="right muted xs">v3</span></div>
+      <div class="flex"><span class="mono">brand-voice</span><span class="right muted xs">v5</span></div>
+      <div class="flex"><span class="mono">create-skill</span><span class="right muted xs">built-in</span></div>
+    </div>
+  </div>
+</aside>

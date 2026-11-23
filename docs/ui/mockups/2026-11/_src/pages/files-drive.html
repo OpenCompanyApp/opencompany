@@ -1,0 +1,101 @@
+<!--meta
+{"title": "Files · Drive mount", "area": "Spaces", "order": 140, "rail": "sales:files", "layout": "three", "ctx_w": 400,
+ "summary": "One Files store with folders and a Google Drive mount, effective access, sync state, preview and governed sharing.",
+ "notes": [
+  ["p", "One Files store, real folders", "Files is the only tool that keeps folders, because it mirrors real file systems and mounts. Drive appears under /files/drive/… in Files and the VFS; chat attachments land here too.", "ui-structure §2 rule 2, rule 7 · messenger-ui “Files and Google Drive”"],
+  ["k", "Effective access", "What anyone sees here is the Drive ACL for the connection's identity ∩ Space membership ∩ the agent's grants ∩ the human it acts for. The explainer names the deciding term.", "PRODUCT_DIRECTION pillar 5 · governance “Decision order” steps 8–10"],
+  ["a", "Agent edits are reversible", "Ada's edit to a Drive doc went through the VFS write path with a revision check, auto-applied, with revert. Sharing a link outward is exposure and asks.", "messenger-ui “Files and Google Drive” · governance “Action classes”"],
+  ["q", "Open: Drive revisions vs change sets", "Reverting a Drive file restores a Drive revision rather than a cell-level change set. How partial reverts and Drive-side edits after the run are shown is not specified.", "connections-events-routines “Storage mount semantics”"]
+ ]}
+-->
+<style>
+.fdr .tree{width:196px;flex:none;border-right:1px solid var(--border);padding:10px 8px;font-size:12.5px;overflow:auto}
+.fdr .tree .ti{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:6px;white-space:nowrap}
+.fdr .tree .ti.on{background:var(--secondary);font-weight:600}
+.fdr .tree .ti.l2{padding-left:20px}.fdr .tree .ti.l3{padding-left:34px}
+.fdr .fl td:first-child .nm{display:flex;align-items:center;gap:8px}
+.fdr .fl td{white-space:nowrap}
+.fdr .doc{border:1px solid var(--border)}
+.fdr .doc{background:#fff;color:#18181b;border-radius:6px;padding:16px 18px;font-size:10.5px;line-height:1.5;box-shadow:var(--shadow-sm);height:250px;overflow:hidden}
+.fdr .doc h4{font-size:13px;margin:0 0 6px;color:#18181b}
+.fdr .doc .hl{background:rgba(124,92,255,.18);border-radius:2px}
+</style>
+<main class="main fdr">
+  <div class="pane-head">
+    <div class="crumbs">Sales <span>/</span> Files <span>/</span> drive <span>/</span> Sales <span>/</span> <b>Proposals</b></div>
+    <div class="acts"><span class="input ph" style="width:200px">⌕ Search files</span><span class="btn sm">⇧ Upload</span><span class="btn sm">+ Folder</span><span class="icon-btn b">⋯</span></div>
+  </div>
+  <div class="pane-sub"><span class="ico sm ok">▲</span><b>Google Drive</b><span class="muted nowrap">shared connection “Acme shared drive”</span><span class="pill ok">synced 2 min ago</span><span class="muted nowrap">· 3 routines listen</span><span class="right muted xs nowrap"><u>Why can't Finn see this?</u></span></div>
+  <div class="pane-body" style="display:flex;overflow:hidden">
+    <div class="tree">
+      <div class="section-t" style="margin:4px 6px">Sales files</div>
+      <div class="ti"><span>▸</span>📁 Uploads<span class="right muted xs">OpenCompany</span></div>
+      <div class="ti"><span>▸</span>📁 Chat attachments</div>
+      <div class="ti"><span>▾</span><span class="ok-t">▲</span> drive<span class="right muted xs">mount</span></div>
+      <div class="ti l2"><span>▾</span>📁 Sales</div>
+      <div class="ti l3 on">📂 Proposals</div>
+      <div class="ti l3">📁 Contracts</div>
+      <div class="ti l3">📁 Decks</div>
+      <div class="ti l3">📁 Case studies</div>
+      <div class="ti l2"><span>▸</span>📁 Clients<span class="right muted xs">8</span></div>
+      <div class="ti l2 muted"><span>▸</span>🔒 Finance<span class="right xs">Ops only</span></div>
+      <div class="section-t" style="margin:14px 6px 4px">Artifacts</div>
+      <div class="ti muted">◩ system area · read-only</div>
+      <div class="callout mt12" style="font-size:11.5px"><span>ⓘ</span><span>Folders exist only in Files. Docs, Tables and Issues stay flat and typed.</span></div>
+    </div>
+    <div style="flex:1;overflow:auto;min-width:0">
+      <table class="list fl">
+        <tr><th>Name</th><th>Modified</th><th>By</th><th>Drive ACL</th></tr>
+        <tr style="background:var(--primary-soft)"><td><span class="nm"><span class="ico sm info">W</span><b>Northwind proposal v3.docx</b><span class="pill ada">Ada edited</span></span></td><td>09:58</td><td><span class="flex gap4"><span class="av agent ada">A</span>Ada</span></td><td class="muted">group · edit</td></tr>
+        <tr><td><span class="nm"><span class="ico sm bad">P</span>Northwind MSA v3 (signed).pdf</span></td><td>07:40</td><td><span class="flex gap4"><span class="av sanne">S</span>Sanne</span></td><td class="muted">group · view</td></tr>
+        <tr><td><span class="nm"><span class="ico sm info">W</span>Halden &amp; Co renewal 2026.docx</span></td><td>19 Nov</td><td><span class="flex gap4"><span class="av sanne">S</span>Sanne</span></td><td class="muted">group · edit</td></tr>
+        <tr><td><span class="nm"><span class="ico sm ok">S</span>Pinecrest SOW pricing.xlsx</span></td><td>20 Nov</td><td><span class="flex gap4"><span class="av rutger">R</span>Rutger</span></td><td class="muted">group · edit</td></tr>
+        <tr><td><span class="nm"><span class="ico sm info">W</span>Copperleaf Hotels proposal.docx</span></td><td>18 Nov</td><td><span class="flex gap4"><span class="av agent ada">A</span>Ada</span></td><td class="muted">group · edit</td></tr>
+        <tr><td><span class="nm"><span class="ico sm bad">P</span>Harbor &amp; Pine proposal (sent).pdf</span></td><td>12 Nov</td><td><span class="flex gap4"><span class="av sanne">S</span>Sanne</span></td><td class="muted">group · view</td></tr>
+        <tr><td><span class="nm"><span class="ico sm warn">K</span>Proposal template 2026.key</span></td><td>3 Nov</td><td><span class="flex gap4"><span class="av rutger">R</span>Rutger</span></td><td class="muted">domain · view</td></tr>
+        <tr><td><span class="nm"><span class="ico sm">▭</span>Tidewater data-residency answer.md</span></td><td>16 Nov</td><td><span class="flex gap4"><span class="av agent cleo">C</span>Cleo</span></td><td class="muted">group · edit</td></tr>
+        <tr><td><span class="nm"><span class="ico sm info">W</span>Lumen Dental portal scope.docx</span></td><td>17 Nov</td><td><span class="flex gap4"><span class="av sanne">S</span>Sanne</span></td><td class="muted">group · edit</td></tr>
+        
+      </table>
+      <div class="p16 muted small">9 items · files the shared-drive identity can't read in Drive never appear here (external ACL). Drag files into chat to hand them to an agent.</div>
+    </div>
+  </div>
+</main>
+<aside class="ctx">
+  <div class="pane-head"><span class="ico sm info">W</span><div class="title ell">Northwind proposal v3.docx</div><div class="acts"><span class="icon-btn">↗</span><span class="icon-btn">⇥</span></div></div>
+  <div class="pane-body">
+    <div class="section">
+      <div class="doc">
+        <h4>Proposal · Northwind Q1 rollout</h4>
+        <div style="color:#555">Prepared for Northwind · 23 Nov 2026</div>
+        <p style="margin-top:8px"><b>Scope.</b> Booking flow for 14 depots, driver app and single sign-on, delivered in two phases.</p>
+        <p><b>Timeline.</b> Kickoff 2 Dec, <span class="hl">phase 1 live 30 Jan, phase 2 by 15 Mar</span>.</p>
+        <p><b>Investment.</b> Platform package, <span class="hl">€46,000 excl. VAT, 14-day payment terms</span>, as signed in MSA v3.</p>
+        <p style="color:#777">…</p>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-t">Last change</div>
+      <div class="card flat"><div class="card-b small">
+        <div class="flex"><span class="av agent ada">A</span><b>Ada</b> edited 2 paragraphs <span class="pill ok right">auto-applied</span></div>
+        <div class="muted xs mt4">Run R-2299 · on behalf of Rutger · VFS write with revision check (Drive rev 13 → 14) · reversible_edit</div>
+        <div class="diff-line del mt8">- Kickoff 1 Dec, go-live end of February, 30-day terms.</div>
+        <div class="diff-line add">+ Kickoff 2 Dec, phase 1 live 30 Jan, phase 2 by 15 Mar, 14-day terms.</div>
+      </div><div class="card-f"><span class="btn sm danger">↶ Revert this run</span><span class="muted xs">restores Drive revision 13</span></div></div>
+    </div>
+    <div class="section">
+      <div class="section-t">Access</div>
+      <dl class="kv small">
+        <dt>Drive ACL</dt><dd>Sales group can edit (via “Acme shared drive”)</dd>
+        <dt>Space</dt><dd>Sales: Rutger, Sanne, Ada, Cleo</dd>
+        <dt>Agent grants</dt><dd>Ada: read + write · Cleo: read</dd>
+        <dt>Result</dt><dd>Ada and Cleo can open it; Finn and Bram can't (not in Sales)</dd>
+      </dl>
+    </div>
+    <div class="section">
+      <div class="section-t">Share</div>
+      <div class="flex"><span class="btn sm">Copy internal link</span><span class="btn sm">Share link outside Acme…</span></div>
+      <div class="callout warn mt8"><span>⚠</span><span>A link outside Acme is <b>exposure</b>. In the Team preset an admin approves it, every time. Agents can only request it.</span></div>
+    </div>
+  </div>
+</aside>

@@ -1,0 +1,81 @@
+<!--meta
+{"title": "Empty states", "area": "Onboarding", "order": 650, "layout": "free",
+ "summary": "A sheet of empty states: quiet Home, empty Space tools with agent-first actions, no agents, no apps, no results, VFS-only computer section.",
+ "notes": [
+  ["p", "Agent-first, but never agent-only", "Each empty Space tool offers “ask an agent” next to the plain human action. Agents' creations follow governed creation: new Tables and fields are proposals.", "ui-structure §2 rule 5 · agent-native-work-apps “Spaces and the anti-mess rules”"],
+  ["s", "Quiet is a feature", "Home with nothing to do says so plainly. The daily brief is “only if new”, so a quiet day produces no brief and no ping.", "messenger-ui “Notifications” · example-flows story 9"],
+  ["a", "VFS-only is a statement, not a warning", "The profile's computer section states the mode plainly when an admin chose it, and offers a request only when policy allows.", "computer-provider-contract “VFS-only as a deliberate choice”"],
+  ["q", "Open: who may request a computer", "Cleo shows only the plain statement because an admin chose VFS-only. For agents without that choice, who may request a computer and where the request lands is still open.", "messenger-ui “Open questions”"]
+ ]}
+-->
+<style>
+.es{width:1440px;margin:0 auto;background:var(--background);border:1px solid var(--border);border-radius:12px;padding:24px 28px 28px;box-shadow:var(--shadow)}
+.es .g{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.es .tile{border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden;display:flex;flex-direction:column}
+.es .tile .th{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border);font-size:12.5px;font-weight:650}
+.es .tile .th .k{margin-left:auto;font-weight:500;font-size:11px;color:var(--subtle-foreground)}
+.es .tile .empty{flex:1;justify-content:center;padding:22px 16px}
+.es .tile .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.es .wide{grid-column:span 2}
+.es h3.grp{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted-foreground);margin:20px 0 10px}
+</style>
+<div class="es">
+  <div class="flex"><div class="h1">Empty states</div><span class="muted">Every empty view says what lives here, offers one human action and one agent action, and never blocks.</span></div>
+
+  <h3 class="grp">Home</h3>
+  <div class="g">
+    <div class="tile wide">
+      <div class="th">◉ Home<span class="k">fresh workspace · day 1</span></div>
+      <div class="empty"><div class="glyph">◉</div><b>Nothing needs you</b><div>Approvals, questions and takeover requests from your agents will appear here first, then results, then FYI.</div>
+        <div class="acts mt8"><span class="btn primary sm">Message Ada</span><span class="btn sm">Create a Space</span><span class="btn sm ghost">Connect Google Drive</span></div></div>
+    </div>
+    <div class="tile">
+      <div class="th">◉ Home · Needs you<span class="k">quiet day</span></div>
+      <div class="empty"><div class="glyph" style="color:var(--success-text)">✓</div><b>All clear</b><div class="small">No brief today: nothing changed since yesterday, and the brief only posts when something is new.</div><span class="btn sm ghost mt4">See yesterday's brief</span></div>
+    </div>
+    <div class="tile">
+      <div class="th">Make<span class="k">outputs from your agents</span></div>
+      <div class="empty"><div class="glyph">◩</div><b>No outputs yet</b><div class="small">Pages, PDFs and forms your agents finish land here, separate from chat.</div><span class="btn sm ghost mt4">“Ada, make a weekly sales page”</span></div>
+    </div>
+  </div>
+
+  <h3 class="grp">Space tools · a brand-new Space</h3>
+  <div class="g" style="grid-template-columns:repeat(3,1fr)">
+    <div class="tile"><div class="th">◇ Issues<span class="k">0 open</span></div>
+      <div class="empty"><div class="glyph">◇</div><b>No issues yet</b><div class="small">Work items with a human owner. Assign one to an agent as delegate and keep ownership.</div>
+        <div class="acts"><span class="btn sm primary">New issue</span><span class="btn sm">Import from CSV</span></div><span class="small ada-t">✦ Ask Ada to turn the last #sales thread into issues</span></div></div>
+    <div class="tile"><div class="th">▦ Tables<span class="k">0 tables</span></div>
+      <div class="empty"><div class="glyph">▦</div><b>No tables yet</b><div class="small">Typed records: Person/Agent, Relation, Attachment, Long text.</div>
+        <div class="acts"><span class="btn sm primary">New table</span><span class="btn sm">Import CSV / XLSX</span></div><span class="small ada-t">✦ “Ada, set up a Leads table” → a proposal you approve</span></div></div>
+    <div class="tile"><div class="th">≡ Docs<span class="k">0 docs</span></div>
+      <div class="empty"><div class="glyph">≡</div><b>No docs yet</b><div class="small">Flat and typed: Spec, Policy, Meeting notes, Wiki. Each has an owner, status and review date.</div>
+        <div class="acts"><span class="btn sm primary">New doc ▾</span><span class="btn sm">Import Markdown</span></div><span class="small ada-t">✦ Ask Ada for a sales playbook draft</span></div></div>
+    <div class="tile"><div class="th">▤ Files<span class="k">no mount</span></div>
+      <div class="empty"><div class="glyph">▤</div><b>No files yet</b><div class="small">Drop files here, or mount a Drive folder. Agents read it through the VFS with the Drive ACL applied.</div>
+        <div class="acts"><span class="btn sm primary">Upload</span><span class="btn sm">Mount Google Drive folder</span></div></div></div>
+    <div class="tile"><div class="th">◩ Artifacts<span class="k">0</span></div>
+      <div class="empty"><div class="glyph">◩</div><b>No artifacts yet</b><div class="small">Live Pages, interactive tools and forms built over this Space's data. Drafts stay private until published.</div>
+        <div class="acts"><span class="btn sm primary">New Page</span><span class="btn sm">New form on a table</span></div><span class="small ada-t">✦ “Make a pipeline dashboard from Deals”</span></div></div>
+    <div class="tile"><div class="th">↻ Routines<span class="k">0</span></div>
+      <div class="empty"><div class="glyph">↻</div><b>No routines yet</b><div class="small">Recurring or event-driven work, written in chat. No flow builder.</div>
+        <div class="acts"><span class="btn sm primary">Describe a routine in chat</span><span class="btn sm">Browse templates</span></div><span class="small muted">e.g. “every Monday at 9, list deals with no activity”</span></div></div>
+  </div>
+
+  <h3 class="grp">Rail, search and Team</h3>
+  <div class="g">
+    <div class="tile"><div class="th">Agents<span class="k">rail section</span></div>
+      <div class="empty"><div class="glyph">✦</div><b>No agents yet</b><div class="small">Hire a teammate from an agent pack. A computer is optional.</div><span class="btn sm primary">+ Hire an agent</span></div></div>
+    <div class="tile"><div class="th">Apps<span class="k">rail section</span></div>
+      <div class="empty"><div class="glyph">⊞</div><b>No apps installed</b><div class="small">Optional add-ons such as Mail and CRM, built from Tables, Issues and Docs. Everything works without them.</div><span class="btn sm">Browse apps</span></div></div>
+    <div class="tile"><div class="th">⌕ “orbit invoice 2024”<span class="k">search</span></div>
+      <div class="empty"><div class="glyph">⌕</div><b>No results</b><div class="small">Archived items are excluded. Spaces you're not in are never searched.</div>
+        <div class="acts"><span class="btn sm">Include archived</span><span class="btn sm ghost">Ask Cleo to look in Drive</span></div></div></div>
+    <div class="tile"><div class="th"><span class="av agent cleo">C</span>Cleo · Computer<span class="k">Team profile</span></div>
+      <div class="p16 col gap8 small">
+        <div class="flex"><span class="ico ok">◇</span><b>VFS-only</b><span class="pill">set by Sanne (admin)</span></div>
+        <div>Cleo works only with company data: Tables, Docs, Files and Drive, memory, Code Mode and connections. This is the least-privilege setup for finance work.</div>
+        <div class="muted">There is no computer panel for Cleo, and nothing is disabled.</div>
+        <div class="muted xs">An admin kept Cleo VFS-only on purpose, so no recommendation is shown. Admins can change it here.</div>
+      </div></div>
+  </div>
+</div>
