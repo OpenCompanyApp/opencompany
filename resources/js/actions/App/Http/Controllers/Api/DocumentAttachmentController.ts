@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\DocumentAttachmentController::index
-* @see app/Http/Controllers/Api/DocumentAttachmentController.php:13
+* @see app/Http/Controllers/Api/DocumentAttachmentController.php:20
 * @route '/api/documents/{documentId}/attachments'
 */
 export const index = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DocumentAttachmentController::index
-* @see app/Http/Controllers/Api/DocumentAttachmentController.php:13
+* @see app/Http/Controllers/Api/DocumentAttachmentController.php:20
 * @route '/api/documents/{documentId}/attachments'
 */
 index.url = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -43,7 +43,7 @@ index.url = (args: { documentId: string | number } | [documentId: string | numbe
 
 /**
 * @see \App\Http\Controllers\Api\DocumentAttachmentController::index
-* @see app/Http/Controllers/Api/DocumentAttachmentController.php:13
+* @see app/Http/Controllers/Api/DocumentAttachmentController.php:20
 * @route '/api/documents/{documentId}/attachments'
 */
 index.get = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -53,7 +53,7 @@ index.get = (args: { documentId: string | number } | [documentId: string | numbe
 
 /**
 * @see \App\Http\Controllers\Api\DocumentAttachmentController::index
-* @see app/Http/Controllers/Api/DocumentAttachmentController.php:13
+* @see app/Http/Controllers/Api/DocumentAttachmentController.php:20
 * @route '/api/documents/{documentId}/attachments'
 */
 index.head = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -63,7 +63,7 @@ index.head = (args: { documentId: string | number } | [documentId: string | numb
 
 /**
 * @see \App\Http\Controllers\Api\DocumentAttachmentController::store
-* @see app/Http/Controllers/Api/DocumentAttachmentController.php:23
+* @see app/Http/Controllers/Api/DocumentAttachmentController.php:30
 * @route '/api/documents/{documentId}/attachments'
 */
 export const store = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -78,7 +78,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DocumentAttachmentController::store
-* @see app/Http/Controllers/Api/DocumentAttachmentController.php:23
+* @see app/Http/Controllers/Api/DocumentAttachmentController.php:30
 * @route '/api/documents/{documentId}/attachments'
 */
 store.url = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -105,7 +105,7 @@ store.url = (args: { documentId: string | number } | [documentId: string | numbe
 
 /**
 * @see \App\Http\Controllers\Api\DocumentAttachmentController::store
-* @see app/Http/Controllers/Api/DocumentAttachmentController.php:23
+* @see app/Http/Controllers/Api/DocumentAttachmentController.php:30
 * @route '/api/documents/{documentId}/attachments'
 */
 store.post = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -115,7 +115,7 @@ store.post = (args: { documentId: string | number } | [documentId: string | numb
 
 /**
 * @see \App\Http\Controllers\Api\DocumentAttachmentController::destroy
-* @see app/Http/Controllers/Api/DocumentAttachmentController.php:45
+* @see app/Http/Controllers/Api/DocumentAttachmentController.php:52
 * @route '/api/documents/{documentId}/attachments/{attachmentId}'
 */
 export const destroy = (args: { documentId: string | number, attachmentId: string | number } | [documentId: string | number, attachmentId: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -130,7 +130,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DocumentAttachmentController::destroy
-* @see app/Http/Controllers/Api/DocumentAttachmentController.php:45
+* @see app/Http/Controllers/Api/DocumentAttachmentController.php:52
 * @route '/api/documents/{documentId}/attachments/{attachmentId}'
 */
 destroy.url = (args: { documentId: string | number, attachmentId: string | number } | [documentId: string | number, attachmentId: string | number ], options?: RouteQueryOptions) => {
@@ -156,7 +156,7 @@ destroy.url = (args: { documentId: string | number, attachmentId: string | numbe
 
 /**
 * @see \App\Http\Controllers\Api\DocumentAttachmentController::destroy
-* @see app/Http/Controllers/Api/DocumentAttachmentController.php:45
+* @see app/Http/Controllers/Api/DocumentAttachmentController.php:52
 * @route '/api/documents/{documentId}/attachments/{attachmentId}'
 */
 destroy.delete = (args: { documentId: string | number, attachmentId: string | number } | [documentId: string | number, attachmentId: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({

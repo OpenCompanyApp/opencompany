@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::index
-* @see app/Http/Controllers/Api/DirectMessageController.php:18
+* @see app/Http/Controllers/Api/DirectMessageController.php:31
 * @route '/api/direct-messages'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::index
-* @see app/Http/Controllers/Api/DirectMessageController.php:18
+* @see app/Http/Controllers/Api/DirectMessageController.php:31
 * @route '/api/direct-messages'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::index
-* @see app/Http/Controllers/Api/DirectMessageController.php:18
+* @see app/Http/Controllers/Api/DirectMessageController.php:31
 * @route '/api/direct-messages'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::index
-* @see app/Http/Controllers/Api/DirectMessageController.php:18
+* @see app/Http/Controllers/Api/DirectMessageController.php:31
 * @route '/api/direct-messages'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::store
-* @see app/Http/Controllers/Api/DirectMessageController.php:38
+* @see app/Http/Controllers/Api/DirectMessageController.php:56
 * @route '/api/direct-messages'
 */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -60,7 +60,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::store
-* @see app/Http/Controllers/Api/DirectMessageController.php:38
+* @see app/Http/Controllers/Api/DirectMessageController.php:56
 * @route '/api/direct-messages'
 */
 store.url = (options?: RouteQueryOptions) => {
@@ -69,7 +69,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::store
-* @see app/Http/Controllers/Api/DirectMessageController.php:38
+* @see app/Http/Controllers/Api/DirectMessageController.php:56
 * @route '/api/direct-messages'
 */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -79,7 +79,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::unreadCount
-* @see app/Http/Controllers/Api/DirectMessageController.php:98
+* @see app/Http/Controllers/Api/DirectMessageController.php:102
 * @route '/api/direct-messages/unread-count'
 */
 export const unreadCount = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -94,7 +94,7 @@ unreadCount.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::unreadCount
-* @see app/Http/Controllers/Api/DirectMessageController.php:98
+* @see app/Http/Controllers/Api/DirectMessageController.php:102
 * @route '/api/direct-messages/unread-count'
 */
 unreadCount.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ unreadCount.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::unreadCount
-* @see app/Http/Controllers/Api/DirectMessageController.php:98
+* @see app/Http/Controllers/Api/DirectMessageController.php:102
 * @route '/api/direct-messages/unread-count'
 */
 unreadCount.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -113,7 +113,7 @@ unreadCount.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::unreadCount
-* @see app/Http/Controllers/Api/DirectMessageController.php:98
+* @see app/Http/Controllers/Api/DirectMessageController.php:102
 * @route '/api/direct-messages/unread-count'
 */
 unreadCount.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -123,7 +123,7 @@ unreadCount.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::show
-* @see app/Http/Controllers/Api/DirectMessageController.php:31
+* @see app/Http/Controllers/Api/DirectMessageController.php:46
 * @route '/api/direct-messages/{id}'
 */
 export const show = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -138,7 +138,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::show
-* @see app/Http/Controllers/Api/DirectMessageController.php:31
+* @see app/Http/Controllers/Api/DirectMessageController.php:46
 * @route '/api/direct-messages/{id}'
 */
 show.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -165,7 +165,7 @@ show.url = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::show
-* @see app/Http/Controllers/Api/DirectMessageController.php:31
+* @see app/Http/Controllers/Api/DirectMessageController.php:46
 * @route '/api/direct-messages/{id}'
 */
 show.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -175,7 +175,7 @@ show.get = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::show
-* @see app/Http/Controllers/Api/DirectMessageController.php:31
+* @see app/Http/Controllers/Api/DirectMessageController.php:46
 * @route '/api/direct-messages/{id}'
 */
 show.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -185,7 +185,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::markRead
-* @see app/Http/Controllers/Api/DirectMessageController.php:86
+* @see app/Http/Controllers/Api/DirectMessageController.php:81
 * @route '/api/direct-messages/{id}/read'
 */
 export const markRead = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -200,7 +200,7 @@ markRead.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::markRead
-* @see app/Http/Controllers/Api/DirectMessageController.php:86
+* @see app/Http/Controllers/Api/DirectMessageController.php:81
 * @route '/api/direct-messages/{id}/read'
 */
 markRead.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -227,7 +227,7 @@ markRead.url = (args: { id: string | number } | [id: string | number ] | string 
 
 /**
 * @see \App\Http\Controllers\Api\DirectMessageController::markRead
-* @see app/Http/Controllers/Api/DirectMessageController.php:86
+* @see app/Http/Controllers/Api/DirectMessageController.php:81
 * @route '/api/direct-messages/{id}/read'
 */
 markRead.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({

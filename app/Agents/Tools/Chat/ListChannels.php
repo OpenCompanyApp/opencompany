@@ -2,9 +2,10 @@
 
 namespace App\Agents\Tools\Chat;
 
+use App\Domain\Authorization\Application\AuthorizationScopes;
+use App\Domain\Authorization\Application\OnBehalfOf;
 use App\Models\Channel;
 use App\Models\User;
-use App\Services\AgentPermissionService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
@@ -12,8 +13,10 @@ use Laravel\Ai\Tools\Request;
 class ListChannels implements Tool
 {
     public function __construct(
+        // ChatToolProvider passes ($agent, $permissionService) to every chat
+        // tool; this one needs only the agent: visibility comes from
+        // AuthorizationScopes (the central `channel.read` rule).
         private User $agent,
-        private AgentPermissionService $permissionService,
     ) {}
 
     public function description(): string
@@ -26,7 +29,13 @@ class ListChannels implements Tool
         try {
             $type = $request['type'] ?? null;
 
-            $query = Channel::forWorkspace()->withCount('members');
+            // Visibility is the central `channel.read` rule in query form,
+            // intersected with the run's on-behalf-of human (GIN-1197).
+            $principalId = app(OnBehalfOf::class)->currentPrincipalId();
+            $principal = $principalId !== null ? User::query()->find($principalId) : null;
+            $query = app(AuthorizationScopes::class)
+                ->readableChannels($this->agent, workspace(), $principal)
+                ->withCount('members');
 
             if ($type) {
                 $query->where('type', $type);
@@ -34,12 +43,6 @@ class ListChannels implements Tool
 
             // Exclude DM channels — those are private between two users
             $query->where('type', '!=', 'dm');
-
-            // Filter by permitted channels if restrictions are set
-            $allowedChannelIds = $this->permissionService->getAllowedChannelIds($this->agent);
-            if ($allowedChannelIds !== null) {
-                $query->whereIn('id', $allowedChannelIds);
-            }
 
             $channels = $query->orderBy('name')->get();
 

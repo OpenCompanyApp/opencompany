@@ -2,17 +2,24 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\AuthorizesDocumentAccess;
 use App\Http\Controllers\Controller;
 use App\Models\DocumentAttachment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
+/**
+ * Document attachments: listing needs `document.read`, uploading and
+ * deleting `document.write` (GIN-1199).
+ */
 class DocumentAttachmentController extends Controller
 {
-    public function index(string $documentId): mixed
+    use AuthorizesDocumentAccess;
+
+    public function index(Request $request, string $documentId): mixed
     {
-        \App\Models\Document::forWorkspace()->findOrFail($documentId);
+        $this->authorizedDocument($request, $documentId, 'document.read');
 
         return DocumentAttachment::with('uploadedBy')
             ->where('document_id', $documentId)
@@ -22,7 +29,7 @@ class DocumentAttachmentController extends Controller
 
     public function store(Request $request, string $documentId): mixed
     {
-        \App\Models\Document::forWorkspace()->findOrFail($documentId);
+        $this->authorizedDocument($request, $documentId, 'document.write');
 
         $file = $request->file('file');
         $workspaceId = workspace()->id;
@@ -42,9 +49,9 @@ class DocumentAttachmentController extends Controller
         return $attachment->load('uploadedBy');
     }
 
-    public function destroy(string $documentId, string $attachmentId): \Illuminate\Http\JsonResponse
+    public function destroy(Request $request, string $documentId, string $attachmentId): \Illuminate\Http\JsonResponse
     {
-        \App\Models\Document::forWorkspace()->findOrFail($documentId);
+        $this->authorizedDocument($request, $documentId, 'document.write');
 
         $attachment = DocumentAttachment::where('id', $attachmentId)
             ->where('document_id', $documentId)

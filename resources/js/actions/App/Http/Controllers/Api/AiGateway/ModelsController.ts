@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\AiGateway\ModelsController::__invoke
-* @see app/Http/Controllers/Api/AiGateway/ModelsController.php:14
+* @see app/Http/Controllers/Api/AiGateway/ModelsController.php:17
 * @route '/api/ai-gateway/v1/models'
 */
 const ModelsController = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ ModelsController.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AiGateway\ModelsController::__invoke
-* @see app/Http/Controllers/Api/AiGateway/ModelsController.php:14
+* @see app/Http/Controllers/Api/AiGateway/ModelsController.php:17
 * @route '/api/ai-gateway/v1/models'
 */
 ModelsController.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ ModelsController.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\AiGateway\ModelsController::__invoke
-* @see app/Http/Controllers/Api/AiGateway/ModelsController.php:14
+* @see app/Http/Controllers/Api/AiGateway/ModelsController.php:17
 * @route '/api/ai-gateway/v1/models'
 */
 ModelsController.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ ModelsController.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => 
 
 /**
 * @see \App\Http\Controllers\Api\AiGateway\ModelsController::__invoke
-* @see app/Http/Controllers/Api/AiGateway/ModelsController.php:14
+* @see app/Http/Controllers/Api/AiGateway/ModelsController.php:17
 * @route '/api/ai-gateway/v1/models'
 */
 ModelsController.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({

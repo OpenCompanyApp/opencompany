@@ -2,18 +2,25 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\AuthorizesDocumentAccess;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\DocumentVersion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
+/**
+ * Document version history: listing needs `document.read`, restoring
+ * `document.write` (GIN-1199).
+ */
 class DocumentVersionController extends Controller
 {
+    use AuthorizesDocumentAccess;
+
     /** @return \Illuminate\Database\Eloquent\Collection<int, DocumentVersion> */
-    public function index(string $documentId): \Illuminate\Database\Eloquent\Collection
+    public function index(Request $request, string $documentId): \Illuminate\Database\Eloquent\Collection
     {
-        Document::forWorkspace()->findOrFail($documentId);
+        $this->authorizedDocument($request, $documentId, 'document.read');
 
         return DocumentVersion::with('author')
             ->where('document_id', $documentId)
@@ -23,7 +30,7 @@ class DocumentVersionController extends Controller
 
     public function restore(Request $request, string $documentId, string $versionId): Document
     {
-        $document = Document::forWorkspace()->findOrFail($documentId);
+        $document = $this->authorizedDocument($request, $documentId, 'document.write');
 
         $version = DocumentVersion::where('id', $versionId)
             ->where('document_id', $documentId)

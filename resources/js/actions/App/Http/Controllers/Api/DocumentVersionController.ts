@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\DocumentVersionController::index
-* @see app/Http/Controllers/Api/DocumentVersionController.php:14
+* @see app/Http/Controllers/Api/DocumentVersionController.php:21
 * @route '/api/documents/{documentId}/versions'
 */
 export const index = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DocumentVersionController::index
-* @see app/Http/Controllers/Api/DocumentVersionController.php:14
+* @see app/Http/Controllers/Api/DocumentVersionController.php:21
 * @route '/api/documents/{documentId}/versions'
 */
 index.url = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -43,7 +43,7 @@ index.url = (args: { documentId: string | number } | [documentId: string | numbe
 
 /**
 * @see \App\Http\Controllers\Api\DocumentVersionController::index
-* @see app/Http/Controllers/Api/DocumentVersionController.php:14
+* @see app/Http/Controllers/Api/DocumentVersionController.php:21
 * @route '/api/documents/{documentId}/versions'
 */
 index.get = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -53,7 +53,7 @@ index.get = (args: { documentId: string | number } | [documentId: string | numbe
 
 /**
 * @see \App\Http\Controllers\Api\DocumentVersionController::index
-* @see app/Http/Controllers/Api/DocumentVersionController.php:14
+* @see app/Http/Controllers/Api/DocumentVersionController.php:21
 * @route '/api/documents/{documentId}/versions'
 */
 index.head = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -63,7 +63,7 @@ index.head = (args: { documentId: string | number } | [documentId: string | numb
 
 /**
 * @see \App\Http\Controllers\Api\DocumentVersionController::restore
-* @see app/Http/Controllers/Api/DocumentVersionController.php:24
+* @see app/Http/Controllers/Api/DocumentVersionController.php:31
 * @route '/api/documents/{documentId}/versions/{versionId}/restore'
 */
 export const restore = (args: { documentId: string | number, versionId: string | number } | [documentId: string | number, versionId: string | number ], options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -78,7 +78,7 @@ restore.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DocumentVersionController::restore
-* @see app/Http/Controllers/Api/DocumentVersionController.php:24
+* @see app/Http/Controllers/Api/DocumentVersionController.php:31
 * @route '/api/documents/{documentId}/versions/{versionId}/restore'
 */
 restore.url = (args: { documentId: string | number, versionId: string | number } | [documentId: string | number, versionId: string | number ], options?: RouteQueryOptions) => {
@@ -104,7 +104,7 @@ restore.url = (args: { documentId: string | number, versionId: string | number }
 
 /**
 * @see \App\Http\Controllers\Api\DocumentVersionController::restore
-* @see app/Http/Controllers/Api/DocumentVersionController.php:24
+* @see app/Http/Controllers/Api/DocumentVersionController.php:31
 * @route '/api/documents/{documentId}/versions/{versionId}/restore'
 */
 restore.post = (args: { documentId: string | number, versionId: string | number } | [documentId: string | number, versionId: string | number ], options?: RouteQueryOptions): RouteDefinition<'post'> => ({

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Authorization\Application\AuthorizationService;
 use App\Http\Controllers\Controller;
 use App\Models\AgentPermission;
 use App\Models\User;
@@ -9,18 +10,29 @@ use App\Agents\Tools\ToolRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
+/**
+ * Reads and replaces an agent's grants (tools, channels, document folders,
+ * file folders, integrations).
+ *
+ * Authorization (GIN-1201): replacing grants is `agent.update_grants`, an
+ * admin capability; an agent's manager cannot widen what it may do. Every
+ * replacement is recorded in the authorization ledger with the before and
+ * after grant sets (ids and flags only).
+ */
 class AgentPermissionController extends Controller
 {
     public function __construct(
         private ToolRegistry $toolRegistry,
+        private AuthorizationService $authorization,
     ) {}
 
     /**
      * Get all permissions for an agent, organized by scope type.
      */
-    public function index(string $id): \Illuminate\Http\JsonResponse
+    public function index(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
         $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
+        $this->authorization->authorize($request->user(), 'agent.read', $agent);
 
         return response()->json([
             'tools' => $this->toolRegistry->getAllToolsMeta($agent),
@@ -34,7 +46,8 @@ class AgentPermissionController extends Controller
      */
     public function updateTools(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
-        $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
+        $agent = $this->authorizeGrants($request, $id);
+        $before = $this->grantSnapshot($id, 'tool');
 
         $validated = $request->validate([
             'tools' => 'required|array',
@@ -58,6 +71,8 @@ class AgentPermissionController extends Controller
             ]);
         }
 
+        $this->recordGrantChange($request, $agent, 'tool', $before);
+
         return response()->json([
             'tools' => $this->toolRegistry->getAllToolsMeta($agent),
         ]);
@@ -69,7 +84,8 @@ class AgentPermissionController extends Controller
      */
     public function updateChannels(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
-        User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
+        $agent = $this->authorizeGrants($request, $id);
+        $before = $this->grantSnapshot($id, 'channel');
 
         $validated = $request->validate([
             'channels' => 'present|array',
@@ -91,6 +107,8 @@ class AgentPermissionController extends Controller
             ]);
         }
 
+        $this->recordGrantChange($request, $agent, 'channel', $before);
+
         return response()->json([
             'channelIds' => AgentPermission::forAgent($id)->channels()->allowed()->pluck('scope_key')->values(),
         ]);
@@ -102,7 +120,8 @@ class AgentPermissionController extends Controller
      */
     public function updateIntegrations(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
-        User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
+        $agent = $this->authorizeGrants($request, $id);
+        $before = $this->grantSnapshot($id, 'integration');
 
         $validated = $request->validate([
             'integrations' => 'present|array',
@@ -126,6 +145,8 @@ class AgentPermissionController extends Controller
             ]);
         }
 
+        $this->recordGrantChange($request, $agent, 'integration', $before);
+
         return response()->json([
             'enabledIntegrations' => $enabled,
         ]);
@@ -137,7 +158,8 @@ class AgentPermissionController extends Controller
      */
     public function updateFileFolders(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
-        User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
+        $agent = $this->authorizeGrants($request, $id);
+        $before = $this->grantSnapshot($id, 'file_folder');
 
         $validated = $request->validate([
             'folders' => 'present|array',
@@ -159,6 +181,8 @@ class AgentPermissionController extends Controller
             ]);
         }
 
+        $this->recordGrantChange($request, $agent, 'file_folder', $before);
+
         return response()->json([
             'fileFolderIds' => AgentPermission::forAgent($id)
                 ->where('scope_type', 'file_folder')->where('permission', 'allow')
@@ -172,7 +196,8 @@ class AgentPermissionController extends Controller
      */
     public function updateFolders(Request $request, string $id): \Illuminate\Http\JsonResponse
     {
-        User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
+        $agent = $this->authorizeGrants($request, $id);
+        $before = $this->grantSnapshot($id, 'folder');
 
         $validated = $request->validate([
             'folders' => 'present|array',
@@ -194,8 +219,39 @@ class AgentPermissionController extends Controller
             ]);
         }
 
+        $this->recordGrantChange($request, $agent, 'folder', $before);
+
         return response()->json([
             'folderIds' => AgentPermission::forAgent($id)->folders()->allowed()->pluck('scope_key')->values(),
+        ]);
+    }
+
+    /** The agent in this workspace, after `agent.update_grants` is allowed. */
+    private function authorizeGrants(Request $request, string $id): User
+    {
+        $agent = User::where('type', 'agent')->where('workspace_id', workspace()->id)->findOrFail($id);
+        $this->authorization->authorize($request->user(), 'agent.update_grants', $agent);
+
+        return $agent;
+    }
+
+    /** @return list<string> one "key:permission[:approval]" entry per row, sorted */
+    private function grantSnapshot(string $agentId, string $scopeType): array
+    {
+        $rows = AgentPermission::forAgent($agentId)->where('scope_type', $scopeType)->get(['scope_key', 'permission', 'requires_approval'])
+            ->map(fn (AgentPermission $row): string => $row->scope_key.':'.$row->permission.($row->requires_approval ? ':approval' : ''))
+            ->sort()->values()->all();
+
+        return $rows;
+    }
+
+    /** @param  list<string>  $before */
+    private function recordGrantChange(Request $request, User $agent, string $scopeType, array $before): void
+    {
+        $this->authorization->recordChange($request->user(), workspace(), 'agent.grants.replace', ['type' => 'agent', 'id' => (string) $agent->id], [
+            'scope_type' => $scopeType,
+            'before' => $before,
+            'after' => $this->grantSnapshot((string) $agent->id, $scopeType),
         ]);
     }
 }

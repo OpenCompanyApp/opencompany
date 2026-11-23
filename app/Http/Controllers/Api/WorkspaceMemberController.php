@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Authorization\Application\AuthorizationService;
 use App\Http\Controllers\Controller;
 use App\Models\WorkspaceInvitation;
 use App\Models\WorkspaceMember;
@@ -16,10 +17,17 @@ use Illuminate\Support\Str;
  *
  * Roles are validated against WorkspaceMember::ROLES. The `approver` role is
  * a member who may additionally resolve approval requests; the decision itself
- * lives in ApprovalResolutionPolicy, not here.
+ * lives in ApprovalResolutionPolicy, not here. `viewer` is read-only.
+ *
+ * Authorization: `member.invite`, `member.update_role` and `member.remove`
+ * are decided by AuthorizationService (owner protection lives in the engine:
+ * the owner is never removed or demoted). Role changes and removals are
+ * recorded in the authorization ledger with the before and after role.
  */
 class WorkspaceMemberController extends Controller
 {
+    public function __construct(private readonly AuthorizationService $authorization) {}
+
     public function index(): JsonResponse
     {
         $workspace = workspace();
@@ -51,11 +59,12 @@ class WorkspaceMemberController extends Controller
     {
         $validated = $request->validate([
             'email' => 'required|email',
-            // Role allow-list is owned by WorkspaceMember::ROLES (admin, approver, member).
+            // Role allow-list is owned by WorkspaceMember::ROLES (admin, approver, member, viewer).
             'role' => ['sometimes', Rule::in(WorkspaceMember::ROLES)],
         ]);
 
         $workspace = workspace();
+        $this->authorization->authorize($request->user(), 'member.invite', $workspace, ['role' => $validated['role'] ?? 'member']);
 
         // Check if already a member
         if ($workspace->members()->where('email', $validated['email'])->exists()) {
@@ -94,27 +103,45 @@ class WorkspaceMemberController extends Controller
         $member = WorkspaceMember::where('workspace_id', workspace()->id)
             ->findOrFail($id);
 
-        // Prevent demoting the workspace owner
-        if ($member->user_id === workspace()->owner_id && $validated['role'] !== 'admin') {
-            return response()->json(['message' => 'Cannot change the workspace owner\'s role.'], 422);
+        // Owner protection is an engine rule (`owner_protected`); the 422
+        // keeps the response the settings UI already handles.
+        $decision = $this->authorization->decide($request->user(), 'member.update_role', $member, ['role' => $validated['role']]);
+        if ($decision->reasonCode === 'owner_protected') {
+            return response()->json(['message' => 'Cannot change the workspace owner\'s role.', 'error' => 'owner_protected'], 422);
+        }
+        if (! $decision->allowed()) {
+            throw new \App\Domain\Authorization\Application\AuthorizationDenied('member.update_role', $decision);
         }
 
+        $before = $member->role;
         $member->update(['role' => $validated['role']]);
+        $this->authorization->recordChange($request->user(), workspace(), 'member.role.change', ['type' => 'member', 'id' => (string) $member->id], [
+            'user_id' => (string) $member->user_id,
+            'before' => $before,
+            'after' => $validated['role'],
+        ]);
 
         return response()->json(['member' => $member]);
     }
 
-    public function remove(string $id): JsonResponse
+    public function remove(Request $request, string $id): JsonResponse
     {
         $member = WorkspaceMember::where('workspace_id', workspace()->id)
             ->findOrFail($id);
 
-        // Prevent removing the workspace owner
-        if ($member->user_id === workspace()->owner_id) {
-            return response()->json(['message' => 'Cannot remove the workspace owner.'], 422);
+        $decision = $this->authorization->decide($request->user(), 'member.remove', $member);
+        if ($decision->reasonCode === 'owner_protected') {
+            return response()->json(['message' => 'Cannot remove the workspace owner.', 'error' => 'owner_protected'], 422);
+        }
+        if (! $decision->allowed()) {
+            throw new \App\Domain\Authorization\Application\AuthorizationDenied('member.remove', $decision);
         }
 
         $member->delete();
+        $this->authorization->recordChange($request->user(), workspace(), 'member.remove', ['type' => 'member', 'id' => (string) $member->id], [
+            'user_id' => (string) $member->user_id,
+            'before' => $member->role,
+        ]);
 
         return response()->json(null, 204);
     }

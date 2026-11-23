@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AiGateway\EmbeddingsController;
 use App\Http\Controllers\Api\AiGateway\ModelsController;
 use App\Http\Controllers\Api\AiGatewayController;
 use App\Http\Controllers\Api\ApprovalController;
+use App\Http\Controllers\Api\AuthorizationLedgerController;
 use App\Http\Controllers\Api\RoutineController;
 use App\Http\Controllers\Api\CalendarEventAttendeeController;
 use App\Http\Controllers\Api\CalendarEventController;
@@ -94,7 +95,10 @@ Route::post('/workspaces', [WorkspaceController::class, 'store'])
 
 // ─── All authenticated + workspace-scoped routes ──────────────────
 // `throttle:api` keys by the session user (IP fallback for guests).
-Route::middleware(['throttle:api', 'resolve.workspace'])->group(function () {
+// `workspace.writer` refuses state-changing requests from read-only roles
+// (viewer) before any controller runs; per-endpoint authorization goes
+// through AuthorizationService inside the controllers.
+Route::middleware(['throttle:api', 'resolve.workspace', 'workspace.writer'])->group(function () {
 
     // Users
     Route::get('/users', [UserController::class, 'index']);
@@ -368,6 +372,11 @@ Route::middleware(['throttle:api', 'resolve.workspace'])->group(function () {
     // Governance: undo an agent run's recorded changes (human edits win).
     Route::post('/agent-runs/{runId}/revert', AgentRunRevertController::class);
 
+    // Authorization ledger (append-only audit of decisions and security
+    // changes); `audit.read` is decided in the controller.
+    Route::get('/authorization/ledger', [AuthorizationLedgerController::class, 'index']);
+    Route::get('/authorization/ledger/verify', [AuthorizationLedgerController::class, 'verify']);
+
     // ─── Admin-only routes ────────────────────────────────────────
     Route::middleware('workspace.admin')->group(function () {
         // Scoped policy grants (approval exceptions); admin-only.
@@ -378,7 +387,8 @@ Route::middleware(['throttle:api', 'resolve.workspace'])->group(function () {
         // Settings
         Route::get('/settings', [SettingController::class, 'index']);
         Route::patch('/settings', [SettingController::class, 'update']);
-        Route::post('/settings/danger-action', [SettingController::class, 'dangerAction']);
+        Route::post('/settings/danger-action', [SettingController::class, 'dangerAction']); // legacy; same commands
+        Route::post('/settings/commands/{command}', [SettingController::class, 'command']);
         Route::get('/settings/debug', [SettingController::class, 'debug']);
 
         // Integration config (admin-only)

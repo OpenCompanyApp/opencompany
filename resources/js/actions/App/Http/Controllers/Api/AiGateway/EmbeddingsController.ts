@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\AiGateway\EmbeddingsController::__invoke
-* @see app/Http/Controllers/Api/AiGateway/EmbeddingsController.php:15
+* @see app/Http/Controllers/Api/AiGateway/EmbeddingsController.php:16
 * @route '/api/ai-gateway/v1/embeddings'
 */
 const EmbeddingsController = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ EmbeddingsController.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AiGateway\EmbeddingsController::__invoke
-* @see app/Http/Controllers/Api/AiGateway/EmbeddingsController.php:15
+* @see app/Http/Controllers/Api/AiGateway/EmbeddingsController.php:16
 * @route '/api/ai-gateway/v1/embeddings'
 */
 EmbeddingsController.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ EmbeddingsController.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\AiGateway\EmbeddingsController::__invoke
-* @see app/Http/Controllers/Api/AiGateway/EmbeddingsController.php:15
+* @see app/Http/Controllers/Api/AiGateway/EmbeddingsController.php:16
 * @route '/api/ai-gateway/v1/embeddings'
 */
 EmbeddingsController.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({

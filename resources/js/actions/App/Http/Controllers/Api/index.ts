@@ -42,6 +42,7 @@ import IntegrationController from './IntegrationController'
 import CodexAuthController from './CodexAuthController'
 import WorkspaceMemberController from './WorkspaceMemberController'
 import AgentRunRevertController from './AgentRunRevertController'
+import AuthorizationLedgerController from './AuthorizationLedgerController'
 import PolicyGrantController from './PolicyGrantController'
 import SettingController from './SettingController'
 import TelegramOperationsController from './TelegramOperationsController'
@@ -93,6 +94,7 @@ const Api = {
     CodexAuthController: Object.assign(CodexAuthController, CodexAuthController),
     WorkspaceMemberController: Object.assign(WorkspaceMemberController, WorkspaceMemberController),
     AgentRunRevertController: Object.assign(AgentRunRevertController, AgentRunRevertController),
+    AuthorizationLedgerController: Object.assign(AuthorizationLedgerController, AuthorizationLedgerController),
     PolicyGrantController: Object.assign(PolicyGrantController, PolicyGrantController),
     SettingController: Object.assign(SettingController, SettingController),
     TelegramOperationsController: Object.assign(TelegramOperationsController, TelegramOperationsController),

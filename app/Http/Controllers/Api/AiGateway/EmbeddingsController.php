@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\AiGateway;
 
 use App\Domain\Ai\Gateway\AiGateway;
+use App\Domain\Ai\Gateway\GatewayKeyAuthorizer;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,12 +13,17 @@ use Illuminate\Http\Request;
  */
 class EmbeddingsController extends Controller
 {
-    public function __invoke(Request $request, AiGateway $gateway): JsonResponse
+    public function __invoke(Request $request, AiGateway $gateway, GatewayKeyAuthorizer $keys): JsonResponse
     {
         $validated = $request->validate([
             'model' => 'required|string',
             'input' => 'required',
         ]);
+
+        // Invariant: scopes are checked before any provider call is made.
+        if (($denied = $keys->deny($request, 'embeddings', (string) $validated['model'])) !== null) {
+            return $denied;
+        }
 
         $inputs = is_array($validated['input'])
             ? array_values(array_map('strval', $validated['input']))

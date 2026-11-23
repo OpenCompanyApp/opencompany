@@ -2,6 +2,8 @@
 
 namespace App\Domain\Vfs\OpenCompany\Concerns;
 
+use App\Domain\Authorization\Application\AuthorizationScopes;
+use App\Domain\Authorization\Application\OnBehalfOf;
 use App\Domain\Vfs\Core\VfsBudget;
 use App\Domain\Vfs\Core\VfsEntry;
 use App\Domain\Vfs\Core\VfsError;
@@ -17,14 +19,16 @@ use Illuminate\Database\Eloquent\Builder;
  * day-based message exports. Table/data collaboration mounts intentionally live
  * in a sibling concern to keep each mount family locally understandable.
  *
- * Visibility (allowedChannels) is the chat tools' rule, plus one tightening:
+ * Visibility (allowedChannels) is the central `channel.read` rule
+ * (PolicyEngine) in query form, AuthorizationScopes::readableChannels():
  * - channel allow rows (AgentPermission scope `channel`) restrict the set
  *   exactly like canAccessChannel/ListChannels;
- * - direct-message channels (`type = dm`) are never visible because they
- *   exist (ListChannels excludes them): only DMs the agent is a member of, or
- *   that an admin explicitly allowed by id, are. Other principals' DM
- *   transcripts are therefore unreachable through /channels, by-id guessing
- *   and search candidates alike.
+ * - direct-message and private channels are visible only when the agent is a
+ *   member or an admin explicitly allowed the channel by id. Other
+ *   principals' DM transcripts and private channels are therefore
+ *   unreachable through /channels, by-id guessing and search candidates;
+ * - on-behalf-of (GIN-1197): inside a run for a human, the set is further
+ *   intersected with the channels that human may read.
  *
  * Paths: `/channels/{slug}` is unique per agent view. When two visible
  * channels slug the same, both are listed as `{slug}--{id8}` (first 8 chars
@@ -305,24 +309,12 @@ trait MountsVfsChannels
      */
     private function allowedChannels(User $agent): Builder
     {
-        $query = Channel::forWorkspace()->orderBy('name');
-        $allowed = $this->permissions->getAllowedChannelIds($agent);
-        if ($allowed !== null) {
-            $query->whereIn('id', $allowed);
-        }
+        $principalId = app(OnBehalfOf::class)->currentPrincipalId();
+        $principal = $principalId !== null ? User::query()->find($principalId) : null;
 
-        // Invariant: other principals' DMs stay hidden by default. Only the
-        // agent's own DMs or DMs an admin allowed by explicit id pass.
-        $query->where(function (Builder $visible) use ($agent, $allowed): void {
-            $visible->whereNull('type')
-                ->orWhere('type', '!=', 'dm')
-                ->orWhereHas('members', fn (Builder $members) => $members->where('user_id', $agent->id));
-            if ($allowed !== null) {
-                $visible->orWhereIn('id', $allowed);
-            }
-        });
-
-        return $query;
+        return app(AuthorizationScopes::class)
+            ->readableChannels($agent, workspace(), $principal)
+            ->orderBy('name');
     }
 
     /**

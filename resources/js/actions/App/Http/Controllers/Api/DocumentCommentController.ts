@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\DocumentCommentController::index
-* @see app/Http/Controllers/Api/DocumentCommentController.php:16
+* @see app/Http/Controllers/Api/DocumentCommentController.php:26
 * @route '/api/documents/{documentId}/comments'
 */
 export const index = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DocumentCommentController::index
-* @see app/Http/Controllers/Api/DocumentCommentController.php:16
+* @see app/Http/Controllers/Api/DocumentCommentController.php:26
 * @route '/api/documents/{documentId}/comments'
 */
 index.url = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -43,7 +43,7 @@ index.url = (args: { documentId: string | number } | [documentId: string | numbe
 
 /**
 * @see \App\Http\Controllers\Api\DocumentCommentController::index
-* @see app/Http/Controllers/Api/DocumentCommentController.php:16
+* @see app/Http/Controllers/Api/DocumentCommentController.php:26
 * @route '/api/documents/{documentId}/comments'
 */
 index.get = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -53,7 +53,7 @@ index.get = (args: { documentId: string | number } | [documentId: string | numbe
 
 /**
 * @see \App\Http\Controllers\Api\DocumentCommentController::index
-* @see app/Http/Controllers/Api/DocumentCommentController.php:16
+* @see app/Http/Controllers/Api/DocumentCommentController.php:26
 * @route '/api/documents/{documentId}/comments'
 */
 index.head = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -63,7 +63,7 @@ index.head = (args: { documentId: string | number } | [documentId: string | numb
 
 /**
 * @see \App\Http\Controllers\Api\DocumentCommentController::store
-* @see app/Http/Controllers/Api/DocumentCommentController.php:26
+* @see app/Http/Controllers/Api/DocumentCommentController.php:36
 * @route '/api/documents/{documentId}/comments'
 */
 export const store = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -78,7 +78,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DocumentCommentController::store
-* @see app/Http/Controllers/Api/DocumentCommentController.php:26
+* @see app/Http/Controllers/Api/DocumentCommentController.php:36
 * @route '/api/documents/{documentId}/comments'
 */
 store.url = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -105,7 +105,7 @@ store.url = (args: { documentId: string | number } | [documentId: string | numbe
 
 /**
 * @see \App\Http\Controllers\Api\DocumentCommentController::store
-* @see app/Http/Controllers/Api/DocumentCommentController.php:26
+* @see app/Http/Controllers/Api/DocumentCommentController.php:36
 * @route '/api/documents/{documentId}/comments'
 */
 store.post = (args: { documentId: string | number } | [documentId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -115,7 +115,7 @@ store.post = (args: { documentId: string | number } | [documentId: string | numb
 
 /**
 * @see \App\Http\Controllers\Api\DocumentCommentController::update
-* @see app/Http/Controllers/Api/DocumentCommentController.php:41
+* @see app/Http/Controllers/Api/DocumentCommentController.php:57
 * @route '/api/documents/{documentId}/comments/{commentId}'
 */
 export const update = (args: { documentId: string | number, commentId: string | number } | [documentId: string | number, commentId: string | number ], options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -130,7 +130,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DocumentCommentController::update
-* @see app/Http/Controllers/Api/DocumentCommentController.php:41
+* @see app/Http/Controllers/Api/DocumentCommentController.php:57
 * @route '/api/documents/{documentId}/comments/{commentId}'
 */
 update.url = (args: { documentId: string | number, commentId: string | number } | [documentId: string | number, commentId: string | number ], options?: RouteQueryOptions) => {
@@ -156,7 +156,7 @@ update.url = (args: { documentId: string | number, commentId: string | number } 
 
 /**
 * @see \App\Http\Controllers\Api\DocumentCommentController::update
-* @see app/Http/Controllers/Api/DocumentCommentController.php:41
+* @see app/Http/Controllers/Api/DocumentCommentController.php:57
 * @route '/api/documents/{documentId}/comments/{commentId}'
 */
 update.patch = (args: { documentId: string | number, commentId: string | number } | [documentId: string | number, commentId: string | number ], options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -166,7 +166,7 @@ update.patch = (args: { documentId: string | number, commentId: string | number 
 
 /**
 * @see \App\Http\Controllers\Api\DocumentCommentController::destroy
-* @see app/Http/Controllers/Api/DocumentCommentController.php:70
+* @see app/Http/Controllers/Api/DocumentCommentController.php:87
 * @route '/api/documents/{documentId}/comments/{commentId}'
 */
 export const destroy = (args: { documentId: string | number, commentId: string | number } | [documentId: string | number, commentId: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -181,7 +181,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\DocumentCommentController::destroy
-* @see app/Http/Controllers/Api/DocumentCommentController.php:70
+* @see app/Http/Controllers/Api/DocumentCommentController.php:87
 * @route '/api/documents/{documentId}/comments/{commentId}'
 */
 destroy.url = (args: { documentId: string | number, commentId: string | number } | [documentId: string | number, commentId: string | number ], options?: RouteQueryOptions) => {
@@ -207,7 +207,7 @@ destroy.url = (args: { documentId: string | number, commentId: string | number }
 
 /**
 * @see \App\Http\Controllers\Api\DocumentCommentController::destroy
-* @see app/Http/Controllers/Api/DocumentCommentController.php:70
+* @see app/Http/Controllers/Api/DocumentCommentController.php:87
 * @route '/api/documents/{documentId}/comments/{commentId}'
 */
 destroy.delete = (args: { documentId: string | number, commentId: string | number } | [documentId: string | number, commentId: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
