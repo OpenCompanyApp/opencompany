@@ -23,7 +23,10 @@ class ChannelFactory extends Factory
         return [
             'id' => 'ch' . fake()->unique()->randomNumber(5),
             'name' => fake()->words(3, true),
-            'type' => fake()->randomElement(['public', 'private', 'agent']),
+            // Deterministic on purpose: private channels and DMs need
+            // membership (PolicyEngine `channel.read`), so a random type made
+            // authorization-sensitive tests flaky. Use ->private() / ->dm().
+            'type' => 'public',
             'description' => fake()->sentence(),
             'creator_id' => User::factory(),
             'is_ephemeral' => false,

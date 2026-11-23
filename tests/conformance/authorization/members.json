@@ -1,0 +1,248 @@
+{
+  "format": "opencompany.authz.vectors/v1",
+  "description": "Workspace member management with owner protection.",
+  "facts": {
+    "now": "2026-11-23T00:00:00Z",
+    "workspace": {
+      "id": "ws1",
+      "owner_id": "u-owner",
+      "preset": "team"
+    },
+    "actors": {
+      "u-owner": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Olive"
+      },
+      "u-admin": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Ada Admin"
+      },
+      "u-approver": {
+        "kind": "human",
+        "workspace_role": "approver",
+        "platform_operator": false,
+        "name": "Abe"
+      },
+      "u-member": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Mia"
+      },
+      "u-member2": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Max"
+      },
+      "u-viewer": {
+        "kind": "human",
+        "workspace_role": "viewer",
+        "platform_operator": false,
+        "name": "Vic"
+      },
+      "u-outsider": {
+        "kind": "human",
+        "workspace_role": null,
+        "platform_operator": false,
+        "name": "Otto"
+      },
+      "a-ada": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-member",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Ada"
+      },
+      "a-bob": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-admin",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Bob"
+      },
+      "a-carl": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "a-ada",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Carl"
+      },
+      "a-foreign": {
+        "kind": "agent",
+        "workspace_id": "ws2",
+        "manager_id": null,
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Foreign"
+      }
+    },
+    "resource": {
+      "type": "member",
+      "id": "wm1",
+      "workspace_id": "ws1",
+      "user_id": "u-member",
+      "role": "member"
+    },
+    "context": {
+      "role": "approver"
+    }
+  },
+  "cases": [
+    {
+      "name": "admin changes a role",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "member.update_role"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "member cannot change roles",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "member.update_role"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "capability_required"
+      }
+    },
+    {
+      "name": "owner cannot be demoted",
+      "facts": {
+        "resource": {
+          "type": "member",
+          "id": "wm1",
+          "workspace_id": "ws1",
+          "user_id": "u-owner",
+          "role": "admin"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "member.update_role"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "owner_protected"
+      }
+    },
+    {
+      "name": "owner keeping admin is a no-op",
+      "facts": {
+        "resource": {
+          "type": "member",
+          "id": "wm1",
+          "workspace_id": "ws1",
+          "user_id": "u-owner",
+          "role": "admin"
+        },
+        "context": {
+          "role": "admin"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "member.update_role"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "owner cannot be removed",
+      "facts": {
+        "resource": {
+          "type": "member",
+          "id": "wm1",
+          "workspace_id": "ws1",
+          "user_id": "u-owner",
+          "role": "admin"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-owner",
+        "on_behalf_of": null,
+        "action": "member.remove"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "owner_protected"
+      }
+    },
+    {
+      "name": "admin removes a member",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "member.remove"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "admin invites",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "member.invite"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "approver cannot invite",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-approver",
+        "on_behalf_of": null,
+        "action": "member.invite"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "capability_required"
+      }
+    }
+  ]
+}

@@ -47,23 +47,41 @@ Connections model in the baseline schema.
 These items block credible enterprise positioning and should precede broad new platform claims.
 
 1. Introduce a central human/agent authorization decision service and explicit fixed roles.
+   **Done 2026-11-23 (GIN-1197):** `PolicyEngine` (pure, facts in → allow/deny/approval_required
+   with a reason code) behind `AuthorizationService`; fixed roles owner, admin, approver, member and
+   viewer (`Capabilities`); the agent tool gate, delegation, approval resolution and channel access
+   now decide there. Language-neutral conformance vectors in `tests/conformance/authorization`.
 2. Enforce channel membership for channel/message reads and writes.
+   **Done 2026-11-23 (GIN-1198, GIN-1146):** every channel, message, DM and search endpoint, the VFS
+   channel mount and `list_channels`; agents are intersected with their on-behalf-of human.
 3. Enforce document permissions across CRUD and search. (Pillar 5 moves access to Space level with
    no per-document ACLs; until Spaces exist, today's stored document permissions must still be
    enforced or removed, never silently ignored.)
+   **Done 2026-11-23 (GIN-1199):** sharing rows are enforced for list, show, search, create, edit,
+   move, trash, comments, versions and attachments. Open: attachment files on the public disk.
 4. Scope list automation rules through workspace-owned records. (`ListAutomationRule` is deleted by
    the nuclear cleanup; this item closes when the model is gone or scoped, whichever lands first.)
    **Done 2026-11-02:** scoped by `workspace_id` in the API and agent tools, with tests.
 5. Route all direct-message creation through the workspace-validating resolver and reject self-DMs.
    **Done 2026-11-02**, with tests.
+   The legacy `POST /api/direct-messages` now uses the resolver too, and DM listing and reads are
+   limited to participants (2026-11-23, GIN-1146).
 6. Add explicit agent-management and approval capabilities, including no self-approval for high-risk actions.
    **Partly done 2026-11-02:** `approver` role, no self-approval, agents never resolve, full
    permission re-check on execution, workspace-owned approvals. Open: agent-management capability
    and a members-settings UI to assign roles (API only today).
+   **Agent management done 2026-11-23 (GIN-1201):** `agent.create`, manager-or-admin edits, admin-only
+   grants and manager changes, ledgered grant changes. Open: the members-settings UI.
 7. Add scoped/expiring/rate-limited AI Gateway keys. **Partly done 2026-11-02:** per-key and
    failed-auth rate limits; scopes and required expiry remain open.
+   **Done 2026-11-23 (GIN-1203):** operation and model scopes, required expiry (default 90, max 365
+   days), owner binding, revoke instead of delete, ledgered key changes. Open: scope editing UI.
 8. Split settings danger actions into separately authorized, audited commands.
+   **Done 2026-11-23 (GIN-1149):** `SettingsCommands`, one capability per command (data-erasing
+   commands are owner-only), ledgered; the shared log tail needs a platform operator.
 9. Add an append-only authorization decision ledger.
+   **Done 2026-11-23 (GIN-1204):** `authorization_ledger_entries`, hash-chained per workspace,
+   redacted, readable with `audit.read` (`GET /api/authorization/ledger`). Open: retention pruning.
 10. Keep public README, website copy, demos, and feature catalogs limited to claims in [CURRENT_STATE.md](CURRENT_STATE.md).
     **Website aligned 2026-11-02** (uncommitted in `opencompany-website`, awaiting owner review).
 11. Before publishing the AGPL transition, verify copyright and contributor authority, review the

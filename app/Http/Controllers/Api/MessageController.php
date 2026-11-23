@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Authorization\Application\AuthorizationFacts;
+use App\Domain\Authorization\Application\AuthorizationScopes;
+use App\Domain\Authorization\Application\AuthorizationService;
 use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Jobs\AgentRespondJob;
@@ -29,11 +32,21 @@ use Illuminate\Support\Str;
  * Message creation is not just persistence: it may broadcast to other clients,
  * trigger agent jobs, update channel timestamps, attach uploaded files, and
  * optionally compact agent memory. Keep those side effects visible here.
+ *
+ * Authorization (GIN-1198, GIN-1146): every endpoint asks
+ * AuthorizationService before any query result, broadcast, write or queued
+ * job: `channel.read` for reads, `channel.post` for posting, reacting,
+ * pinning, attachments and compaction, `message.delete` and
+ * `message.reaction.remove` for removals (own items, or channel
+ * moderators outside DMs). Messages of channels the actor cannot read are a
+ * 404, like missing ones.
  */
 class MessageController extends Controller
 {
     public function __construct(
         private readonly DirectMessageResolver $directMessages,
+        private readonly AuthorizationService $authorization,
+        private readonly AuthorizationScopes $scopes,
     ) {}
 
     /**
@@ -44,14 +57,18 @@ class MessageController extends Controller
         $query = Message::with(['author', 'reactions.user', 'attachments', 'replyTo.author', 'approvalRequest.requester', 'approvalRequest.respondedBy']);
 
         if ($request->has('channelId')) {
-            // Validate channel ownership before returning messages. The message
-            // query itself is channel-scoped, but this makes the workspace check
-            // explicit and keeps missing/foreign channels indistinguishable.
-            Channel::forWorkspace()->findOrFail($request->input('channelId'));
-            $query->where('channel_id', $request->input('channelId'));
+            // Workspace scope first (missing and foreign channels are the
+            // same 404), then the actor's read access.
+            $channel = Channel::forWorkspace()->findOrFail($request->input('channelId'));
+            $this->authorization->authorize($request->user(), 'channel.read', $channel);
+            $query->where('channel_id', $channel->id);
+        } else {
+            // Invariant: without a channel the query is still limited to
+            // channels of this workspace the actor may read.
+            $query->whereIn('channel_id', $this->scopes->readableChannels($request->user(), workspace())->select('channels.id'));
         }
 
-        $limit = $request->input('limit', 50);
+        $limit = min(max((int) $request->input('limit', 50), 1), 200);
 
         return $query->orderBy('created_at', 'desc')
             ->limit($limit)
@@ -64,22 +81,33 @@ class MessageController extends Controller
     {
         $channel = Channel::forWorkspace()->findOrFail($request->input('channelId'));
 
-        // Message validation currently happens at route/client level; this
-        // endpoint assumes channelId/content are present and then performs the
-        // runtime side effects below.
+        // Invariant: authorize before any write, broadcast or agent job.
+        $this->authorization->authorize($request->user(), 'channel.post', $channel);
+
+        // A reply must point at a message of the same channel.
+        $replyToId = $request->input('replyToId');
+        if ($replyToId !== null && ! Message::where('channel_id', $channel->id)->whereKey($replyToId)->exists()) {
+            abort(422, 'The message replied to is not in this channel.');
+        }
+
         $message = Message::create([
             'id' => Str::uuid()->toString(),
             'content' => $request->input('content'),
             'channel_id' => $channel->id,
             'author_id' => auth()->id(),
-            'reply_to_id' => $request->input('replyToId'),
+            'reply_to_id' => $replyToId,
             'timestamp' => now(),
         ]);
 
         // Pre-uploaded attachments are created before the message exists. Link
         // them after insert so they become part of the same chat payload.
+        // Only the actor's own, still unlinked uploads for this channel can be
+        // claimed, so a forged id cannot move someone else's file.
         if ($request->input('attachmentIds')) {
-            MessageAttachment::whereIn('id', $request->input('attachmentIds'))
+            MessageAttachment::whereIn('id', (array) $request->input('attachmentIds'))
+                ->whereNull('message_id')
+                ->where('uploader_id', auth()->id())
+                ->where(fn ($q) => $q->whereNull('channel_id')->orWhere('channel_id', $channel->id))
                 ->update(['message_id' => $message->id]);
         }
 
@@ -188,9 +216,10 @@ class MessageController extends Controller
     /**
      * Manually trigger conversation compaction for a channel.
      */
-    public function compact(string $channelId): JsonResponse
+    public function compact(Request $request, string $channelId): JsonResponse
     {
         $channel = Channel::forWorkspace()->findOrFail($channelId);
+        $this->authorization->authorize($request->user(), 'channel.post', $channel);
         $agents = $this->resolveChannelAgents($channel);
 
         if ($agents->isEmpty()) {
@@ -264,23 +293,23 @@ class MessageController extends Controller
             ->get();
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(Request $request, string $id): JsonResponse
     {
-        Message::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
-            ->findOrFail($id)
-            ->delete();
+        $message = $this->workspaceMessage($id);
+        $this->authorization->authorize($request->user(), 'message.delete', $message);
+        $message->delete();
 
         return response()->json(['success' => true]);
     }
 
     public function addReaction(Request $request, string $messageId): MessageReaction
     {
-        Message::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
-            ->findOrFail($messageId);
+        $message = $this->workspaceMessage($messageId);
+        $this->authorization->authorize($request->user(), 'channel.post', $message->channel);
 
         $reaction = MessageReaction::create([
             'id' => Str::uuid()->toString(),
-            'message_id' => $messageId,
+            'message_id' => $message->id,
             'user_id' => auth()->id(),
             'emoji' => $request->input('emoji'),
         ]);
@@ -288,11 +317,16 @@ class MessageController extends Controller
         return $reaction->load('user');
     }
 
-    public function removeReaction(string $messageId, string $reactionId): JsonResponse
+    public function removeReaction(Request $request, string $messageId, string $reactionId): JsonResponse
     {
-        MessageReaction::where('id', $reactionId)
-            ->where('message_id', $messageId)
-            ->delete();
+        $message = $this->workspaceMessage($messageId);
+        $reaction = MessageReaction::where('message_id', $message->id)->findOrFail($reactionId);
+        $this->authorization->authorize(
+            $request->user(),
+            'message.reaction.remove',
+            app(AuthorizationFacts::class)->reaction($reaction, $message->channel),
+        );
+        $reaction->delete();
 
         return response()->json(['success' => true]);
     }
@@ -300,14 +334,15 @@ class MessageController extends Controller
     /**
      * @return array{parentMessage: Message, replies: \Illuminate\Database\Eloquent\Collection<int, Message>}
      */
-    public function thread(string $messageId)
+    public function thread(Request $request, string $messageId)
     {
-        $parentMessage = Message::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
-            ->with(['author', 'reactions.user', 'attachments'])
-            ->findOrFail($messageId);
+        $parentMessage = $this->workspaceMessage($messageId);
+        $this->authorization->authorize($request->user(), 'channel.read', $parentMessage->channel);
+        $parentMessage->load(['author', 'reactions.user', 'attachments']);
 
         $replies = Message::with(['author', 'reactions.user', 'attachments'])
-            ->where('reply_to_id', $messageId)
+            ->where('reply_to_id', $parentMessage->id)
+            ->where('channel_id', $parentMessage->channel_id)
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -319,8 +354,8 @@ class MessageController extends Controller
 
     public function pin(Request $request, string $messageId): Message
     {
-        $message = Message::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
-            ->findOrFail($messageId);
+        $message = $this->workspaceMessage($messageId);
+        $this->authorization->authorize($request->user(), 'channel.post', $message->channel);
         $message->update([
             'is_pinned' => true,
             'pinned_at' => now(),
@@ -330,15 +365,27 @@ class MessageController extends Controller
         return $message->load(['author', 'reactions.user', 'attachments']);
     }
 
+    /** A message of a channel in the current workspace, or 404. */
+    private function workspaceMessage(string $id): Message
+    {
+        return Message::whereHas('channel', fn ($q) => $q->where('workspace_id', workspace()->id))
+            ->with('channel')
+            ->findOrFail($id);
+    }
+
     public function uploadAttachment(Request $request): MessageAttachment
     {
+        $request->validate(['file' => 'required|file', 'channelId' => 'required|string']);
+        $channel = Channel::forWorkspace()->findOrFail($request->input('channelId'));
+        $this->authorization->authorize($request->user(), 'channel.post', $channel);
+
         $file = $request->file('file');
         $workspaceId = workspace()->id;
         $path = $file->store("{$workspaceId}/message-attachments", 'public');
 
         $attachment = MessageAttachment::create([
             'id' => Str::uuid()->toString(),
-            'channel_id' => $request->input('channelId'),
+            'channel_id' => $channel->id,
             'uploader_id' => auth()->id(),
             'name' => $file->getClientOriginalName(),
             'type' => $file->getMimeType(),

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Authorization\Application\AuthorizationService;
+use App\Http\Controllers\Concerns\AuthorizesDocumentAccess;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\DocumentComment;
@@ -10,12 +12,20 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
+/**
+ * Document comments. Reading needs `document.read`, commenting
+ * `document.comment` (readers with write access), and editing, resolving or
+ * deleting a comment `document.comment.manage` (its author or a document
+ * editor). See AuthorizesDocumentAccess.
+ */
 class DocumentCommentController extends Controller
 {
+    use AuthorizesDocumentAccess;
+
     /** @return Collection<int, DocumentComment> */
-    public function index(string $documentId): Collection
+    public function index(Request $request, string $documentId): Collection
     {
-        Document::forWorkspace()->findOrFail($documentId);
+        $this->authorizedDocument($request, $documentId, 'document.read');
 
         return DocumentComment::with(['author', 'parent', 'resolvedBy'])
             ->where('document_id', $documentId)
@@ -25,14 +35,20 @@ class DocumentCommentController extends Controller
 
     public function store(Request $request, string $documentId): DocumentComment
     {
-        Document::forWorkspace()->findOrFail($documentId);
+        $this->authorizedDocument($request, $documentId, 'document.comment');
+
+        // A reply must belong to the same document.
+        $parentId = $request->input('parentId');
+        if ($parentId !== null && ! DocumentComment::where('document_id', $documentId)->whereKey($parentId)->exists()) {
+            abort(422, 'The comment replied to is not on this document.');
+        }
 
         $comment = DocumentComment::create([
             'id' => Str::uuid()->toString(),
             'document_id' => $documentId,
             'author_id' => auth()->id(),
             'content' => $request->input('content'),
-            'parent_id' => $request->input('parentId'),
+            'parent_id' => $parentId,
         ]);
 
         return $comment->load('author');
@@ -40,11 +56,12 @@ class DocumentCommentController extends Controller
 
     public function update(Request $request, string $documentId, string $commentId): DocumentComment
     {
-        Document::forWorkspace()->findOrFail($documentId);
+        $this->authorizedDocument($request, $documentId, 'document.read');
 
         $comment = DocumentComment::where('id', $commentId)
             ->where('document_id', $documentId)
             ->firstOrFail();
+        app(AuthorizationService::class)->authorize($request->user(), 'document.comment.manage', $comment);
 
         $data = [];
 
@@ -67,13 +84,15 @@ class DocumentCommentController extends Controller
         return $comment->load(['author', 'resolvedBy']);
     }
 
-    public function destroy(string $documentId, string $commentId): JsonResponse
+    public function destroy(Request $request, string $documentId, string $commentId): JsonResponse
     {
-        Document::forWorkspace()->findOrFail($documentId);
+        $this->authorizedDocument($request, $documentId, 'document.read');
 
-        DocumentComment::where('id', $commentId)
+        $comment = DocumentComment::where('id', $commentId)
             ->where('document_id', $documentId)
-            ->delete();
+            ->firstOrFail();
+        app(AuthorizationService::class)->authorize($request->user(), 'document.comment.manage', $comment);
+        $comment->delete();
 
         return response()->json(['success' => true]);
     }

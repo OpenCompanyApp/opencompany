@@ -1,0 +1,298 @@
+{
+  "format": "opencompany.authz.vectors/v1",
+  "description": "Settings and danger commands (GIN-1149, ROADMAP P0 item 8): each command has its own capability; data-erasing commands are owner-only; platform diagnostics need a platform operator.",
+  "facts": {
+    "now": "2026-11-23T00:00:00Z",
+    "workspace": {
+      "id": "ws1",
+      "owner_id": "u-owner",
+      "preset": "team"
+    },
+    "actors": {
+      "u-owner": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Olive"
+      },
+      "u-admin": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Ada Admin"
+      },
+      "u-approver": {
+        "kind": "human",
+        "workspace_role": "approver",
+        "platform_operator": false,
+        "name": "Abe"
+      },
+      "u-member": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Mia"
+      },
+      "u-member2": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Max"
+      },
+      "u-viewer": {
+        "kind": "human",
+        "workspace_role": "viewer",
+        "platform_operator": false,
+        "name": "Vic"
+      },
+      "u-outsider": {
+        "kind": "human",
+        "workspace_role": null,
+        "platform_operator": false,
+        "name": "Otto"
+      },
+      "a-ada": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-member",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Ada"
+      },
+      "a-bob": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-admin",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Bob"
+      },
+      "a-carl": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "a-ada",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Carl"
+      },
+      "a-foreign": {
+        "kind": "agent",
+        "workspace_id": "ws2",
+        "manager_id": null,
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Foreign"
+      }
+    },
+    "resource": {
+      "type": "workspace",
+      "id": "ws1",
+      "workspace_id": "ws1"
+    },
+    "context": {}
+  },
+  "cases": [
+    {
+      "name": "admin reads settings",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "settings.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "member cannot read settings",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "settings.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "capability_required"
+      }
+    },
+    {
+      "name": "viewer is told the workspace is read only",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "settings.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "role_read_only"
+      }
+    },
+    {
+      "name": "admin updates settings",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "settings.update"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "admin pauses agents",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "settings.command.pause_agents"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "admin retries failed runs",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "settings.command.retry_failed_jobs"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "member cannot pause agents",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "settings.command.pause_agents"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "capability_required"
+      }
+    },
+    {
+      "name": "admin cannot erase embeddings",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "settings.command.reset_embeddings"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "capability_required"
+      }
+    },
+    {
+      "name": "admin cannot reset memory",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "settings.command.reset_memory"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "capability_required"
+      }
+    },
+    {
+      "name": "owner erases embeddings",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-owner",
+        "on_behalf_of": null,
+        "action": "settings.command.reset_embeddings"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "owner clears conversation summaries",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-owner",
+        "on_behalf_of": null,
+        "action": "settings.command.clear_conversation_summaries"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "unknown command fails closed",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-owner",
+        "on_behalf_of": null,
+        "action": "settings.command.drop_database"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "unknown_action"
+      }
+    },
+    {
+      "name": "agents never run settings commands",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-bob",
+        "on_behalf_of": null,
+        "action": "settings.command.pause_agents"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "human_only_action"
+      }
+    },
+    {
+      "name": "workspace admin is not a platform operator",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "settings.diagnostics.platform"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "platform_operator_required"
+      }
+    },
+    {
+      "name": "platform operator reads platform diagnostics",
+      "facts": {
+        "actors": {
+          "u-admin": {
+            "platform_operator": true
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "settings.diagnostics.platform"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "platform_operator"
+      }
+    }
+  ]
+}

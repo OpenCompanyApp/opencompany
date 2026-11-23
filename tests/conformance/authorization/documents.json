@@ -1,0 +1,1000 @@
+{
+  "format": "opencompany.authz.vectors/v1",
+  "description": "Document permissions across CRUD (GIN-1199): stored sharing rows restrict the document and its subtree to the author and the listed users, viewer or editor; no admin override; system documents change only through agent identity endpoints.",
+  "facts": {
+    "now": "2026-11-23T00:00:00Z",
+    "workspace": {
+      "id": "ws1",
+      "owner_id": "u-owner",
+      "preset": "team"
+    },
+    "actors": {
+      "u-owner": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Olive"
+      },
+      "u-admin": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Ada Admin"
+      },
+      "u-approver": {
+        "kind": "human",
+        "workspace_role": "approver",
+        "platform_operator": false,
+        "name": "Abe"
+      },
+      "u-member": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Mia"
+      },
+      "u-member2": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Max"
+      },
+      "u-viewer": {
+        "kind": "human",
+        "workspace_role": "viewer",
+        "platform_operator": false,
+        "name": "Vic"
+      },
+      "u-outsider": {
+        "kind": "human",
+        "workspace_role": null,
+        "platform_operator": false,
+        "name": "Otto"
+      },
+      "a-ada": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-member",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Ada"
+      },
+      "a-bob": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-admin",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Bob"
+      },
+      "a-carl": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "a-ada",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Carl"
+      },
+      "a-foreign": {
+        "kind": "agent",
+        "workspace_id": "ws2",
+        "manager_id": null,
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Foreign"
+      }
+    },
+    "resource": {
+      "type": "document",
+      "id": "d1",
+      "workspace_id": "ws1",
+      "is_folder": false,
+      "is_system": false,
+      "author_id": "u-member",
+      "chain": [
+        {
+          "id": "d1",
+          "author_id": "u-member",
+          "shares": {}
+        },
+        {
+          "id": "f1",
+          "author_id": "u-admin",
+          "shares": {}
+        }
+      ]
+    },
+    "context": {}
+  },
+  "cases": [
+    {
+      "name": "member reads an unshared document",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "document.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "document_readable"
+      }
+    },
+    {
+      "name": "viewer reads",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "document.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "document_readable"
+      }
+    },
+    {
+      "name": "viewer cannot edit",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "document.write"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "role_read_only"
+      }
+    },
+    {
+      "name": "member edits an unshared document",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "document.write"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "document_writable"
+      }
+    },
+    {
+      "name": "shared viewer reads",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": false,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {
+                "u-member2": "viewer",
+                "u-viewer": "editor"
+              }
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {}
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "document.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "document_readable"
+      }
+    },
+    {
+      "name": "shared viewer cannot edit",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": false,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {
+                "u-member2": "viewer",
+                "u-viewer": "editor"
+              }
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {}
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "document.write"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "document_editor_required"
+      }
+    },
+    {
+      "name": "shared viewer cannot delete",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": false,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {
+                "u-member2": "viewer",
+                "u-viewer": "editor"
+              }
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {}
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "document.delete"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "document_editor_required"
+      }
+    },
+    {
+      "name": "unlisted member cannot read a shared document",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": false,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {
+                "u-member2": "viewer",
+                "u-viewer": "editor"
+              }
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {}
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-approver",
+        "on_behalf_of": null,
+        "action": "document.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "document_not_shared"
+      }
+    },
+    {
+      "name": "admin has no override on sharing rows",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": false,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {
+                "u-member2": "viewer",
+                "u-viewer": "editor"
+              }
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {}
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "document.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "document_not_shared"
+      }
+    },
+    {
+      "name": "author ignores own sharing rows",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": false,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {
+                "u-member2": "viewer",
+                "u-viewer": "editor"
+              }
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {}
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "document.write"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "document_writable"
+      }
+    },
+    {
+      "name": "workspace viewer listed as editor is still read only",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": false,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {
+                "u-member2": "viewer",
+                "u-viewer": "editor"
+              }
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {}
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "document.write"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "role_read_only"
+      }
+    },
+    {
+      "name": "folder sharing restricts its subtree",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": false,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {}
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {
+                "u-member2": "editor"
+              }
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-approver",
+        "on_behalf_of": null,
+        "action": "document.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "document_not_shared"
+      }
+    },
+    {
+      "name": "folder editor edits a document inside",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": false,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {}
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {
+                "u-member2": "editor"
+              }
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "document.write"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "document_writable"
+      }
+    },
+    {
+      "name": "document author cannot bypass the parent folder's rows",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": false,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {}
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {
+                "u-member2": "editor"
+              }
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "document.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "document_not_shared"
+      }
+    },
+    {
+      "name": "system documents are not edited here",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": true,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {}
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {}
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "document.write"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "system_document"
+      }
+    },
+    {
+      "name": "system documents are not deleted here",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": true,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {}
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {}
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "document.delete"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "system_document"
+      }
+    },
+    {
+      "name": "create at the root",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "document.create"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "document_create_root"
+      }
+    },
+    {
+      "name": "viewer cannot create",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "document.create"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "role_read_only"
+      }
+    },
+    {
+      "name": "create inside a folder",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "f1",
+          "workspace_id": "ws1",
+          "is_folder": true,
+          "is_system": false,
+          "author_id": "u-admin",
+          "chain": [
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {}
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "document.create"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "document_parent_writable"
+      }
+    },
+    {
+      "name": "parent must be a folder",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": false,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {}
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {}
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "document.create"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "document_parent_not_folder"
+      }
+    },
+    {
+      "name": "cannot create inside a folder shared as viewer",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "f1",
+          "workspace_id": "ws1",
+          "is_folder": true,
+          "is_system": false,
+          "author_id": "u-admin",
+          "chain": [
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {
+                "u-member2": "viewer"
+              }
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "document.create"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "document_editor_required"
+      }
+    },
+    {
+      "name": "cannot create inside a folder one cannot see",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "f1",
+          "workspace_id": "ws1",
+          "is_folder": true,
+          "is_system": false,
+          "author_id": "u-admin",
+          "chain": [
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {
+                "u-member2": "viewer"
+              }
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-approver",
+        "on_behalf_of": null,
+        "action": "document.create"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "document_not_shared"
+      }
+    },
+    {
+      "name": "shared viewer may comment",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": false,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {
+                "u-member2": "viewer",
+                "u-viewer": "editor"
+              }
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {}
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "document.comment"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "document_commentable"
+      }
+    },
+    {
+      "name": "unlisted member cannot comment",
+      "facts": {
+        "resource": {
+          "type": "document",
+          "id": "d1",
+          "workspace_id": "ws1",
+          "is_folder": false,
+          "is_system": false,
+          "author_id": "u-member",
+          "chain": [
+            {
+              "id": "d1",
+              "author_id": "u-member",
+              "shares": {
+                "u-member2": "viewer",
+                "u-viewer": "editor"
+              }
+            },
+            {
+              "id": "f1",
+              "author_id": "u-admin",
+              "shares": {}
+            }
+          ]
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-approver",
+        "on_behalf_of": null,
+        "action": "document.comment"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "document_not_shared"
+      }
+    },
+    {
+      "name": "workspace viewer cannot comment",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "document.comment"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "role_read_only"
+      }
+    },
+    {
+      "name": "comment author edits own comment",
+      "facts": {
+        "resource": {
+          "type": "document_comment",
+          "id": "dc1",
+          "workspace_id": "ws1",
+          "owner_id": "u-member2",
+          "document": {
+            "type": "document",
+            "id": "d1",
+            "workspace_id": "ws1",
+            "is_folder": false,
+            "is_system": false,
+            "author_id": "u-member",
+            "chain": [
+              {
+                "id": "d1",
+                "author_id": "u-member",
+                "shares": {
+                  "u-member2": "viewer",
+                  "u-viewer": "editor"
+                }
+              },
+              {
+                "id": "f1",
+                "author_id": "u-admin",
+                "shares": {}
+              }
+            ]
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "document.comment.manage"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "comment_owner"
+      }
+    },
+    {
+      "name": "document editor manages others' comments",
+      "facts": {
+        "resource": {
+          "type": "document_comment",
+          "id": "dc1",
+          "workspace_id": "ws1",
+          "owner_id": "u-member2",
+          "document": {
+            "type": "document",
+            "id": "d1",
+            "workspace_id": "ws1",
+            "is_folder": false,
+            "is_system": false,
+            "author_id": "u-member",
+            "chain": [
+              {
+                "id": "d1",
+                "author_id": "u-member",
+                "shares": {
+                  "u-member2": "viewer",
+                  "u-viewer": "editor"
+                }
+              },
+              {
+                "id": "f1",
+                "author_id": "u-admin",
+                "shares": {}
+              }
+            ]
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "document.comment.manage"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "document_editor"
+      }
+    },
+    {
+      "name": "shared viewer cannot manage others' comments",
+      "facts": {
+        "resource": {
+          "type": "document_comment",
+          "id": "dc1",
+          "workspace_id": "ws1",
+          "owner_id": "u-viewer",
+          "document": {
+            "type": "document",
+            "id": "d1",
+            "workspace_id": "ws1",
+            "is_folder": false,
+            "is_system": false,
+            "author_id": "u-member",
+            "chain": [
+              {
+                "id": "d1",
+                "author_id": "u-member",
+                "shares": {
+                  "u-member2": "viewer",
+                  "u-viewer": "editor"
+                }
+              },
+              {
+                "id": "f1",
+                "author_id": "u-admin",
+                "shares": {}
+              }
+            ]
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "document.comment.manage"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "comment_owner_required"
+      }
+    }
+  ]
+}

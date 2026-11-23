@@ -17,7 +17,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *  - approver: a regular member who may additionally approve/reject approval
  *              requests (see ApprovalResolutionPolicy). No admin settings.
  *  - member:   regular collaborator; can see approvals but not resolve them.
+ *  - viewer:   read-only member: reads what members read, never writes.
+ * The workspace owner (workspaces.owner_id) keeps the stored role `admin`
+ * and is treated as the `owner` role by the authorization engine.
  * ROLES is the single allow-list used by request validation; extend it here.
+ * What each role may do is fixed in App\Domain\Authorization\Engine\
+ * Capabilities, not here.
  */
 class WorkspaceMember extends Model
 {
@@ -29,8 +34,10 @@ class WorkspaceMember extends Model
 
     public const ROLE_MEMBER = 'member';
 
+    public const ROLE_VIEWER = 'viewer';
+
     /** @var list<string> */
-    public const ROLES = [self::ROLE_ADMIN, self::ROLE_APPROVER, self::ROLE_MEMBER];
+    public const ROLES = [self::ROLE_ADMIN, self::ROLE_APPROVER, self::ROLE_MEMBER, self::ROLE_VIEWER];
 
     protected $fillable = [
         'workspace_id',

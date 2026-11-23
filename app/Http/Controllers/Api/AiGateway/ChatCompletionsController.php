@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\AiGateway;
 
 use App\Domain\Ai\Gateway\AiGateway;
+use App\Domain\Ai\Gateway\GatewayKeyAuthorizer;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ use Illuminate\Support\Str;
  */
 class ChatCompletionsController extends Controller
 {
-    public function __invoke(Request $request, AiGateway $gateway): JsonResponse
+    public function __invoke(Request $request, AiGateway $gateway, GatewayKeyAuthorizer $keys): JsonResponse
     {
         $validated = $request->validate([
             'model' => 'required|string',
@@ -24,6 +25,12 @@ class ChatCompletionsController extends Controller
             'temperature' => 'nullable|numeric|min:0|max:2',
             'stream' => 'nullable|boolean',
         ]);
+
+        // Invariant: the key's operation and model scopes are checked before
+        // any provider call is made.
+        if (($denied = $keys->deny($request, 'chat.completions', (string) $validated['model'])) !== null) {
+            return $denied;
+        }
 
         if ((bool) ($validated['stream'] ?? false)) {
             return response()->json([

@@ -34,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'resolve.workspace' => \App\Http\Middleware\ResolveWorkspace::class,
             'workspace.admin' => \App\Http\Middleware\EnsureWorkspaceAdmin::class,
+            'workspace.writer' => \App\Http\Middleware\EnsureWorkspaceWriteAccess::class,
         ]);
 
         RedirectIfAuthenticated::redirectUsing(fn () => route('home'));

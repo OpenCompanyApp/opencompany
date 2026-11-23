@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\ChannelController::index
-* @see app/Http/Controllers/Api/ChannelController.php:18
+* @see app/Http/Controllers/Api/ChannelController.php:39
 * @route '/api/channels'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::index
-* @see app/Http/Controllers/Api/ChannelController.php:18
+* @see app/Http/Controllers/Api/ChannelController.php:39
 * @route '/api/channels'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::index
-* @see app/Http/Controllers/Api/ChannelController.php:18
+* @see app/Http/Controllers/Api/ChannelController.php:39
 * @route '/api/channels'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::index
-* @see app/Http/Controllers/Api/ChannelController.php:18
+* @see app/Http/Controllers/Api/ChannelController.php:39
 * @route '/api/channels'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::store
-* @see app/Http/Controllers/Api/ChannelController.php:80
+* @see app/Http/Controllers/Api/ChannelController.php:110
 * @route '/api/channels'
 */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -60,7 +60,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::store
-* @see app/Http/Controllers/Api/ChannelController.php:80
+* @see app/Http/Controllers/Api/ChannelController.php:110
 * @route '/api/channels'
 */
 store.url = (options?: RouteQueryOptions) => {
@@ -69,7 +69,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::store
-* @see app/Http/Controllers/Api/ChannelController.php:80
+* @see app/Http/Controllers/Api/ChannelController.php:110
 * @route '/api/channels'
 */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -79,7 +79,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::show
-* @see app/Http/Controllers/Api/ChannelController.php:67
+* @see app/Http/Controllers/Api/ChannelController.php:91
 * @route '/api/channels/{id}'
 */
 export const show = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -94,7 +94,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::show
-* @see app/Http/Controllers/Api/ChannelController.php:67
+* @see app/Http/Controllers/Api/ChannelController.php:91
 * @route '/api/channels/{id}'
 */
 show.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -121,7 +121,7 @@ show.url = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::show
-* @see app/Http/Controllers/Api/ChannelController.php:67
+* @see app/Http/Controllers/Api/ChannelController.php:91
 * @route '/api/channels/{id}'
 */
 show.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -131,7 +131,7 @@ show.get = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::show
-* @see app/Http/Controllers/Api/ChannelController.php:67
+* @see app/Http/Controllers/Api/ChannelController.php:91
 * @route '/api/channels/{id}'
 */
 show.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -141,7 +141,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::pinned
-* @see app/Http/Controllers/Api/ChannelController.php:170
+* @see app/Http/Controllers/Api/ChannelController.php:224
 * @route '/api/channels/{id}/pinned'
 */
 export const pinned = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -156,7 +156,7 @@ pinned.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::pinned
-* @see app/Http/Controllers/Api/ChannelController.php:170
+* @see app/Http/Controllers/Api/ChannelController.php:224
 * @route '/api/channels/{id}/pinned'
 */
 pinned.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -183,7 +183,7 @@ pinned.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::pinned
-* @see app/Http/Controllers/Api/ChannelController.php:170
+* @see app/Http/Controllers/Api/ChannelController.php:224
 * @route '/api/channels/{id}/pinned'
 */
 pinned.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -193,7 +193,7 @@ pinned.get = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::pinned
-* @see app/Http/Controllers/Api/ChannelController.php:170
+* @see app/Http/Controllers/Api/ChannelController.php:224
 * @route '/api/channels/{id}/pinned'
 */
 pinned.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -203,7 +203,7 @@ pinned.head = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::addMember
-* @see app/Http/Controllers/Api/ChannelController.php:120
+* @see app/Http/Controllers/Api/ChannelController.php:156
 * @route '/api/channels/{id}/members'
 */
 export const addMember = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -218,7 +218,7 @@ addMember.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::addMember
-* @see app/Http/Controllers/Api/ChannelController.php:120
+* @see app/Http/Controllers/Api/ChannelController.php:156
 * @route '/api/channels/{id}/members'
 */
 addMember.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -245,7 +245,7 @@ addMember.url = (args: { id: string | number } | [id: string | number ] | string
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::addMember
-* @see app/Http/Controllers/Api/ChannelController.php:120
+* @see app/Http/Controllers/Api/ChannelController.php:156
 * @route '/api/channels/{id}/members'
 */
 addMember.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -255,7 +255,7 @@ addMember.post = (args: { id: string | number } | [id: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::removeMember
-* @see app/Http/Controllers/Api/ChannelController.php:133
+* @see app/Http/Controllers/Api/ChannelController.php:180
 * @route '/api/channels/{channelId}/members/{userId}'
 */
 export const removeMember = (args: { channelId: string | number, userId: string | number } | [channelId: string | number, userId: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -270,7 +270,7 @@ removeMember.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::removeMember
-* @see app/Http/Controllers/Api/ChannelController.php:133
+* @see app/Http/Controllers/Api/ChannelController.php:180
 * @route '/api/channels/{channelId}/members/{userId}'
 */
 removeMember.url = (args: { channelId: string | number, userId: string | number } | [channelId: string | number, userId: string | number ], options?: RouteQueryOptions) => {
@@ -296,7 +296,7 @@ removeMember.url = (args: { channelId: string | number, userId: string | number 
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::removeMember
-* @see app/Http/Controllers/Api/ChannelController.php:133
+* @see app/Http/Controllers/Api/ChannelController.php:180
 * @route '/api/channels/{channelId}/members/{userId}'
 */
 removeMember.delete = (args: { channelId: string | number, userId: string | number } | [channelId: string | number, userId: string | number ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -306,7 +306,7 @@ removeMember.delete = (args: { channelId: string | number, userId: string | numb
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::markRead
-* @see app/Http/Controllers/Api/ChannelController.php:144
+* @see app/Http/Controllers/Api/ChannelController.php:196
 * @route '/api/channels/{id}/read'
 */
 export const markRead = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -321,7 +321,7 @@ markRead.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::markRead
-* @see app/Http/Controllers/Api/ChannelController.php:144
+* @see app/Http/Controllers/Api/ChannelController.php:196
 * @route '/api/channels/{id}/read'
 */
 markRead.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -348,7 +348,7 @@ markRead.url = (args: { id: string | number } | [id: string | number ] | string 
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::markRead
-* @see app/Http/Controllers/Api/ChannelController.php:144
+* @see app/Http/Controllers/Api/ChannelController.php:196
 * @route '/api/channels/{id}/read'
 */
 markRead.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -358,7 +358,7 @@ markRead.post = (args: { id: string | number } | [id: string | number ] | string
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::typing
-* @see app/Http/Controllers/Api/ChannelController.php:155
+* @see app/Http/Controllers/Api/ChannelController.php:208
 * @route '/api/channels/{id}/typing'
 */
 export const typing = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -373,7 +373,7 @@ typing.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::typing
-* @see app/Http/Controllers/Api/ChannelController.php:155
+* @see app/Http/Controllers/Api/ChannelController.php:208
 * @route '/api/channels/{id}/typing'
 */
 typing.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -400,7 +400,7 @@ typing.url = (args: { id: string | number } | [id: string | number ] | string | 
 
 /**
 * @see \App\Http\Controllers\Api\ChannelController::typing
-* @see app/Http/Controllers/Api/ChannelController.php:155
+* @see app/Http/Controllers/Api/ChannelController.php:208
 * @route '/api/channels/{id}/typing'
 */
 typing.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({

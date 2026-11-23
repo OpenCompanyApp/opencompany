@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\AiGateway\ChatCompletionsController::__invoke
-* @see app/Http/Controllers/Api/AiGateway/ChatCompletionsController.php:16
+* @see app/Http/Controllers/Api/AiGateway/ChatCompletionsController.php:17
 * @route '/api/ai-gateway/v1/chat/completions'
 */
 const ChatCompletionsController = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ ChatCompletionsController.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AiGateway\ChatCompletionsController::__invoke
-* @see app/Http/Controllers/Api/AiGateway/ChatCompletionsController.php:16
+* @see app/Http/Controllers/Api/AiGateway/ChatCompletionsController.php:17
 * @route '/api/ai-gateway/v1/chat/completions'
 */
 ChatCompletionsController.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ ChatCompletionsController.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\AiGateway\ChatCompletionsController::__invoke
-* @see app/Http/Controllers/Api/AiGateway/ChatCompletionsController.php:16
+* @see app/Http/Controllers/Api/AiGateway/ChatCompletionsController.php:17
 * @route '/api/ai-gateway/v1/chat/completions'
 */
 ChatCompletionsController.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({

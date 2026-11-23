@@ -1,0 +1,1161 @@
+{
+  "format": "opencompany.authz.vectors/v1",
+  "description": "Channel and message membership (GIN-1198, GIN-1146): public channels are open to members, private channels and DMs need membership, external bridges need membership or admin; agents add their channel grants; on-behalf-of intersects with the human.",
+  "facts": {
+    "now": "2026-11-23T00:00:00Z",
+    "workspace": {
+      "id": "ws1",
+      "owner_id": "u-owner",
+      "preset": "team"
+    },
+    "actors": {
+      "u-owner": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Olive"
+      },
+      "u-admin": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Ada Admin"
+      },
+      "u-approver": {
+        "kind": "human",
+        "workspace_role": "approver",
+        "platform_operator": false,
+        "name": "Abe"
+      },
+      "u-member": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Mia"
+      },
+      "u-member2": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Max"
+      },
+      "u-viewer": {
+        "kind": "human",
+        "workspace_role": "viewer",
+        "platform_operator": false,
+        "name": "Vic"
+      },
+      "u-outsider": {
+        "kind": "human",
+        "workspace_role": null,
+        "platform_operator": false,
+        "name": "Otto"
+      },
+      "a-ada": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-member",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Ada"
+      },
+      "a-bob": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-admin",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Bob"
+      },
+      "a-carl": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "a-ada",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Carl"
+      },
+      "a-foreign": {
+        "kind": "agent",
+        "workspace_id": "ws2",
+        "manager_id": null,
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Foreign"
+      }
+    },
+    "resource": {
+      "type": "channel",
+      "id": "c1",
+      "workspace_id": "ws1",
+      "channel_type": "public",
+      "members": {
+        "u-member": "admin",
+        "a-ada": "member"
+      }
+    },
+    "context": {}
+  },
+  "cases": [
+    {
+      "name": "member reads a public channel",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_readable"
+      }
+    },
+    {
+      "name": "viewer reads a public channel",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_readable"
+      }
+    },
+    {
+      "name": "viewer cannot post",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "channel.post"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "role_read_only"
+      }
+    },
+    {
+      "name": "member posts in a public channel without joining",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "channel.post"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_postable"
+      }
+    },
+    {
+      "name": "non-member cannot read a private channel",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "private",
+          "members": {
+            "u-member": "admin",
+            "a-ada": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_not_member"
+      }
+    },
+    {
+      "name": "non-member cannot post in a private channel",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "private",
+          "members": {
+            "u-member": "admin",
+            "a-ada": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "channel.post"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_not_member"
+      }
+    },
+    {
+      "name": "member reads a private channel",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "private",
+          "members": {
+            "u-member": "admin",
+            "a-ada": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_readable"
+      }
+    },
+    {
+      "name": "admin has no override on private channels",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "private",
+          "members": {
+            "u-member": "admin",
+            "a-ada": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_not_member"
+      }
+    },
+    {
+      "name": "admin cannot read a DM they are not in",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "dm",
+          "members": {
+            "u-member": "member",
+            "u-member2": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_not_member"
+      }
+    },
+    {
+      "name": "DM participant reads",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "dm",
+          "members": {
+            "u-member": "member",
+            "u-member2": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_readable"
+      }
+    },
+    {
+      "name": "unknown channel type is treated as private",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "mystery",
+          "members": {
+            "u-member": "admin",
+            "a-ada": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_not_member"
+      }
+    },
+    {
+      "name": "admin reads an external bridge",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "external",
+          "members": {}
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_readable"
+      }
+    },
+    {
+      "name": "member cannot read an external bridge they are not in",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "external",
+          "members": {}
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_not_member"
+      }
+    },
+    {
+      "name": "non channel admin cannot change members",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "channel.manage_members"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_admin_required"
+      }
+    },
+    {
+      "name": "channel admin changes members",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "channel.manage_members"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_admin"
+      }
+    },
+    {
+      "name": "workspace admin moderates members",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "channel.manage_members"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_admin"
+      }
+    },
+    {
+      "name": "workspace admin cannot manage a private channel they cannot read",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "private",
+          "members": {
+            "u-member": "admin",
+            "a-ada": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "channel.manage_members"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_not_member"
+      }
+    },
+    {
+      "name": "DM membership is fixed",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "dm",
+          "members": {
+            "u-member": "admin",
+            "a-ada": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "channel.manage_members"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "dm_membership_fixed"
+      }
+    },
+    {
+      "name": "cannot add someone outside the workspace",
+      "facts": {
+        "context": {
+          "target_in_workspace": false
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "channel.manage_members"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "target_not_in_workspace"
+      }
+    },
+    {
+      "name": "member joins a public channel",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "channel.join"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_joinable"
+      }
+    },
+    {
+      "name": "a private channel one cannot read stays hidden",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "private",
+          "members": {
+            "u-member": "admin",
+            "a-ada": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "channel.join"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_not_member"
+      }
+    },
+    {
+      "name": "readable non-public channels are not joinable",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "external",
+          "members": {}
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "channel.join"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_not_joinable"
+      }
+    },
+    {
+      "name": "viewer cannot join",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "channel.join"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "role_read_only"
+      }
+    },
+    {
+      "name": "member leaves",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "channel.leave"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_member"
+      }
+    },
+    {
+      "name": "non-member cannot leave",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "channel.leave"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_not_member"
+      }
+    },
+    {
+      "name": "author deletes own message",
+      "facts": {
+        "resource": {
+          "type": "message",
+          "id": "m1",
+          "workspace_id": "ws1",
+          "owner_id": "u-member2",
+          "channel": {
+            "type": "channel",
+            "id": "c1",
+            "workspace_id": "ws1",
+            "channel_type": "public",
+            "members": {
+              "u-member": "admin",
+              "a-ada": "member"
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "message.delete"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "message_owner"
+      }
+    },
+    {
+      "name": "member cannot delete someone else's message",
+      "facts": {
+        "resource": {
+          "type": "message",
+          "id": "m1",
+          "workspace_id": "ws1",
+          "owner_id": "u-member",
+          "channel": {
+            "type": "channel",
+            "id": "c1",
+            "workspace_id": "ws1",
+            "channel_type": "public",
+            "members": {
+              "u-member": "admin",
+              "a-ada": "member"
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "message.delete"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "message_owner_required"
+      }
+    },
+    {
+      "name": "admin moderates a public channel message",
+      "facts": {
+        "resource": {
+          "type": "message",
+          "id": "m1",
+          "workspace_id": "ws1",
+          "owner_id": "u-member",
+          "channel": {
+            "type": "channel",
+            "id": "c1",
+            "workspace_id": "ws1",
+            "channel_type": "public",
+            "members": {
+              "u-member": "admin",
+              "a-ada": "member"
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "message.delete"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_moderator"
+      }
+    },
+    {
+      "name": "channel admin moderates a message",
+      "facts": {
+        "resource": {
+          "type": "message",
+          "id": "m1",
+          "workspace_id": "ws1",
+          "owner_id": "u-member2",
+          "channel": {
+            "type": "channel",
+            "id": "c1",
+            "workspace_id": "ws1",
+            "channel_type": "public",
+            "members": {
+              "u-member": "admin",
+              "a-ada": "member"
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "message.delete"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_moderator"
+      }
+    },
+    {
+      "name": "no moderation inside DMs",
+      "facts": {
+        "resource": {
+          "type": "message",
+          "id": "m1",
+          "workspace_id": "ws1",
+          "owner_id": "u-member",
+          "channel": {
+            "type": "channel",
+            "id": "c1",
+            "workspace_id": "ws1",
+            "channel_type": "dm",
+            "members": {
+              "u-member": "member",
+              "u-admin": "admin"
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "message.delete"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "message_owner_required"
+      }
+    },
+    {
+      "name": "cannot delete a message in a private channel one cannot read",
+      "facts": {
+        "resource": {
+          "type": "message",
+          "id": "m1",
+          "workspace_id": "ws1",
+          "owner_id": "u-member2",
+          "channel": {
+            "type": "channel",
+            "id": "c1",
+            "workspace_id": "ws1",
+            "channel_type": "private",
+            "members": {
+              "u-member": "admin",
+              "a-ada": "member"
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "message.delete"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_not_member"
+      }
+    },
+    {
+      "name": "cannot remove someone else's reaction",
+      "facts": {
+        "resource": {
+          "type": "reaction",
+          "id": "r1",
+          "workspace_id": "ws1",
+          "owner_id": "u-member",
+          "channel": {
+            "type": "channel",
+            "id": "c1",
+            "workspace_id": "ws1",
+            "channel_type": "public",
+            "members": {
+              "u-member": "admin",
+              "a-ada": "member"
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "message.reaction.remove"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "reaction_owner_required"
+      }
+    },
+    {
+      "name": "removes own reaction",
+      "facts": {
+        "resource": {
+          "type": "reaction",
+          "id": "r1",
+          "workspace_id": "ws1",
+          "owner_id": "u-member",
+          "channel": {
+            "type": "channel",
+            "id": "c1",
+            "workspace_id": "ws1",
+            "channel_type": "public",
+            "members": {
+              "u-member": "admin",
+              "a-ada": "member"
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "message.reaction.remove"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "reaction_owner"
+      }
+    },
+    {
+      "name": "agent reads a public channel",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-bob",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_readable"
+      }
+    },
+    {
+      "name": "unrestricted agent cannot read a private channel it is not in",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "private",
+          "members": {
+            "u-member": "admin",
+            "a-ada": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-bob",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_not_member"
+      }
+    },
+    {
+      "name": "agent reads a private channel through an explicit grant",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "private",
+          "members": {
+            "u-member": "admin",
+            "a-ada": "member"
+          }
+        },
+        "actors": {
+          "a-bob": {
+            "channel_grants": [
+              "c1"
+            ]
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-bob",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_readable"
+      }
+    },
+    {
+      "name": "agent grants exclude the channel",
+      "facts": {
+        "actors": {
+          "a-bob": {
+            "channel_grants": [
+              "c9"
+            ]
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-bob",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "agent_channel_not_granted"
+      }
+    },
+    {
+      "name": "unrestricted agent never reads a DM it is not in",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "dm",
+          "members": {
+            "u-member": "member",
+            "u-member2": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-bob",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "channel_not_member"
+      }
+    },
+    {
+      "name": "agent reads a DM only through an explicit admin grant",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "dm",
+          "members": {
+            "u-member": "member",
+            "u-member2": "member"
+          }
+        },
+        "actors": {
+          "a-bob": {
+            "channel_grants": [
+              "c1"
+            ]
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-bob",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_readable"
+      }
+    },
+    {
+      "name": "agent's own DM outside its grant list stays hidden",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "dm",
+          "members": {
+            "u-member": "member",
+            "a-ada": "member"
+          }
+        },
+        "actors": {
+          "a-ada": {
+            "channel_grants": [
+              "c9"
+            ]
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "agent_channel_not_granted"
+      }
+    },
+    {
+      "name": "agent reads its own DM",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "dm",
+          "members": {
+            "u-member": "member",
+            "a-ada": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_readable"
+      }
+    },
+    {
+      "name": "agent on behalf of a member reads a public channel",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": "u-member2",
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_readable"
+      }
+    },
+    {
+      "name": "on-behalf-of human cannot read the private channel",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "private",
+          "members": {
+            "u-member": "admin",
+            "a-ada": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": "u-member2",
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "on_behalf_of_denied"
+      }
+    },
+    {
+      "name": "on-behalf-of human who is a member",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "private",
+          "members": {
+            "u-member": "admin",
+            "a-ada": "member"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": "u-member",
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "channel_readable"
+      }
+    },
+    {
+      "name": "on-behalf-of human who left the workspace",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": "u-outsider",
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "on_behalf_of_not_member"
+      }
+    },
+    {
+      "name": "on-behalf-of viewer cannot make the agent post",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": "u-viewer",
+        "action": "channel.post"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "on_behalf_of_denied"
+      }
+    },
+    {
+      "name": "member creates a channel",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "channel.create"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "viewer cannot create a channel",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "channel.create"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "role_read_only"
+      }
+    }
+  ]
+}

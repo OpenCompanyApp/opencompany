@@ -1,0 +1,426 @@
+{
+  "format": "opencompany.authz.vectors/v1",
+  "description": "AI Gateway keys (GIN-1203): revocation, required expiry, operation scopes and model scopes.",
+  "facts": {
+    "now": "2026-11-23T00:00:00Z",
+    "workspace": {
+      "id": "ws1",
+      "owner_id": "u-owner",
+      "preset": "team"
+    },
+    "actors": {
+      "u-owner": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Olive"
+      },
+      "u-admin": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Ada Admin"
+      },
+      "u-approver": {
+        "kind": "human",
+        "workspace_role": "approver",
+        "platform_operator": false,
+        "name": "Abe"
+      },
+      "u-member": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Mia"
+      },
+      "u-member2": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Max"
+      },
+      "u-viewer": {
+        "kind": "human",
+        "workspace_role": "viewer",
+        "platform_operator": false,
+        "name": "Vic"
+      },
+      "u-outsider": {
+        "kind": "human",
+        "workspace_role": null,
+        "platform_operator": false,
+        "name": "Otto"
+      },
+      "a-ada": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-member",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Ada"
+      },
+      "a-bob": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-admin",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Bob"
+      },
+      "a-carl": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "a-ada",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Carl"
+      },
+      "a-foreign": {
+        "kind": "agent",
+        "workspace_id": "ws2",
+        "manager_id": null,
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Foreign"
+      },
+      "k1": {
+        "kind": "api_key",
+        "workspace_id": "ws1",
+        "revoked": false,
+        "expires_at": "2027-01-01T00:00:00Z",
+        "scopes": {
+          "actions": [
+            "models.list",
+            "chat.completions",
+            "embeddings"
+          ],
+          "models": [
+            "gpt-x"
+          ]
+        }
+      },
+      "k-foreign": {
+        "kind": "api_key",
+        "workspace_id": "ws2",
+        "revoked": false,
+        "expires_at": "2027-01-01T00:00:00Z",
+        "scopes": {
+          "actions": [
+            "models.list",
+            "chat.completions",
+            "embeddings"
+          ],
+          "models": [
+            "gpt-x"
+          ]
+        }
+      }
+    },
+    "resource": {
+      "type": "ai_model",
+      "id": "gpt-x",
+      "workspace_id": "ws1"
+    },
+    "context": {
+      "operation": "chat.completions"
+    }
+  },
+  "cases": [
+    {
+      "name": "scoped chat call",
+      "request": {
+        "workspace": "ws1",
+        "actor": "k1",
+        "on_behalf_of": null,
+        "action": "ai_gateway.invoke"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "api_key_scoped"
+      }
+    },
+    {
+      "name": "model outside the scope",
+      "facts": {
+        "resource": {
+          "type": "ai_model",
+          "id": "gpt-y",
+          "workspace_id": "ws1"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "k1",
+        "on_behalf_of": null,
+        "action": "ai_gateway.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "api_key_scope_model"
+      }
+    },
+    {
+      "name": "star scope covers every model",
+      "facts": {
+        "resource": {
+          "type": "ai_model",
+          "id": "gpt-y",
+          "workspace_id": "ws1"
+        },
+        "actors": {
+          "k1": {
+            "scopes": {
+              "models": [
+                "*"
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "k1",
+        "on_behalf_of": null,
+        "action": "ai_gateway.invoke"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "api_key_scoped"
+      }
+    },
+    {
+      "name": "listing models needs no model scope",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        },
+        "context": {
+          "operation": "models.list"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "k1",
+        "on_behalf_of": null,
+        "action": "ai_gateway.invoke"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "api_key_scoped"
+      }
+    },
+    {
+      "name": "operation outside the scope",
+      "facts": {
+        "context": {
+          "operation": "embeddings"
+        },
+        "actors": {
+          "k1": {
+            "scopes": {
+              "actions": [
+                "chat.completions"
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "k1",
+        "on_behalf_of": null,
+        "action": "ai_gateway.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "api_key_scope_action"
+      }
+    },
+    {
+      "name": "unknown operation",
+      "facts": {
+        "context": {
+          "operation": "images"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "k1",
+        "on_behalf_of": null,
+        "action": "ai_gateway.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "api_key_scope_action"
+      }
+    },
+    {
+      "name": "missing scopes fail closed",
+      "facts": {
+        "actors": {
+          "k1": {
+            "scopes": {}
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "k1",
+        "on_behalf_of": null,
+        "action": "ai_gateway.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "api_key_scope_action"
+      }
+    },
+    {
+      "name": "expired key",
+      "facts": {
+        "actors": {
+          "k1": {
+            "expires_at": "2026-11-22T23:59:59Z"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "k1",
+        "on_behalf_of": null,
+        "action": "ai_gateway.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "api_key_expired"
+      }
+    },
+    {
+      "name": "key expiring right now is expired",
+      "facts": {
+        "actors": {
+          "k1": {
+            "expires_at": "2026-11-23T00:00:00Z"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "k1",
+        "on_behalf_of": null,
+        "action": "ai_gateway.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "api_key_expired"
+      }
+    },
+    {
+      "name": "key without expiry",
+      "facts": {
+        "actors": {
+          "k1": {
+            "expires_at": null
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "k1",
+        "on_behalf_of": null,
+        "action": "ai_gateway.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "api_key_expiry_required"
+      }
+    },
+    {
+      "name": "revoked key",
+      "facts": {
+        "actors": {
+          "k1": {
+            "revoked": true
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "k1",
+        "on_behalf_of": null,
+        "action": "ai_gateway.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "api_key_revoked"
+      }
+    },
+    {
+      "name": "key from another workspace",
+      "request": {
+        "workspace": "ws1",
+        "actor": "k-foreign",
+        "on_behalf_of": null,
+        "action": "ai_gateway.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "actor_not_in_workspace"
+      }
+    },
+    {
+      "name": "humans do not invoke as keys",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "ai_gateway.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "actor_kind_not_permitted"
+      }
+    },
+    {
+      "name": "admin manages keys",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "ai_gateway.manage"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "member cannot manage keys",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "ai_gateway.manage"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "capability_required"
+      }
+    }
+  ]
+}

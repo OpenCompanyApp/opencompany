@@ -25,8 +25,10 @@ use Symfony\Component\HttpFoundation\Response;
  *   *before* this middleware, so the limiter cannot rely on handle() having
  *   run first.
  *
- * Not owned here: per-key request budgets (the named limiter) and gateway
- * protocol handling (Api\AiGateway controllers).
+ * Not owned here: per-key request budgets (the named limiter), per-call
+ * operation and model scopes (GatewayKeyAuthorizer → AuthorizationService,
+ * action `ai_gateway.invoke`) and gateway protocol handling
+ * (Api\AiGateway controllers).
  */
 class AuthenticateAiGateway
 {
@@ -55,6 +57,13 @@ class AuthenticateAiGateway
 
         if (! $key) {
             return $this->failed($failureKey, 'Invalid API key.');
+        }
+
+        // Revoked and expired keys (including legacy keys without an expiry)
+        // never authenticate. Scope checks (operation, model) happen per
+        // call in GatewayKeyAuthorizer through the central decision service.
+        if ($key->isRevoked()) {
+            return $this->failed($failureKey, 'API key has been revoked.');
         }
 
         if ($key->isExpired()) {

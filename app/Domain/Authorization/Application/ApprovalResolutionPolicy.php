@@ -2,8 +2,11 @@
 
 namespace App\Domain\Authorization\Application;
 
+use App\Domain\Authorization\Engine\Decision;
+use App\Domain\Authorization\Engine\PolicyEngine;
 use App\Models\ApprovalRequest;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 
 /**
@@ -19,6 +22,12 @@ use App\Models\WorkspaceMember;
  * Does not own: which approvals a user may *see* (workspace scoping via
  * ApprovalRequest::forWorkspace()), or whether an approved action may still
  * execute (ApprovalExecutionService re-checks tool permissions and workspace).
+ *
+ * Since GIN-1197 the rules are evaluated by the central PolicyEngine
+ * (`approval.resolve`, see tests/conformance/authorization/approvals.json);
+ * this class only builds the facts, memoizes roles for list endpoints and
+ * records resolution attempts in the authorization ledger (authorize()).
+ * decide()/canResolve() never record, so rendering `can_resolve` stays quiet.
  *
  * Rules, evaluated in this order (first denial wins; do not reorder without a
  * security review, the order also determines the user-facing reason):
@@ -59,28 +68,47 @@ class ApprovalResolutionPolicy
      */
     public function decide(ApprovalRequest $approval, ?User $responder): array
     {
+        $decision = $this->engineDecision($approval, $responder);
+
+        return $decision->allowed()
+            ? ['allowed' => true, 'code' => null, 'message' => null]
+            : $this->deny($decision->reasonCode, $decision->reason);
+    }
+
+    /**
+     * The engine decision. Unattributed responders are refused before the
+     * engine (there is no actor to decide for).
+     */
+    private function engineDecision(ApprovalRequest $approval, ?User $responder): Decision
+    {
         if ($responder === null) {
-            return $this->deny(self::DENY_UNATTRIBUTED, 'Approvals must be resolved by an identified workspace user.');
+            return new Decision(Decision::DENY, self::DENY_UNATTRIBUTED, 'Approvals must be resolved by an identified workspace user.', [], PolicyEngine::VERSION);
         }
 
-        if ($responder->type === 'agent') {
-            return $this->deny(self::DENY_AGENT, 'Agents cannot approve or reject approval requests.');
-        }
+        $facts = app(AuthorizationFacts::class);
+        $resource = $facts->approval($approval);
+        // A legacy approval with no workspace still needs a request workspace;
+        // the engine then answers approval_workspace_unknown from the facts.
+        // Never query with the placeholder: workspace ids are uuid columns on
+        // PostgreSQL, and a failed cast would abort the caller's transaction.
+        $knownWorkspaceId = $resource['workspace_id'] ?? null;
+        $workspaceId = $knownWorkspaceId ?? 'approval-without-workspace';
+        $workspace = $knownWorkspaceId !== null ? Workspace::query()->find($knownWorkspaceId) : null;
+        $responderId = (string) $responder->id;
+        $role = $responder->type === 'agent' || $knownWorkspaceId === null ? null : $this->roleFor($knownWorkspaceId, $responderId);
 
-        $workspaceId = $this->workspaceIdFor($approval);
-        if ($workspaceId === null) {
-            return $this->deny(self::DENY_NO_WORKSPACE, 'This approval is not linked to a workspace and cannot be resolved.');
-        }
-
-        if ($approval->requester_id !== null && (string) $approval->requester_id === (string) $responder->id) {
-            return $this->deny(self::DENY_SELF, 'You cannot resolve an approval you requested yourself.');
-        }
-
-        if (! WorkspaceMember::roleCanResolveApprovals($this->roleFor($workspaceId, (string) $responder->id))) {
-            return $this->deny(self::DENY_ROLE, 'Only workspace admins and approvers can resolve approval requests.');
-        }
-
-        return ['allowed' => true, 'code' => null, 'message' => null];
+        return app(PolicyEngine::class)->decide(
+            ['workspace' => $workspaceId, 'actor' => $responderId, 'on_behalf_of' => null, 'action' => 'approval.resolve'],
+            [
+                'now' => now()->utc()->toIso8601String(),
+                'workspace' => ['id' => $workspaceId, 'owner_id' => $workspace?->owner_id, 'preset' => 'team'],
+                'actors' => [$responderId => $responder->type === 'agent'
+                    ? ['kind' => 'agent', 'workspace_id' => $responder->workspace_id]
+                    : ['kind' => 'human', 'workspace_role' => $role, 'platform_operator' => false]],
+                'resource' => $resource,
+                'context' => [],
+            ],
+        );
     }
 
     public function canResolve(ApprovalRequest $approval, ?User $responder): bool
@@ -96,31 +124,24 @@ class ApprovalResolutionPolicy
      */
     public function authorize(ApprovalRequest $approval, ?User $responder): void
     {
-        $decision = $this->decide($approval, $responder);
+        $decision = $this->engineDecision($approval, $responder);
 
-        if (! $decision['allowed']) {
-            throw new ApprovalResolutionDenied((string) $decision['message'], (string) $decision['code']);
-        }
-    }
-
-    /**
-     * The approval's tenant. Falls back to the channel/agent relation only for
-     * rows created before the workspace_id column existed and not backfilled.
-     */
-    private function workspaceIdFor(ApprovalRequest $approval): ?string
-    {
-        if ($approval->workspace_id) {
-            return (string) $approval->workspace_id;
+        // Ledger: every attributable resolution attempt in a known workspace.
+        $workspaceId = app(AuthorizationFacts::class)->approval($approval)['workspace_id'] ?? null;
+        if ($responder !== null && $workspaceId !== null && Workspace::query()->whereKey($workspaceId)->exists()) {
+            app(AuthorizationLedger::class)->recordDecision(
+                (string) $workspaceId,
+                'approval.resolve',
+                $decision,
+                ['type' => $responder->type === 'agent' ? 'agent' : 'human', 'id' => (string) $responder->id],
+                null,
+                ['type' => 'approval', 'id' => (string) $approval->id],
+            );
         }
 
-        $fromChannel = $approval->channel?->workspace_id;
-        if ($fromChannel) {
-            return (string) $fromChannel;
+        if (! $decision->allowed()) {
+            throw new ApprovalResolutionDenied($decision->reason, $decision->reasonCode);
         }
-
-        $requester = $approval->requester;
-
-        return $requester?->type === 'agent' && $requester->workspace_id ? (string) $requester->workspace_id : null;
     }
 
     private function roleFor(string $workspaceId, string $userId): ?string

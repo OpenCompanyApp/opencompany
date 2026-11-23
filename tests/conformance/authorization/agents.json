@@ -1,0 +1,666 @@
+{
+  "format": "opencompany.authz.vectors/v1",
+  "description": "Agent management and delegation (GIN-1201): admins manage every agent, a member manages the agents they manage, grants and manager changes need admin capabilities, agents never change their own grants, delegation follows the manager chain and admin contact rules.",
+  "facts": {
+    "now": "2026-11-23T00:00:00Z",
+    "workspace": {
+      "id": "ws1",
+      "owner_id": "u-owner",
+      "preset": "team"
+    },
+    "actors": {
+      "u-owner": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Olive"
+      },
+      "u-admin": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Ada Admin"
+      },
+      "u-approver": {
+        "kind": "human",
+        "workspace_role": "approver",
+        "platform_operator": false,
+        "name": "Abe"
+      },
+      "u-member": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Mia"
+      },
+      "u-member2": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Max"
+      },
+      "u-viewer": {
+        "kind": "human",
+        "workspace_role": "viewer",
+        "platform_operator": false,
+        "name": "Vic"
+      },
+      "u-outsider": {
+        "kind": "human",
+        "workspace_role": null,
+        "platform_operator": false,
+        "name": "Otto"
+      },
+      "a-ada": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-member",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Ada"
+      },
+      "a-bob": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-admin",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Bob"
+      },
+      "a-carl": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "a-ada",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Carl"
+      },
+      "a-foreign": {
+        "kind": "agent",
+        "workspace_id": "ws2",
+        "manager_id": null,
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Foreign"
+      }
+    },
+    "resource": {
+      "type": "agent",
+      "id": "a-ada",
+      "workspace_id": "ws1",
+      "manager_id": "u-member"
+    },
+    "context": {}
+  },
+  "cases": [
+    {
+      "name": "anyone in the workspace reads an agent",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "agent.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "manager updates their agent",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "agent.update"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "agent_manager"
+      }
+    },
+    {
+      "name": "other member cannot update the agent",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "agent.update"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "agent_manager_required"
+      }
+    },
+    {
+      "name": "admin updates any agent",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "agent.update"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "agent_manage_capability"
+      }
+    },
+    {
+      "name": "viewer cannot update",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "agent.update"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "role_read_only"
+      }
+    },
+    {
+      "name": "manager edits identity",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "agent.update_identity"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "agent_manager"
+      }
+    },
+    {
+      "name": "other member cannot edit identity",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "agent.update_identity"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "agent_manager_required"
+      }
+    },
+    {
+      "name": "manager deletes their agent",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "agent.delete"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "agent_manager"
+      }
+    },
+    {
+      "name": "other member cannot delete",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member2",
+        "on_behalf_of": null,
+        "action": "agent.delete"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "agent_manager_required"
+      }
+    },
+    {
+      "name": "manager cannot widen grants",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "agent.update_grants"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "capability_required"
+      }
+    },
+    {
+      "name": "admin changes grants",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "agent.update_grants"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "manager cannot reassign the manager",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "agent.reassign_manager"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "capability_required"
+      }
+    },
+    {
+      "name": "admin reassigns the manager",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "agent.reassign_manager"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "agent cannot change its own grants",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "agent.update_grants"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "floor_self_governance"
+      }
+    },
+    {
+      "name": "agent cannot change its own manager",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "agent.reassign_manager"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "floor_self_governance"
+      }
+    },
+    {
+      "name": "agent cannot change another agent's grants directly",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-bob",
+        "on_behalf_of": null,
+        "action": "agent.update_grants"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "human_only_action"
+      }
+    },
+    {
+      "name": "cross-workspace agent id",
+      "facts": {
+        "resource": {
+          "type": "agent",
+          "id": "a-foreign",
+          "workspace_id": "ws2",
+          "manager_id": null
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "agent.update"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "workspace_boundary"
+      }
+    },
+    {
+      "name": "member creates an agent they manage",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        },
+        "context": {
+          "manager_id": "u-member"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "agent.create"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "agent_create"
+      }
+    },
+    {
+      "name": "member creates an agent with no explicit manager",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        },
+        "context": {
+          "manager_id": null
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "agent.create"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "agent_create"
+      }
+    },
+    {
+      "name": "member cannot create an agent managed by someone else",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        },
+        "context": {
+          "manager_id": "u-member2"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "agent.create"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "agent_manager_assignment_requires_admin"
+      }
+    },
+    {
+      "name": "admin creates an agent for someone else",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        },
+        "context": {
+          "manager_id": "u-member2"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "agent.create"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "agent_create"
+      }
+    },
+    {
+      "name": "viewer cannot create agents",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws1",
+          "workspace_id": "ws1"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "agent.create"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "role_read_only"
+      }
+    },
+    {
+      "name": "agent cannot delegate to itself",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "agent.delegate"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "agent_delegate_self"
+      }
+    },
+    {
+      "name": "agent reaches its direct report",
+      "facts": {
+        "resource": {
+          "type": "agent",
+          "id": "a-carl",
+          "workspace_id": "ws1",
+          "manager_id": "a-ada"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "agent.delegate"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "agent_manager_chain"
+      }
+    },
+    {
+      "name": "agent reaches its agent manager",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-carl",
+        "on_behalf_of": null,
+        "action": "agent.delegate"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "agent_manager_chain"
+      }
+    },
+    {
+      "name": "peer outside the chain needs approval",
+      "facts": {
+        "resource": {
+          "type": "agent",
+          "id": "a-bob",
+          "workspace_id": "ws1",
+          "manager_id": "u-admin"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "agent.delegate"
+      },
+      "expect": {
+        "effect": "approval_required",
+        "reason": "agent_contact_peer_requires_approval"
+      }
+    },
+    {
+      "name": "explicit deny rule",
+      "facts": {
+        "resource": {
+          "type": "agent",
+          "id": "a-bob",
+          "workspace_id": "ws1",
+          "manager_id": "u-admin"
+        },
+        "actors": {
+          "a-ada": {
+            "contact_rules": {
+              "a-bob": {
+                "permission": "deny",
+                "requires_approval": false
+              }
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "agent.delegate"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "agent_contact_denied"
+      }
+    },
+    {
+      "name": "wildcard allow rule",
+      "facts": {
+        "resource": {
+          "type": "agent",
+          "id": "a-bob",
+          "workspace_id": "ws1",
+          "manager_id": "u-admin"
+        },
+        "actors": {
+          "a-ada": {
+            "contact_rules": {
+              "*": {
+                "permission": "allow",
+                "requires_approval": false
+              }
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "agent.delegate"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "agent_contact_rule"
+      }
+    },
+    {
+      "name": "specific rule wins over wildcard",
+      "facts": {
+        "resource": {
+          "type": "agent",
+          "id": "a-bob",
+          "workspace_id": "ws1",
+          "manager_id": "u-admin"
+        },
+        "actors": {
+          "a-ada": {
+            "contact_rules": {
+              "a-bob": {
+                "permission": "allow",
+                "requires_approval": true
+              },
+              "*": {
+                "permission": "deny",
+                "requires_approval": false
+              }
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "agent.delegate"
+      },
+      "expect": {
+        "effect": "approval_required",
+        "reason": "agent_contact_rule_requires_approval"
+      }
+    },
+    {
+      "name": "delegation target in another workspace",
+      "facts": {
+        "resource": {
+          "type": "agent",
+          "id": "a-foreign",
+          "workspace_id": "ws2",
+          "manager_id": null
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "agent.delegate"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "workspace_boundary"
+      }
+    },
+    {
+      "name": "delegation on behalf of a former member",
+      "facts": {
+        "resource": {
+          "type": "agent",
+          "id": "a-carl",
+          "workspace_id": "ws1",
+          "manager_id": "a-ada"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": "u-outsider",
+        "action": "agent.delegate"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "on_behalf_of_not_member"
+      }
+    },
+    {
+      "name": "humans do not delegate as agents",
+      "facts": {
+        "resource": {
+          "type": "agent",
+          "id": "a-bob",
+          "workspace_id": "ws1",
+          "manager_id": "u-admin"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "agent.delegate"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "actor_kind_not_permitted"
+      }
+    }
+  ]
+}

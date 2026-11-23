@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Domain\Work\Application\ManageTasks;
+use App\Domain\Authorization\Application\AuthorizationService;
+use App\Domain\Settings\Application\SettingsCommands;
 use App\Http\Controllers\Controller;
-use App\Jobs\IndexDocumentJob;
-use App\Jobs\RunRoutineJob;
 use App\Models\AgentRunRecord;
 use App\Models\AppSetting;
 use App\Models\ConversationSummary;
@@ -16,22 +15,37 @@ use App\Models\McpServer;
 use App\Models\Routine;
 use App\Models\Task;
 use App\Models\User;
-use App\Services\Mcp\McpClient;
 use App\Services\Memory\DocumentIndexingService;
-use App\Services\TelegramService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
+/**
+ * Workspace settings, diagnostics and settings commands.
+ *
+ * Authorization (ROADMAP P0 item 8; GIN-1149): every endpoint asks
+ * AuthorizationService (`settings.read`, `settings.update`,
+ * `settings.command.<name>`); the `workspace.admin` route middleware stays
+ * as defense in depth. Commands are separate, separately authorized and
+ * audited (SettingsCommands). Diagnostics are workspace-scoped; the shared
+ * application log tail is platform data and is returned only to a platform
+ * operator (`settings.diagnostics.platform`, config/authorization.php), never
+ * to a workspace admin as such.
+ */
 class SettingController extends Controller
 {
+    public function __construct(private readonly AuthorizationService $authorization) {}
+
     /**
      * Get all settings grouped by category, merged with defaults.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $this->authorization->authorize($request->user(), 'settings.read', workspace());
+
         return response()->json(AppSetting::allWithDefaults());
     }
 
@@ -40,6 +54,11 @@ class SettingController extends Controller
      */
     public function update(Request $request): JsonResponse
     {
+        $this->authorization->authorize($request->user(), 'settings.update', workspace(), [
+            'category' => (string) $request->input('category'),
+            'keys' => array_keys((array) $request->input('settings', [])),
+        ]);
+
         $request->validate([
             'category' => 'required|string|in:organization,agents,notifications,policies,memory,web',
             'settings' => 'required|array',
@@ -82,292 +101,43 @@ class SettingController extends Controller
     }
 
     /**
-     * Handle danger zone actions.
+     * Legacy single endpoint for the settings UI: dispatches to the same
+     * separately authorized command as POST /settings/commands/{command}.
      */
-    public function dangerAction(Request $request): JsonResponse
+    public function dangerAction(Request $request, SettingsCommands $commands): JsonResponse
     {
         $request->validate([
-            'action' => 'required|string|in:pause_agents,reset_memory,resume_agents,reset_agents,retry_failed_jobs,refresh_mcp_tools,test_telegram,reindex_documents,reindex_documents_fresh,flush_failed_jobs,reset_embeddings,clear_embedding_cache,clear_conversation_summaries',
+            'action' => ['required', 'string', Rule::in(SettingsCommands::names())],
         ]);
 
-        $action = $request->input('action');
-
-        return match ($action) {
-            'pause_agents' => $this->actionPauseAgents(),
-            'resume_agents' => $this->actionResumeAgents(),
-            'reset_agents' => $this->actionResetAgents(),
-            'reset_memory' => $this->actionResetMemory(),
-            'retry_failed_jobs' => $this->actionRetryFailedJobs(),
-            'flush_failed_jobs' => $this->actionFlushFailedJobs(),
-            'refresh_mcp_tools' => $this->actionRefreshMcpTools(),
-            'test_telegram' => $this->actionTestTelegram(),
-            'reindex_documents' => $this->actionReindexDocuments(fresh: false),
-            'reindex_documents_fresh' => $this->actionReindexDocuments(fresh: true),
-            'reset_embeddings' => $this->actionResetEmbeddings(),
-            'clear_embedding_cache' => $this->actionClearEmbeddingCache(),
-            'clear_conversation_summaries' => $this->actionClearConversationSummaries(),
-            default => response()->json(['message' => 'Unknown action.'], 400),
-        };
+        return $this->runCommand($request, $commands, (string) $request->input('action'));
     }
 
-    private function actionPauseAgents(): JsonResponse
+    /** Run one settings command (authorized and audited per command). */
+    public function command(Request $request, SettingsCommands $commands, string $command): JsonResponse
     {
-        $count = User::where('type', 'agent')
-            ->where('workspace_id', workspace()->id)
-            ->whereNotIn('status', ['offline', 'paused'])
-            ->update(['status' => 'paused']);
-
-        $tasks = Task::forWorkspace()
-            ->whereIn('status', [Task::STATUS_PENDING, Task::STATUS_ACTIVE])
-            ->whereNotNull('agent_id')
-            ->get();
-        foreach ($tasks as $task) {
-            app(ManageTasks::class)->transition($task->id, 'pause');
+        if (! in_array($command, SettingsCommands::names(), true)) {
+            return response()->json(['message' => 'Unknown command.'], 404);
         }
 
-        return response()->json(['message' => "{$count} agent(s) and {$tasks->count()} task(s) paused."]);
+        return $this->runCommand($request, $commands, $command);
     }
 
-    private function actionResumeAgents(): JsonResponse
+    private function runCommand(Request $request, SettingsCommands $commands, string $command): JsonResponse
     {
-        $count = User::where('type', 'agent')
-            ->where('workspace_id', workspace()->id)
-            ->whereIn('status', ['paused', 'sleeping'])
-            ->update(['status' => 'idle']);
+        $result = $commands->run($request->user(), workspace(), $command);
 
-        $tasks = Task::forWorkspace()
-            ->where('status', Task::STATUS_PAUSED)
-            ->whereNotNull('agent_id')
-            ->get();
-        foreach ($tasks as $task) {
-            app(ManageTasks::class)->transition($task->id, 'resume');
-        }
-
-        return response()->json(['message' => "{$count} agent(s) and {$tasks->count()} task(s) resumed."]);
+        return response()->json(['message' => $result['message']], $result['status']);
     }
 
-    private function actionResetAgents(): JsonResponse
+    public function debug(Request $request): JsonResponse
     {
-        $agents = User::where('type', 'agent')
-            ->where('workspace_id', workspace()->id)
-            ->where('status', '!=', 'offline')
-            ->get();
+        $this->authorization->authorize($request->user(), 'settings.read', workspace());
 
-        foreach ($agents as $agent) {
-            $agent->update([
-                'status' => 'idle',
-                'sleeping_until' => null,
-                'sleeping_reason' => null,
-                'awaiting_approval_id' => null,
-                'awaiting_delegation_ids' => null,
-            ]);
-        }
+        // Invariant: the shared log file spans every workspace; only a
+        // platform operator sees it (decision recorded when denied).
+        $platform = $this->authorization->decide($request->user(), 'settings.diagnostics.platform', workspace())->allowed();
 
-        $tasks = Task::forWorkspace()
-            ->whereIn('agent_id', $agents->pluck('id'))
-            ->whereIn('status', [Task::STATUS_ACTIVE, Task::STATUS_PENDING, Task::STATUS_PAUSED])
-            ->get();
-        foreach ($tasks as $task) {
-            app(ManageTasks::class)->transition($task->id, 'cancel');
-        }
-
-        return response()->json([
-            'message' => "{$agents->count()} agent(s) reset to idle, {$tasks->count()} task(s) cancelled.",
-        ]);
-    }
-
-    private function actionResetMemory(): JsonResponse
-    {
-        User::where('type', 'agent')->where('workspace_id', workspace()->id)->each(function (User $agent) {
-            $memoryFile = storage_path("app/agents/{$agent->id}/memory.md");
-            if (file_exists($memoryFile)) {
-                file_put_contents($memoryFile, '');
-            }
-        });
-
-        return response()->json(['message' => 'Agent memory has been reset.']);
-    }
-
-    private function actionRetryFailedJobs(): JsonResponse
-    {
-        $runs = AgentRunRecord::forWorkspace()
-            ->where('status', AgentRunRecord::STATUS_FAILED)
-            ->with('task')
-            ->oldest()
-            ->get()
-            ->filter(fn (AgentRunRecord $run) => empty($run->metadata['operator_dismissed_at']) && empty($run->metadata['retried_at']));
-
-        $retried = 0;
-        foreach ($runs as $run) {
-            $task = $run->task;
-            if (! $task) {
-                continue;
-            }
-
-            try {
-                if (in_array($run->kind, [AgentRunRecord::KIND_ROUTINE_AGENT, AgentRunRecord::KIND_ROUTINE_SCRIPT], true)) {
-                    $routine = Routine::forWorkspace()->find($run->metadata['routine_id'] ?? $task->context['routine_id'] ?? null);
-                    if (! $routine) {
-                        continue;
-                    }
-                    RunRoutineJob::dispatch($routine);
-                    $newTaskId = null;
-                } else {
-                    $retryTask = $task->replicate();
-                    $retryTask->forceFill([
-                        'id' => (string) Str::uuid(),
-                        'status' => Task::STATUS_PENDING,
-                        'started_at' => null,
-                        'completed_at' => null,
-                        'result' => null,
-                        'context' => array_merge($task->context ?? [], [
-                            'retry_of_task_id' => $task->id,
-                            'retry_of_agent_run_id' => $run->id,
-                        ]),
-                    ])->save();
-                    app(ManageTasks::class)->start($retryTask->id);
-                    $newTaskId = $retryTask->id;
-                }
-
-                $run->update(['metadata' => array_merge($run->metadata ?? [], [
-                    'retried_at' => now()->toIso8601String(),
-                    'retry_task_id' => $newTaskId,
-                ])]);
-                $retried++;
-            } catch (\Throwable $exception) {
-                Log::warning('Failed to retry workspace agent run', [
-                    'agent_run_id' => $run->id,
-                    'workspace_id' => $run->workspace_id,
-                    'error' => $exception->getMessage(),
-                ]);
-            }
-        }
-
-        return response()->json(['message' => "{$retried} failed workspace run(s) queued as new logical runs."]);
-    }
-
-    private function actionFlushFailedJobs(): JsonResponse
-    {
-        $runs = AgentRunRecord::forWorkspace()
-            ->where('status', AgentRunRecord::STATUS_FAILED)
-            ->get();
-        foreach ($runs as $run) {
-            $run->update(['metadata' => array_merge($run->metadata ?? [], [
-                'operator_dismissed_at' => now()->toIso8601String(),
-            ])]);
-        }
-
-        return response()->json([
-            'message' => "{$runs->count()} failed workspace run alert(s) dismissed; audit history was retained.",
-        ]);
-    }
-
-    private function actionRefreshMcpTools(): JsonResponse
-    {
-        $servers = McpServer::forWorkspace()->where('enabled', true)->get();
-
-        if ($servers->isEmpty()) {
-            return response()->json(['message' => 'No enabled MCP servers found.']);
-        }
-
-        $refreshed = 0;
-        $errors = [];
-
-        foreach ($servers as $server) {
-            try {
-                $client = McpClient::fromServer($server);
-                $tools = $client->listTools();
-                $server->update([
-                    'discovered_tools' => $tools,
-                    'tools_discovered_at' => now(),
-                ]);
-                $refreshed++;
-            } catch (\Throwable $e) {
-                $errors[] = "{$server->name}: {$e->getMessage()}";
-            }
-        }
-
-        $message = "{$refreshed}/{$servers->count()} server(s) refreshed.";
-        if (! empty($errors)) {
-            $message .= ' Errors: '.implode('; ', array_map(fn ($e) => Str::limit($e, 80), $errors));
-        }
-
-        return response()->json(['message' => $message]);
-    }
-
-    private function actionTestTelegram(): JsonResponse
-    {
-        try {
-            $telegram = app(TelegramService::class);
-
-            if (! $telegram->isConfigured()) {
-                return response()->json(['message' => 'Telegram is not configured. Add a bot token in integration settings.']);
-            }
-
-            $result = $telegram->getMe();
-            $botName = $result['result']['username'] ?? 'unknown';
-
-            return response()->json(['message' => "Connected to @{$botName}."]);
-        } catch (\Throwable $e) {
-            return response()->json(['message' => 'Telegram test failed: '.Str::limit($e->getMessage(), 150)], 422);
-        }
-    }
-
-    private function actionReindexDocuments(bool $fresh): JsonResponse
-    {
-        $workspaceId = workspace()->id;
-
-        if ($fresh) {
-            DocumentIndexingService::resetEmbeddings($workspaceId);
-        }
-
-        $documents = Document::forWorkspace()
-            ->where('is_folder', false)
-            ->whereNotNull('content')
-            ->where('content', '!=', '')
-            ->get();
-
-        if ($documents->isEmpty()) {
-            return response()->json(['message' => 'No documents to index.']);
-        }
-
-        foreach ($documents as $document) {
-            IndexDocumentJob::dispatch($document);
-        }
-
-        $prefix = $fresh ? 'Fresh reindex' : 'Reindex';
-
-        return response()->json(['message' => "{$prefix}: {$documents->count()} document(s) queued for indexing."]);
-    }
-
-    private function actionResetEmbeddings(): JsonResponse
-    {
-        $workspaceId = workspace()->id;
-        $chunkCount = DocumentChunk::forWorkspace()->count();
-
-        DocumentIndexingService::resetEmbeddings($workspaceId);
-
-        return response()->json(['message' => "{$chunkCount} chunk(s) and embedding cache cleared."]);
-    }
-
-    private function actionClearEmbeddingCache(): JsonResponse
-    {
-        $count = EmbeddingCache::forWorkspace()->count();
-        EmbeddingCache::forWorkspace()->delete();
-
-        return response()->json(['message' => "{$count} cache entries cleared."]);
-    }
-
-    private function actionClearConversationSummaries(): JsonResponse
-    {
-        $count = ConversationSummary::forWorkspace()->count();
-        ConversationSummary::forWorkspace()->delete();
-
-        return response()->json(['message' => "{$count} conversation summary(ies) cleared."]);
-    }
-
-    public function debug(): JsonResponse
-    {
         return response()->json([
             'compaction' => $this->getCompactionHealth(),
             'embedding' => $this->getEmbeddingHealth(),
@@ -375,7 +145,8 @@ class SettingController extends Controller
             'routines' => $this->getRoutineHealth(),
             'mcp_servers' => $this->getMcpHealth(),
             'agents' => $this->getAgentHealth(),
-            'logs' => $this->getRecentLogs(),
+            'logs' => $platform ? $this->getRecentLogs() : [],
+            'logs_scope' => $platform ? 'platform' : 'hidden',
         ]);
     }
 

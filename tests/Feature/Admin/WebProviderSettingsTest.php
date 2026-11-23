@@ -2,11 +2,10 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Http\Controllers\Api\SettingController;
 use App\Models\AppSetting;
 use App\Models\IntegrationSetting;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class WebProviderSettingsTest extends TestCase
@@ -25,16 +24,15 @@ class WebProviderSettingsTest extends TestCase
 
     public function test_web_settings_category_can_be_updated_with_known_keys_only(): void
     {
-        $request = Request::create('/api/settings', 'PATCH', [
+        // Through HTTP as a workspace admin: settings.update is authorized.
+        $this->actingAs(User::factory()->create(['type' => 'human']))->patchJson('/api/settings', [
             'category' => 'web',
             'settings' => [
                 'web_search_default_provider' => 'zai',
                 'web_fetch_allow_external' => true,
                 'unknown_key' => 'ignored',
             ],
-        ]);
-
-        app(SettingController::class)->update($request);
+        ])->assertOk();
 
         $this->assertSame('zai', AppSetting::getValue('web_search_default_provider'));
         $this->assertTrue(AppSetting::getValue('web_fetch_allow_external'));

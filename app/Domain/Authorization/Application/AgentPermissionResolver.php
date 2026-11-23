@@ -6,11 +6,13 @@ use App\Agents\Runtime\ActiveAgentRun;
 use App\Agents\Tools\External\ToolProviderRegistry;
 use App\Agents\Tools\ToolRegistry;
 use App\Domain\Authorization\Domain\PermissionDecision;
+use App\Domain\Authorization\Engine\Decision;
+use App\Domain\Authorization\Engine\PolicyEngine;
 use App\Domain\Authorization\Policy\ActionClassifier;
-use App\Domain\Authorization\Policy\PresetGates;
 use App\Models\AgentPermission;
 use App\Models\AgentRunRecord;
 use App\Models\ApprovalRequest;
+use App\Models\Channel;
 use App\Models\IntegrationSetting;
 use App\Models\Task;
 use App\Models\User;
@@ -27,6 +29,11 @@ use Illuminate\Support\Str;
  * governance gate (action class x workspace preset), manager hierarchy,
  * file-tree grants, and access-request creation. Agent behaviour modes were
  * deleted; presets set defaults only and never relax the invariants here.
+ *
+ * Since GIN-1197 the tool gate, channel access and agent-to-agent contact
+ * are decided by the central PolicyEngine (through AuthorizationService or
+ * directly for the hot tool path); this class gathers their facts and keeps
+ * the array shapes existing callers consume. Do not re-add rule logic here.
  */
 class AgentPermissionResolver
 {
@@ -49,33 +56,22 @@ class AgentPermissionResolver
 
     public function __construct(
         private ?ActionClassifier $classifier = null,
-        private ?PresetGates $gates = null,
+        private ?PolicyEngine $engine = null,
     ) {
         $this->classifier ??= new ActionClassifier;
-        $this->gates ??= new PresetGates;
+        $this->engine ??= new PolicyEngine;
     }
 
     /**
      * Resolve the final permission for a tool.
      *
      * Reversibility, not "write", decides the gate (Product Direction pillar
-     * 5; docs/architecture/governance-model.md "Decision order"). Invariant
-     * order — do not reorder, and never let a preset or exception run before
-     * an invariant:
-     *
-     * 1. explicit per-agent deny;
-     * 2. hard-deny floor (never relaxed by anything);
-     * 3. control-flow exempt tools;
- * 3b. on-behalf-of intersection (OnBehalfOf): the run's human principal must
- *    still have access, and governance/exposure actions need an admin one;
-     * 4. trigger-started runs: external classes always ask, even with an
-     *    exception (a trigger is never consent);
-     * 5. exact-match exceptions: scoped policy grants, then the per-agent admin
-     *    rule. `always` is never honoured for purge/exposure/structural;
-     * 6. preset default gate for the action class.
-     *
-     * On-behalf-of intersection runs separately (OnBehalfOfCheck) because it
-     * needs the call's target, not just the tool.
+     * 5; docs/architecture/governance-model.md "Decision order"). The rule
+     * order now lives in PolicyEngine (`tool.invoke`): explicit per-agent
+     * deny → hard-deny floor → control-flow exempt tools → on-behalf-of
+     * intersection → trigger-started external actions always ask → scoped
+     * grants (`always` never for purge/exposure/structural) → per-agent admin
+     * rule → preset default gate. This method only gathers the facts.
      *
      * Every agent-facing path reaches this method: direct Laravel AI tools and
      * Code Mode callbacks (ToolRegistry::evaluateToolPermission ->
@@ -88,6 +84,20 @@ class AgentPermissionResolver
      */
     public function resolveToolPermission(User $agent, string $toolSlug, string $toolType): array
     {
+        $decision = $this->decideTool($agent, $toolSlug, $toolType);
+
+        return $decision->denied()
+            ? PermissionDecision::deny()->toToolArray()
+            : PermissionDecision::allow($decision->requiresApproval())->toToolArray();
+    }
+
+    /**
+     * The engine decision (with reason code and trace) for one tool call.
+     * Never records to the ledger: tools are evaluated at registration time
+     * for every tool, and executions have their own tool ledger.
+     */
+    public function decideTool(User $agent, string $toolSlug, string $toolType): Decision
+    {
         $class = $this->actionClass($toolSlug, $toolType);
 
         $permission = AgentPermission::forAgent($agent->id)
@@ -95,56 +105,60 @@ class AgentPermissionResolver
             ->where('scope_key', $toolSlug)
             ->first();
 
-        if ($permission && $permission->permission === 'deny') {
-            return PermissionDecision::deny()->toToolArray();
-        }
+        $explicit = $permission !== null
+            ? ['permission' => (string) $permission->permission, 'requires_approval' => (bool) $permission->requires_approval]
+            : null;
+        $exempt = in_array($toolSlug, self::APPROVAL_EXEMPT_TOOLS, true);
 
-        // Invariant: the floor is denied before any exemption, exception,
-        // admin rule or preset is consulted.
-        if ($class === ActionClassifier::FLOOR) {
-            return PermissionDecision::deny()->toToolArray();
-        }
-
-        if (in_array($toolSlug, self::APPROVAL_EXEMPT_TOOLS, true)) {
-            return PermissionDecision::allow()->toToolArray();
-        }
-
-        // Invariant: on-behalf-of intersection before any exception or
-        // preset can allow — an agent never exceeds the human it acts for.
-        if (app(OnBehalfOf::class)->denialFor($agent, $class) !== null) {
-            return PermissionDecision::deny()->toToolArray();
-        }
-
+        // Facts the engine never reaches (explicit deny, floor, exempt) are
+        // not loaded: grant and run lookups run once per tool per run.
+        $settled = ($explicit['permission'] ?? null) === 'deny' || $class === ActionClassifier::FLOOR || $exempt;
+        $grants = app(PolicyGrantService::class);
+        $grant = $settled ? ['scoped' => false, 'always' => false] : [
+            'scoped' => $grants->covers($agent, $toolSlug, includeAlways: false),
+            'always' => $grants->covers($agent, $toolSlug, includeAlways: true),
+        ];
         $external = in_array($class, ActionClassifier::EXTERNAL_CLASSES, true);
-        if ($external && $this->currentRunIsTriggerStarted()) {
-            return PermissionDecision::allow(true)->toToolArray();
-        }
 
-        $alwaysAllowed = ! in_array($class, PresetGates::NO_ALWAYS_EXCEPTION, true);
-        if (app(PolicyGrantService::class)->covers($agent, $toolSlug, includeAlways: $alwaysAllowed)) {
-            return PermissionDecision::allow()->toToolArray();
-        }
+        $workspace = $agent->workspace_id !== null ? Workspace::query()->find($agent->workspace_id) : null;
+        // Legacy agents without a workspace keep the previous behaviour (the
+        // `team` preset, no boundary to cross); every real agent has one.
+        $workspaceId = $workspace !== null ? (string) $workspace->id : 'agent-without-workspace:'.$agent->id;
 
-        $gate = $this->gates->gate($class, $this->presetFor($agent));
-
-        // Per-agent admin rule from the capabilities UI (scope tool, allow).
-        // requires_approval=true makes a tool stricter than the preset;
-        // requires_approval=false is a standing ("always") exception, which
-        // the classes in NO_ALWAYS_EXCEPTION never accept.
-        if ($permission) {
-            if ($permission->requires_approval) {
-                return PermissionDecision::allow(true)->toToolArray();
-            }
-            if ($alwaysAllowed) {
-                return PermissionDecision::allow()->toToolArray();
+        $actors = [(string) $agent->id => [
+            'kind' => 'agent',
+            'workspace_id' => $workspaceId,
+            'manager_id' => $agent->manager_id,
+        ]];
+        $principalId = $settled ? null : app(OnBehalfOf::class)->currentPrincipalId();
+        if ($principalId !== null) {
+            $principal = User::query()->find($principalId);
+            if ($principal !== null && $principal->type !== 'agent' && $workspace !== null) {
+                $actors[$principalId] = app(AuthorizationFacts::class)->actor($principal, $workspace);
             }
         }
 
-        if ($gate === PresetGates::DENY) {
-            return PermissionDecision::deny()->toToolArray();
-        }
-
-        return PermissionDecision::allow($gate === PresetGates::APPROVAL)->toToolArray();
+        return $this->engine->decide(
+            ['workspace' => $workspaceId, 'actor' => (string) $agent->id, 'on_behalf_of' => $principalId, 'action' => 'tool.invoke'],
+            [
+                'now' => now()->utc()->toIso8601String(),
+                'workspace' => [
+                    'id' => $workspaceId,
+                    'owner_id' => $workspace?->owner_id,
+                    'preset' => $workspace?->effectiveGovernancePreset() ?? 'team',
+                ],
+                'actors' => $actors,
+                'resource' => null,
+                'context' => [
+                    'tool' => $toolSlug,
+                    'action_class' => $class,
+                    'explicit_permission' => $explicit,
+                    'approval_exempt' => $exempt,
+                    'trigger_started' => ! $settled && $external && $this->currentRunIsTriggerStarted(),
+                    'grant' => $grant,
+                ],
+            ],
+        );
     }
 
     /**
@@ -167,17 +181,6 @@ class AgentPermissionResolver
     public function isExternalMutation(string $toolSlug): bool
     {
         return in_array($this->actionClass($toolSlug), ActionClassifier::EXTERNAL_CLASSES, true);
-    }
-
-    /**
-     * Effective preset for the agent's workspace; `team` when the workspace
-     * cannot be loaded (the stricter multi-member default).
-     */
-    private function presetFor(User $agent): string
-    {
-        $workspace = $agent->workspace_id !== null ? Workspace::query()->find($agent->workspace_id) : null;
-
-        return $workspace?->effectiveGovernancePreset() ?? 'team';
     }
 
     /**
@@ -224,27 +227,56 @@ class AgentPermissionResolver
     }
 
     /**
+     * Whether the agent may read a channel, decided by PolicyEngine
+     * (`channel.read`) with the run's on-behalf-of human: the agent's channel
+     * grants, membership for DMs and private channels, intersected with what
+     * the human may read. A channel id that does not exist in the agent's
+     * workspace falls back to the grant list only (callers report "not
+     * found" themselves).
+     *
      * @return array{allowed: bool, can_request: bool}
      */
     public function canAccessChannel(User $agent, string $channelId): array
     {
-        $channelPerms = AgentPermission::forAgent($agent->id)
-            ->channels()
-            ->allowed()
-            ->pluck('scope_key');
+        $channel = $agent->workspace_id !== null
+            ? Channel::query()->where('workspace_id', $agent->workspace_id)->find($channelId)
+            : null;
 
-        if ($channelPerms->isEmpty()) {
+        if ($channel === null) {
+            $grants = $this->getAllowedChannelIds($agent);
+
+            return $grants === null || in_array($channelId, $grants, true)
+                ? PermissionDecision::allow()->toAccessArray()
+                : PermissionDecision::deny(canRequest: true)->toAccessArray();
+        }
+
+        $workspace = Workspace::query()->find($agent->workspace_id);
+        $principalId = app(OnBehalfOf::class)->currentPrincipalId();
+        $principal = $principalId !== null ? User::query()->find($principalId) : null;
+
+        $decision = app(AuthorizationService::class)->decide(
+            $agent,
+            'channel.read',
+            $channel,
+            onBehalfOf: $principal,
+            workspace: $workspace,
+        );
+        if ($decision->allowed()) {
             return PermissionDecision::allow()->toAccessArray();
         }
 
-        if ($channelPerms->contains($channelId)) {
-            return PermissionDecision::allow()->toAccessArray();
-        }
-
-        return PermissionDecision::deny(canRequest: true)->toAccessArray();
+        // Grant and membership denials are requestable from an admin; a
+        // denial for the on-behalf-of human is not the agent's to request.
+        return PermissionDecision::deny(
+            canRequest: in_array($decision->reasonCode, ['agent_channel_not_granted', 'channel_not_member'], true),
+        )->toAccessArray();
     }
 
     /**
+     * The agent's raw channel grant list (null = unrestricted). This is the
+     * stored grant, not visibility: list channels with
+     * AuthorizationScopes::readableChannels() instead.
+     *
      * @return array<int, string>|null
      */
     public function getAllowedChannelIds(User $agent): ?array
@@ -334,44 +366,32 @@ class AgentPermissionResolver
     }
 
     /**
+     * Agent-to-agent delegation gate, decided by PolicyEngine
+     * (`agent.delegate`): the manager chain may always talk; admin contact
+     * rules (specific target, then `*`) allow, ask or deny; other peers ask.
+     * The workspace boundary and the run's on-behalf-of human apply.
+     *
      * @return array{allowed: bool, requires_approval: bool, can_request: bool}
      */
     public function canContactAgent(User $caller, User $target): array
     {
-        if ($target->id === $caller->manager_id || $caller->id === $target->manager_id) {
-            return PermissionDecision::allow()->toContactArray();
+        $workspace = $caller->workspace_id !== null ? Workspace::query()->find($caller->workspace_id) : null;
+        $principalId = app(OnBehalfOf::class)->currentPrincipalId();
+        $principal = $principalId !== null ? User::query()->find($principalId) : null;
+
+        $decision = app(AuthorizationService::class)->decide(
+            $caller,
+            'agent.delegate',
+            $target->type === 'agent' ? $target : ['type' => 'human', 'id' => (string) $target->id, 'workspace_id' => null],
+            onBehalfOf: $principal?->type === 'agent' ? null : $principal,
+            workspace: $workspace,
+        );
+
+        if ($decision->denied()) {
+            return PermissionDecision::deny(canRequest: $decision->reasonCode === 'agent_contact_denied')->toContactArray();
         }
 
-        $explicit = AgentPermission::forAgent($caller->id)
-            ->where('scope_type', 'agent')
-            ->where('scope_key', $target->id)
-            ->first();
-
-        if ($explicit) {
-            if ($explicit->permission === 'deny') {
-                return PermissionDecision::deny(canRequest: true)->toContactArray();
-            }
-
-            return PermissionDecision::allow($explicit->requires_approval)->toContactArray();
-        }
-
-        $wildcard = AgentPermission::forAgent($caller->id)
-            ->where('scope_type', 'agent')
-            ->where('scope_key', '*')
-            ->first();
-
-        if ($wildcard) {
-            if ($wildcard->permission === 'deny') {
-                return PermissionDecision::deny(canRequest: true)->toContactArray();
-            }
-
-            return PermissionDecision::allow($wildcard->requires_approval)->toContactArray();
-        }
-
-        // Default for peers outside the manager chain: contacting creates work
-        // for another agent (a write), so it needs approval unless an admin
-        // rule above says otherwise.
-        return PermissionDecision::allow(true)->toContactArray();
+        return PermissionDecision::allow($decision->requiresApproval())->toContactArray();
     }
 
     /**

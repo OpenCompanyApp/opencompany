@@ -13,7 +13,6 @@ use App\Agents\Tools\System\RunGuardedTool;
 use App\Domain\AgentRuntime\Application\DetectDeliveredChatResponse;
 use App\Domain\Routines\Application\ResolveRoutineRun;
 use App\Domain\Work\Application\ManageTasks;
-use App\Http\Controllers\Api\SettingController;
 use App\Jobs\AgentRespondJob;
 use App\Jobs\ExecuteAgentTaskJob;
 use App\Jobs\RunRoutineJob;
@@ -29,7 +28,6 @@ use App\Models\WorkspaceMember;
 use App\Services\Chat\DirectMessageResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
@@ -301,8 +299,11 @@ class AgentRunControlPlaneTest extends TestCase
         $other = $this->failedRunForWorkspace($otherWorkspace);
 
         app()->instance('currentWorkspace', $this->workspace);
-        $request = Request::create('/api/settings/danger-action', 'POST', ['action' => 'flush_failed_jobs']);
-        app(SettingController::class)->dangerAction($request);
+        // Through HTTP as a workspace admin: the command is authorized and
+        // audited per command (SettingsCommands).
+        $this->actingAs(User::factory()->create(['type' => 'human']))
+            ->postJson('/api/settings/danger-action', ['action' => 'flush_failed_jobs'])
+            ->assertOk();
 
         $this->assertNotNull($first->fresh()->metadata['operator_dismissed_at'] ?? null);
         $this->assertNull($other->fresh()->metadata['operator_dismissed_at'] ?? null);

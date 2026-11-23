@@ -876,11 +876,6 @@ parameters:
 			count: 1
 			path: app/Domain/Authorization/Application/AgentPermissionResolver.php
 
-		-
-			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Domain/Authorization/Application/ApprovalResolutionPolicy.php
 
 		-
 			message: '#^Method App\\Domain\\Calendar\\Application\\ManageCalendarEvents\:\:baseQuery\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'

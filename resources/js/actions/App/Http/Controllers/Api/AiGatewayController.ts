@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::config
-* @see app/Http/Controllers/Api/AiGatewayController.php:21
+* @see app/Http/Controllers/Api/AiGatewayController.php:35
 * @route '/api/ai-gateway/config'
 */
 export const config = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ config.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::config
-* @see app/Http/Controllers/Api/AiGatewayController.php:21
+* @see app/Http/Controllers/Api/AiGatewayController.php:35
 * @route '/api/ai-gateway/config'
 */
 config.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ config.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::config
-* @see app/Http/Controllers/Api/AiGatewayController.php:21
+* @see app/Http/Controllers/Api/AiGatewayController.php:35
 * @route '/api/ai-gateway/config'
 */
 config.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ config.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::config
-* @see app/Http/Controllers/Api/AiGatewayController.php:21
+* @see app/Http/Controllers/Api/AiGatewayController.php:35
 * @route '/api/ai-gateway/config'
 */
 config.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ config.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::updateConfig
-* @see app/Http/Controllers/Api/AiGatewayController.php:31
+* @see app/Http/Controllers/Api/AiGatewayController.php:46
 * @route '/api/ai-gateway/config'
 */
 export const updateConfig = (options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -60,7 +60,7 @@ updateConfig.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::updateConfig
-* @see app/Http/Controllers/Api/AiGatewayController.php:31
+* @see app/Http/Controllers/Api/AiGatewayController.php:46
 * @route '/api/ai-gateway/config'
 */
 updateConfig.url = (options?: RouteQueryOptions) => {
@@ -69,7 +69,7 @@ updateConfig.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::updateConfig
-* @see app/Http/Controllers/Api/AiGatewayController.php:31
+* @see app/Http/Controllers/Api/AiGatewayController.php:46
 * @route '/api/ai-gateway/config'
 */
 updateConfig.put = (options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -79,7 +79,7 @@ updateConfig.put = (options?: RouteQueryOptions): RouteDefinition<'put'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::apiKeys
-* @see app/Http/Controllers/Api/AiGatewayController.php:64
+* @see app/Http/Controllers/Api/AiGatewayController.php:80
 * @route '/api/ai-gateway/api-keys'
 */
 export const apiKeys = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -94,7 +94,7 @@ apiKeys.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::apiKeys
-* @see app/Http/Controllers/Api/AiGatewayController.php:64
+* @see app/Http/Controllers/Api/AiGatewayController.php:80
 * @route '/api/ai-gateway/api-keys'
 */
 apiKeys.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ apiKeys.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::apiKeys
-* @see app/Http/Controllers/Api/AiGatewayController.php:64
+* @see app/Http/Controllers/Api/AiGatewayController.php:80
 * @route '/api/ai-gateway/api-keys'
 */
 apiKeys.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -113,7 +113,7 @@ apiKeys.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::apiKeys
-* @see app/Http/Controllers/Api/AiGatewayController.php:64
+* @see app/Http/Controllers/Api/AiGatewayController.php:80
 * @route '/api/ai-gateway/api-keys'
 */
 apiKeys.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -123,7 +123,7 @@ apiKeys.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::createApiKey
-* @see app/Http/Controllers/Api/AiGatewayController.php:78
+* @see app/Http/Controllers/Api/AiGatewayController.php:98
 * @route '/api/ai-gateway/api-keys'
 */
 export const createApiKey = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -138,7 +138,7 @@ createApiKey.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::createApiKey
-* @see app/Http/Controllers/Api/AiGatewayController.php:78
+* @see app/Http/Controllers/Api/AiGatewayController.php:98
 * @route '/api/ai-gateway/api-keys'
 */
 createApiKey.url = (options?: RouteQueryOptions) => {
@@ -147,7 +147,7 @@ createApiKey.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::createApiKey
-* @see app/Http/Controllers/Api/AiGatewayController.php:78
+* @see app/Http/Controllers/Api/AiGatewayController.php:98
 * @route '/api/ai-gateway/api-keys'
 */
 createApiKey.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -157,7 +157,7 @@ createApiKey.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::deleteApiKey
-* @see app/Http/Controllers/Api/AiGatewayController.php:95
+* @see app/Http/Controllers/Api/AiGatewayController.php:152
 * @route '/api/ai-gateway/api-keys/{id}'
 */
 export const deleteApiKey = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -172,7 +172,7 @@ deleteApiKey.definition = {
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::deleteApiKey
-* @see app/Http/Controllers/Api/AiGatewayController.php:95
+* @see app/Http/Controllers/Api/AiGatewayController.php:152
 * @route '/api/ai-gateway/api-keys/{id}'
 */
 deleteApiKey.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -199,7 +199,7 @@ deleteApiKey.url = (args: { id: string | number } | [id: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Api\AiGatewayController::deleteApiKey
-* @see app/Http/Controllers/Api/AiGatewayController.php:95
+* @see app/Http/Controllers/Api/AiGatewayController.php:152
 * @route '/api/ai-gateway/api-keys/{id}'
 */
 deleteApiKey.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
