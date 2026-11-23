@@ -99,8 +99,7 @@ provider VMs. The UI labels it accordingly, and the rules are:
 
 ### Principles
 
-These follow Bowerbird's accepted agent-first CLI decisions (bwb-cloud decision 0011 and the
-openfactory `cli-and-mcp.md` design), and share the same reasoning.
+These follow the agent-first principles of Bowerbird's `bwb` CLI, and share the same reasoning.
 
 1. **Agents are the first user; humans the close second.**
    - A **self-describing command schema** (`oc schema`, `oc guide agents`).
@@ -164,7 +163,7 @@ openfactory `cli-and-mcp.md` design), and share the same reasoning.
   formatting, the schema and guide generator, and the agent-experience eval harness into shared crates
   usable by both `oc` and `bwb`. These crates live in Bowerbird's public client track under
   Apache-2.0, and `oc` consumes them as dependencies
-  ([OpenCompany × Bowerbird, shared tooling](bowerbird-synergy.md#34-shared-agent-first-tooling)). Grok-build-enhanced's `ratatui` experience is reusable for the TUI.
+  ([OpenCompany and Bowerbird](bowerbird-boundary.md)). Grok-build-enhanced's `ratatui` experience is reusable for the TUI.
 - **Server work needed:**
   - device-flow OAuth;
   - personal access tokens and host tokens;

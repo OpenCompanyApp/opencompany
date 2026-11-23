@@ -23,8 +23,8 @@ Start here:
 - [Data sovereignty](planning/data-sovereignty.md) — the accepted pillar 11 design for object
   downloads, the `.ocarchive` workspace archive, customer-owned encrypted backups, the Git mirror and
   Cloud exit guarantees.
-- [OpenCompany × Bowerbird](planning/bowerbird-synergy.md) — the accepted portfolio design: workload
-  split, shared mruby engine and CLI crates, Bowerbird computers and deep connection, sequencing.
+- [OpenCompany and Bowerbird](planning/bowerbird-boundary.md) — the accepted boundary: workload
+  split, shared mruby engine and CLI crates, Bowerbird computers and deep connection.
 - [Current State](CURRENT_STATE.md) — what exists, what is partial, and what is not implemented.
 - [Roadmap and Open Audits](ROADMAP.md) — prioritized work by phase and unresolved audit findings.
 - [Documentation Index](INDEX.md) — the complete navigation map, with every document classed as
@@ -110,7 +110,7 @@ When a long historical document contains obsolete examples, its status guard and
 4. Add `Status` and `Verified` lines to new technical documents.
 5. Keep counts labeled as dated snapshots; regenerate them instead of hand-carrying old values.
 6. Distinguish a catalog entry from configured credentials, a passing local test from a live provider check, and local working-tree code from deployed behavior.
-7. Keep `AGENTS.md` and `CLAUDE.md` byte-identical.
+7. Keep repo rules in `AGENTS.md`; `CLAUDE.md` contains only `@AGENTS.md`.
 8. Add every new document to [INDEX.md](INDEX.md) with a class; mark retired ones superseded rather than deleting their history.
 9. Never copy secrets, production/customer data, auth state, or raw provider payloads into documentation.
 10. Preserve historical release licenses; do not rewrite a past BSL or FSL record as though it

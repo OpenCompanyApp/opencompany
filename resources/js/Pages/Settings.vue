@@ -195,7 +195,6 @@ const orgSettings = reactive({
 })
 
 const agentSettings = reactive({
-  default_behavior: 'supervised',
   auto_spawn: false,
   budget_approval_threshold: 0,
 })
@@ -249,7 +248,6 @@ onMounted(async () => {
       }
       // Agents
       if (s.agents) {
-        agentSettings.default_behavior = (s.agents.default_behavior as string) ?? 'supervised'
         agentSettings.auto_spawn = !!s.agents.auto_spawn
         agentSettings.budget_approval_threshold = Number(s.agents.budget_approval_threshold) || 0
       }

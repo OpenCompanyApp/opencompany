@@ -477,6 +477,9 @@ New sentence.
 })
 ```
 
+The `<<<<<<< SEARCH` / `=======` / `>>>>>>> REPLACE` lines are the VFS text-patch block format
+([VFS tools](../tools/vfs.md), `VfsTextPatch`), not leftover Git conflict markers; keep them.
+
 The patch path should automatically create a document version, re-check the version token at execution time, and fail cleanly if the document changed after the agent read it.
 
 ### Batch Check Large Workspace Files

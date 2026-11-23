@@ -241,6 +241,8 @@ client:
   agents, per object), agent status, and computer pane signalling.
 - Transport: WebSocket (Reverb today) with SSE as a fallback. Each subscription has a cursor (the
   log position) so clients resume after reconnect and backfill gaps through the events API.
+- The stream protocol is OpenCompany's own contract, not Reverb or Pusher channel semantics, so the
+  gateway behind it can be replaced (for example by a Rust gateway) without changing clients.
 - Large payloads are fetched through the API, not pushed.
 
 ### 4. Push notifications
@@ -250,8 +252,8 @@ client:
 - Dispatched by the backend from event-log events; payloads carry no secrets and minimal content
   (configurable per workspace), deep-linking into the client.
 - Approve/reject from a notification uses the same approval endpoint and eligibility checks.
-- Self-hosters configure push credentials or opt out; whether mobile web gets push before native
-  apps is open.
+- Self-hosters configure push credentials or opt out. Mobile web (the PWA, Web Push) gets push
+  first; Capacitor adds native APNs/FCM push later (section 6).
 
 ### 5. Web client
 
@@ -261,14 +263,31 @@ client:
   inline approvals first; then the context pane with change sets for Tables; then the agent panel,
   Issues and Docs suggestion mode; then the computer pane, Spaces and the anti-mess rules.
 - Old Inertia pages are deleted as the SPA reaches parity for their job; none are extended.
-- Wayfinder may keep generating typed calls while the client lives in this repository; see open
-  questions.
+- The SPA calls the API through a TypeScript client generated from the spec-first `/api/v1`
+  OpenAPI document; CI runs contract tests and a drift check. Wayfinder stays only for the existing
+  pages until they are deleted.
 
-### 6. Mobile and desktop spikes
+### 6. Mobile and desktop
 
-- Goals: OAuth+PKCE sign-in, list conversations, send and stream a message, answer an approval,
-  receive a push, view the activity feed, open a computer panel read-only.
-- Spikes validate contracts; they are not product commitments.
+Target stack (decided 2026-11-09):
+
+- **Desktop:** Electron wrapping the same Vue SPA, chosen over Tauri so one Chromium is tested
+  everywhere (system webviews differ, especially WebKitGTK on Linux). Native notifications, tray and
+  deep links; it can bundle `oc host` later.
+- **Mobile:** an installable PWA with Web Push first, then Capacitor wrapping the same SPA for
+  APNs/FCM, notification actions and biometric confirmation. High-risk approvals (spend, exposure)
+  need unlock or biometrics and are never approved from the lock screen. Native Swift or Kotlin only
+  if needed.
+- **Shared Rust client core:** extends the `oc-api` crate with sync, the event stream, an offline
+  cache, auth and approvals. `oc` uses it directly, Electron through a Node addon or sidecar, and
+  mobile through UniFFI.
+- **Backend, later:** a Rust backend gradually replaces PHP behind the unchanged `/api/v1` contract
+  (realtime gateway first, then governance, then the run control plane; CRUD last or never). Phase 0
+  writes governance conformance vectors that the PHP and Rust implementations both pass.
+
+Spikes (Phase 2: Electron desktop and PWA push) validate contracts before product work. Goals:
+OAuth+PKCE sign-in, list conversations, send and stream a message, answer an approval, receive a
+push, view the activity feed, open a computer panel read-only.
 
 ### 7. Origins: API, user content and public forms
 
@@ -370,7 +389,8 @@ API feature tests include cross-workspace and non-member cases for each resource
    endpoint; Phase 3 signed/public publishing and the registry.
 9. **Object APIs for Phase 4:** change sets, Spaces, presence for every object, and the app manifest
    runtime; remaining Inertia pages deleted at parity.
-10. **Mobile and desktop spikes**; decide client repository placement.
+10. **Mobile and desktop spikes** (Electron, PWA push, then Capacitor); decide client repository
+    placement.
 
 Each step keeps the product usable.
 
@@ -388,8 +408,6 @@ Each step keeps the product usable.
 
 - Whether the web client lives in this repository (`clients/web`) or its own (open in the direction
   and the UI doc).
-- Wayfinder versus a generated OpenAPI client (possibly both during transition).
-- The mobile and desktop stack; whether mobile web gets push before native apps.
 - Cookie sessions vs tokens for the first-party web client.
 - WebSocket only, or WebSocket plus SSE.
 - Which ephemeral stream data (deltas, presence, frames) stays out of the event log.

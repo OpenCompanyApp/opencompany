@@ -60,17 +60,17 @@ Non-goals:
 
 ## Relationship to the Bowerbird Workspace API v1alpha
 
-The contract is shaped on Bowerbird's public Workspace API `v1alpha` (bwb-cloud decision 0011, and
-the public [WorkspaceProvider contract](https://github.com/OpenCompanyApp/openfactory/blob/main/docs/planning/designs/execution/workspaces-debugging-and-sessions.md#the-workspaceprovider-contract)).
+The contract is shaped on [Bowerbird](https://bowerbird.si)'s public Workspace API `v1alpha` and
+its WorkspaceProvider contract.
 That API is an OpenAPI document plus a conformance suite covering create, list, inspect, start,
 stop, resume, delete, fork, snapshot, files, exec, processes, wait and exposures. Nothing on the
 Bowerbird side is built yet either.
 
-**OpenCompany is the reference consumer and first design partner of `v1alpha`**
-([OpenCompany × Bowerbird, computers](../planning/bowerbird-synergy.md#31-computers-opencompany-as-the-workspace-apis-reference-consumer)).
+**OpenCompany is a reference consumer and early design partner of `v1alpha`**
+([OpenCompany and Bowerbird](../planning/bowerbird-boundary.md)).
 Its Bowerbird driver implements `v1alpha` directly, and OpenCompany runs the `v1alpha` conformance
 suite and agent-experience suite against it. Real OpenCompany workloads (idle-heavy, stop/resume,
-fork) are S1's first demand.
+fork) give Bowerbird's agent sandboxes early real demand.
 
 | `ComputerProvider` operation | Workspace API `v1alpha` / WorkspaceProvider | Notes |
 |---|---|---|
@@ -89,12 +89,12 @@ fork) are S1's first demand.
 
 Consequence: the core operations (lifecycle, exec, files, ports) map directly, so a Bowerbird
 provider implements them without translation. `browser`, `screen` and `desktop_stream` are
-**OpenCompany's proposal to `v1alpha`** as one optional capability (Phase 2, with S1), not a
-permanent OpenCompany-only extension. Until it is part of the API, and for providers that never
+**OpenCompany's proposal to `v1alpha`** as one optional capability (Phase 2, once Bowerbird's
+agent sandboxes launch), not a permanent OpenCompany-only extension. Until it is part of the API, and for providers that never
 implement it, capability discovery, not provider identity, decides what the UI and tools offer.
 
 OpenCompany never waits on Bowerbird. Local and boat providers ship first; the **Bowerbird driver
-ships in Phase 2 alongside Bowerbird's S1**, when its sandboxes are live
+ships in Phase 2, once Bowerbird's agent sandboxes launch**
 ([Product Direction, relationship to Bowerbird](../PRODUCT_DIRECTION.md#relationship-to-bowerbird)).
 
 **Workload split.** OpenCompany owns business automation: routines, events, approvals, agent work and
@@ -277,7 +277,7 @@ Provider order from the [Product Direction](../PRODUCT_DIRECTION.md#2-own-comput
 | 1 | Local Docker or Firecracker on the self-hosted machine | container / microVM | Stays in the installation | Self-host default. Docker gives container isolation only and must be labelled as such. |
 | 2 | boat | VM | Crosses (third party, EU regions) | First hosted partner. A self-hoster uses their own boat account. |
 | 3 | E2B, Daytona | provider-specific | Crosses | |
-| 4 | Bowerbird agent sandboxes | microVM | Crosses | Driver in Phase 2 alongside Bowerbird's S1; direct `v1alpha` implementation. **Hosted Cloud's default** once S1 passes its gate; boat remains a provider |
+| 4 | Bowerbird agent sandboxes | microVM | Crosses | Driver in Phase 2, once Bowerbird's agent sandboxes launch; direct `v1alpha` implementation. May become **hosted Cloud's default** once they prove reliable; boat remains a provider |
 | 5 | **Connected hosts** (bring your own machine: Raspberry Pi, home server, laptop, VPS, office machine) via the outbound `oc host` daemon, or SSH-only hosts | Host sandbox mode; labelled **self-managed** | Stays with the customer's machine, but isolation is not guaranteed by OpenCompany | See [Connected hosts](#connected-hosts). Also the route for the catalog's "connect a local computer" primitive |
 
 Registration rules (per AGENTS.md "avoid hardcoding provider IDs, URLs, capabilities"):
@@ -662,7 +662,7 @@ computer:
   reproducibility and evidence, CI-like builds) graduates to a Bowerbird pipeline with the same mruby
   dialect, rather than running on an agent computer. OpenCompany keeps the trigger, approvals and
   human context; Bowerbird returns events, receipts and evidence
-  ([One Ruby](../planning/bowerbird-synergy.md#32-one-ruby-from-routine-to-pipeline); Phases 3–4).
+  ([OpenCompany and Bowerbird](../planning/bowerbird-boundary.md); Phases 3–4).
 - Detaching the computer makes the routine's computer steps fail with `unsupported_capability`; the
   routine is flagged for its owner, not silently rewritten.
 
@@ -685,8 +685,7 @@ or a connected host (Phase 2):
 - **Approvals and audit** apply: launching is `agent_delegation` (ask first time per provider and
   repository), the CLI's tool calls run inside the computer under its sandbox, and its outputs are
   untrusted content. Every launch, follow-up, stop and result is an event.
-- **Not for heavy pipelines.** Long CI-like work graduates to Bowerbird, and managed coding agents in
-  Bowerbird sandboxes (Bowerbird Agents) are a separate, later provider.
+- **Not for heavy pipelines.** Long CI-like work graduates to Bowerbird.
 
 ## Publishing static builds as artifacts
 

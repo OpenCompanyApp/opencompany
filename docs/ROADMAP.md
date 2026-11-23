@@ -25,7 +25,7 @@ priority over new surfaces.
 | 3 · Governance | Roles and approver policies, full hard-deny floor, budgets, replay and audit, password managers, scoped and non-blocking approvals, heartbeats/monitors/daily briefs, OneDrive/SharePoint and calendars, Calendar & Scheduling app; signed and public artifact publishing; Forms v2; host MCP bridge and event source, `oc mount`, bwrap sandbox, `oc` eval gate, `oc admin`; encrypted backups to customer storage, Git mirror, export governance, GDPR export; hosted agent connections (Cursor, Codex, Jules, Claude Code as APIs allow) | [governance-model.md](architecture/governance-model.md) |
 | 4 · Work apps and apps platform | Agent-native Tables, Issues and Docs with record-change events and triggers, change sets for every object, Spaces and anti-mess rules, app manifest runtime with CRM first; artifacts as app custom views, artifact-to-app packaging, templates; `oc app`, plugin tooling, `oc forms` | [agent-native-work-apps.md](planning/agent-native-work-apps.md), [ui-structure-and-agent-editing.md](planning/ui-structure-and-agent-editing.md) |
 | 5 · Cloud | Hosted Cloud on boat then Bowerbird, OpenCompany as MCP server, MCP Apps cards, A2A; custom domains, MCP Apps export of artifacts, Git export, payments in forms and artifacts; Cloud contexts in `oc`, Windows host support; Cloud exit guarantees, region choice, verified deletion | [opencompany-cloud.md](planning/opencompany-cloud.md) |
-| Bowerbird track | Shared CLI crates, one mruby engine and dialect, CI on Bowerbird Runners (now); Bowerbird computer driver (Phase 2); Bowerbird deep connection and pipeline graduation (Phases 3–4); shared account and wallet (Phase 5); Bowerbird Agents (with S1 or later) | [bowerbird-synergy.md](planning/bowerbird-synergy.md) |
+| Bowerbird track | Shared CLI crates and one mruby engine and dialect (now); Bowerbird computer driver (Phase 2, once Bowerbird's agent sandboxes launch); Bowerbird deep connection and pipeline graduation (Phases 3–4) | [bowerbird-boundary.md](planning/bowerbird-boundary.md) |
 
 **API-first is the rule now, not a separate track.** Inertia is frozen: no new Inertia pages or page
 props. New UI, starting with the Phase 1 messenger, is a client of the versioned public API and the
@@ -227,19 +227,17 @@ Design: [connections-events-routines.md](planning/connections-events-routines.md
   format alongside the squashed baseline schema, and add a CI check that enforces no telemetry and
   no remotely flippable flags or egress switches.
 
-## Bowerbird synergy track (Now: Phases 0–1)
+## Bowerbird track (Now: Phases 0–1)
 
-Design: [bowerbird-synergy.md](planning/bowerbird-synergy.md). OpenCompany never waits on Bowerbird, and self-hosted OpenCompany never
-requires a Bowerbird account. Bowerbird milestones (C1, S1, C4/C5) are Bowerbird's, not OpenCompany
-dates.
+Boundary: [bowerbird-boundary.md](planning/bowerbird-boundary.md). OpenCompany never waits on
+Bowerbird, and self-hosted OpenCompany never requires a Bowerbird account. Bowerbird's launch dates
+are Bowerbird's, not OpenCompany dates.
 
 - **Shared agent-first CLI crates** (contexts, device login, keychain, structured errors, schema and
   guide, eval harness) in Bowerbird's public Apache-2.0 client track, consumed by `oc`.
 - **One mruby engine and dialect spec:** Bowerbird owns the mruby guest, OpenCompany owns host
   bindings and permissions, and OpenCompany's Code Mode evals are part of the engine release gate.
-- **OpenCompany CI on Bowerbird Runners** when Bowerbird's C1 opens.
-- **Open owner decision:** which GitHub org and legal entity hold OpenCompany (`OpenCompanyApp`,
-  `BowerbirdHQ`/`bowerbird-si`, Ginger Media BV, or another structure), and the wallet currency.
+- **Open owner decision:** which GitHub organisation and legal entity hold OpenCompany.
 
 ## Phase 1 — Messenger
 
@@ -356,10 +354,10 @@ Scope:
   or migration, with a CI round-trip test; secrets excluded by default (an owner may include them
   encrypted with a passphrase, agents never); artifact and form exports; `oc admin backup/restore`
   ([data-sovereignty.md](planning/data-sovereignty.md)).
-- **Bowerbird computers (with Bowerbird S1):** a Bowerbird `ComputerProvider` driver on Workspace
+- **Bowerbird computers (once Bowerbird's agent sandboxes launch):** a Bowerbird `ComputerProvider` driver on Workspace
   API `v1alpha`, with OpenCompany running the conformance and agent-experience suites, and a
   proposal to add `browser`, `screen` and `desktop_stream` as an optional `v1alpha` capability
-  ([bowerbird-synergy.md](planning/bowerbird-synergy.md)).
+  ([bowerbird-boundary.md](planning/bowerbird-boundary.md)).
 - **Agent connections v1** ([connections-events-routines.md](planning/connections-events-routines.md)): the provider-neutral `ExternalAgentProvider`
   contract (launch, follow up, stop, status and events into the event log, results as PR, diff,
   files, logs and cost); the ACP runner for coding CLIs on agents' computers and connected hosts,
@@ -423,17 +421,14 @@ Scope:
   governance gates (full export automatic in Personal, an admin in Team, an admin plus a second
   approver in Company; always audited; backup and mirror destinations in the `governance` class);
   GDPR export of a member's own data.
-- **Bowerbird deep connection** (Phases 3–4, [bowerbird-synergy.md](planning/bowerbird-synergy.md)): CI, run and review events in the event
+- **Bowerbird deep connection** (Phases 3–4, [bowerbird-boundary.md](planning/bowerbird-boundary.md)): CI, run and review events in the event
   log; agent actions to re-run, cancel and approve or reject a deployment; Bowerbird reviews as
-  approval cards; usage records and spend-limited agent tokens backing compute budgets. Routine
-  graduation to Bowerbird pipelines follows once Bowerbird's automation plane exists; OpenCompany
+  approval cards; Bowerbird usage records feeding compute budgets. Routine
+  graduation to Bowerbird pipelines follows once Bowerbird's workflow engine exists; OpenCompany
   keeps the trigger, approvals and context.
 - **Agent connections, hosted providers:** Cursor Cloud Agents once its API settles; OpenAI Codex
   cloud, Google Jules and Claude Code cloud tasks where their APIs allow; same contract, governance
   gate and usage-into-budgets as Phase 2.
-- **Bowerbird Agents (with Bowerbird S1 or later, not tied to an OpenCompany phase):** managed
-  coding agents reached through the same `ExternalAgentProvider` contract and the Bowerbird
-  connection, never exclusive ([bowerbird-synergy.md](planning/bowerbird-synergy.md)).
 
 Exit criteria: an admin can answer "who allowed what, at what cost" for any agent action.
 
@@ -522,10 +517,9 @@ Scope:
 - **Cloud exit guarantees** ([data-sovereignty.md](planning/data-sovereignty.md)): export and backups free on every plan, at least 90
   days read-only and exportable after a lapse, Cloud-to-self-host migration (`oc admin import --from
   cloud`), region choice (EU first), and verified deletion with a receipt.
-- **Bowerbird account and bundles (optional, with Bowerbird C4/C5):** one Bowerbird account and
-  prepaid wallet for agent and CI compute, partner-credit bundles both ways, and Cloud computers
-  defaulting to Bowerbird sandboxes once S1 passes its gate (boat remains a provider). Cloud bills its
-  own seats and plans ([bowerbird-synergy.md](planning/bowerbird-synergy.md)).
+- **Bowerbird sandboxes on Cloud (optional):** Cloud computers may default to Bowerbird sandboxes
+  once they prove reliable (boat remains a provider). Any Bowerbird account linking is optional, and
+  Cloud bills its own seats and plans ([bowerbird-boundary.md](planning/bowerbird-boundary.md)).
 - Enterprise identity, compliance, residency and managed multi-region cloud (former P3). None of
   these is claimed before it exists.
 
@@ -561,7 +555,7 @@ These former items are not on the roadmap. See the supersede table in
 - **Plugin and device ecosystems (former P3):** replaced by plugin import (skills and MCP parts) in
   Phase 2; no general plugin runtime is planned.
 - **Bowerbird owning triggers and durable execution:** superseded by the workload split
-  ([bowerbird-synergy.md](planning/bowerbird-synergy.md)). OpenCompany owns business automation; Bowerbird owns software delivery and heavy
+  ([bowerbird-boundary.md](planning/bowerbird-boundary.md)). OpenCompany owns business automation; Bowerbird owns software delivery and heavy
   durable pipelines, and heavy script routines can graduate to a Bowerbird pipeline with the same
   Ruby. The shared PHP `integrations` repository plan is obsolete.
 - **Agent behaviour modes:** deleted; replaced by the policy model.

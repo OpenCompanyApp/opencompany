@@ -316,8 +316,7 @@ provider-neutral `ExternalAgentProvider` contract. The messenger owns how that l
   shown on the card and counted against the delegating agent's **budget** on its profile.
 - **Phasing** (direction): Phase 2 adds the ACP runner on computers and connected hosts and the
   Copilot coding agent through the GitHub connection; Phase 3 adds Cursor Cloud Agents once its API
-  settles, and Codex, Jules and Claude Code cloud tasks where their APIs allow; Bowerbird Agents
-  follow with Bowerbird S1 or later.
+  settles, and Codex, Jules and Claude Code cloud tasks where their APIs allow.
 
 ## Artifacts in the messenger
 

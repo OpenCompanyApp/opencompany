@@ -138,7 +138,6 @@ class AppSetting extends Model
                 'org_timezone' => 'UTC',
             ],
             'agents' => [
-                'default_behavior' => 'supervised',
                 'auto_spawn' => false,
                 'budget_approval_threshold' => 0,
             ],
