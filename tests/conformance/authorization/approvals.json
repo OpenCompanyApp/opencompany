@@ -1,0 +1,264 @@
+{
+  "format": "opencompany.authz.vectors/v1",
+  "description": "Approval resolution: an agent never approves, approvals need a workspace, no self-approval, admins, approvers and the owner resolve.",
+  "facts": {
+    "now": "2026-11-23T00:00:00Z",
+    "workspace": {
+      "id": "ws1",
+      "owner_id": "u-owner",
+      "preset": "team"
+    },
+    "actors": {
+      "u-owner": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Olive"
+      },
+      "u-admin": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Ada Admin"
+      },
+      "u-approver": {
+        "kind": "human",
+        "workspace_role": "approver",
+        "platform_operator": false,
+        "name": "Abe"
+      },
+      "u-member": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Mia"
+      },
+      "u-member2": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Max"
+      },
+      "u-viewer": {
+        "kind": "human",
+        "workspace_role": "viewer",
+        "platform_operator": false,
+        "name": "Vic"
+      },
+      "u-outsider": {
+        "kind": "human",
+        "workspace_role": null,
+        "platform_operator": false,
+        "name": "Otto"
+      },
+      "a-ada": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-member",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Ada"
+      },
+      "a-bob": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-admin",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Bob"
+      },
+      "a-carl": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "a-ada",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Carl"
+      },
+      "a-foreign": {
+        "kind": "agent",
+        "workspace_id": "ws2",
+        "manager_id": null,
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Foreign"
+      }
+    },
+    "resource": {
+      "type": "approval",
+      "id": "ap1",
+      "workspace_id": "ws1",
+      "requester_id": "a-ada"
+    },
+    "context": {}
+  },
+  "cases": [
+    {
+      "name": "admin resolves",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "approval.resolve"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "approval_resolver"
+      }
+    },
+    {
+      "name": "approver resolves",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-approver",
+        "on_behalf_of": null,
+        "action": "approval.resolve"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "approval_resolver"
+      }
+    },
+    {
+      "name": "owner resolves",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-owner",
+        "on_behalf_of": null,
+        "action": "approval.resolve"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "approval_resolver"
+      }
+    },
+    {
+      "name": "member cannot resolve",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "approval.resolve"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "approval_role_required"
+      }
+    },
+    {
+      "name": "viewer cannot resolve",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "approval.resolve"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "approval_role_required"
+      }
+    },
+    {
+      "name": "non-member cannot resolve",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-outsider",
+        "on_behalf_of": null,
+        "action": "approval.resolve"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "approval_role_required"
+      }
+    },
+    {
+      "name": "an agent never approves",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-bob",
+        "on_behalf_of": null,
+        "action": "approval.resolve"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "approval_agent_cannot_resolve"
+      }
+    },
+    {
+      "name": "an agent from another workspace never approves either",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-foreign",
+        "on_behalf_of": null,
+        "action": "approval.resolve"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "approval_agent_cannot_resolve"
+      }
+    },
+    {
+      "name": "no self-approval",
+      "facts": {
+        "resource": {
+          "type": "approval",
+          "id": "ap1",
+          "workspace_id": "ws1",
+          "requester_id": "u-admin"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "approval.resolve"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "approval_self_resolution_forbidden"
+      }
+    },
+    {
+      "name": "legacy approval without a workspace",
+      "facts": {
+        "resource": {
+          "type": "approval",
+          "id": "ap1",
+          "workspace_id": null,
+          "requester_id": "a-ada"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "approval.resolve"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "approval_workspace_unknown"
+      }
+    },
+    {
+      "name": "approval from another workspace",
+      "facts": {
+        "resource": {
+          "type": "approval",
+          "id": "ap1",
+          "workspace_id": "ws2",
+          "requester_id": "a-ada"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "approval.resolve"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "workspace_boundary"
+      }
+    }
+  ]
+}

@@ -1,0 +1,670 @@
+{
+  "format": "opencompany.authz.vectors/v1",
+  "description": "Agent tool gate (reversibility, not write): explicit deny, floor, control-flow exemption, on-behalf-of, trigger is never consent, scoped exceptions, admin rules, preset defaults.",
+  "facts": {
+    "now": "2026-11-23T00:00:00Z",
+    "workspace": {
+      "id": "ws1",
+      "owner_id": "u-owner",
+      "preset": "team"
+    },
+    "actors": {
+      "u-owner": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Olive"
+      },
+      "u-admin": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Ada Admin"
+      },
+      "u-approver": {
+        "kind": "human",
+        "workspace_role": "approver",
+        "platform_operator": false,
+        "name": "Abe"
+      },
+      "u-member": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Mia"
+      },
+      "u-member2": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Max"
+      },
+      "u-viewer": {
+        "kind": "human",
+        "workspace_role": "viewer",
+        "platform_operator": false,
+        "name": "Vic"
+      },
+      "u-outsider": {
+        "kind": "human",
+        "workspace_role": null,
+        "platform_operator": false,
+        "name": "Otto"
+      },
+      "a-ada": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-member",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Ada"
+      },
+      "a-bob": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-admin",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Bob"
+      },
+      "a-carl": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "a-ada",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Carl"
+      },
+      "a-foreign": {
+        "kind": "agent",
+        "workspace_id": "ws2",
+        "manager_id": null,
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Foreign"
+      }
+    },
+    "resource": null,
+    "context": {
+      "action_class": "read",
+      "explicit_permission": null,
+      "approval_exempt": false,
+      "trigger_started": false,
+      "grant": {
+        "scoped": false,
+        "always": false
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "read is allowed",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "preset_allows"
+      }
+    },
+    {
+      "name": "reversible edit auto-applies in team",
+      "facts": {
+        "context": {
+          "action_class": "reversible_edit",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "preset_allows"
+      }
+    },
+    {
+      "name": "external send asks in team",
+      "facts": {
+        "context": {
+          "action_class": "external_send",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "approval_required",
+        "reason": "preset_requires_approval"
+      }
+    },
+    {
+      "name": "explicit deny beats everything",
+      "facts": {
+        "context": {
+          "action_class": "read",
+          "explicit_permission": {
+            "permission": "deny",
+            "requires_approval": false
+          },
+          "approval_exempt": true,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "tool_explicitly_denied"
+      }
+    },
+    {
+      "name": "floor is never allowed",
+      "facts": {
+        "context": {
+          "action_class": "floor",
+          "explicit_permission": null,
+          "approval_exempt": true,
+          "trigger_started": false,
+          "grant": {
+            "scoped": true,
+            "always": true
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "floor"
+      }
+    },
+    {
+      "name": "control-flow tools are exempt",
+      "facts": {
+        "context": {
+          "action_class": "external_send",
+          "explicit_permission": null,
+          "approval_exempt": true,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "tool_control_flow_exempt"
+      }
+    },
+    {
+      "name": "principal who left denies",
+      "facts": {
+        "context": {
+          "action_class": "reversible_edit",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": "u-outsider",
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "on_behalf_of_not_member"
+      }
+    },
+    {
+      "name": "non-admin principal cannot drive governance",
+      "facts": {
+        "context": {
+          "action_class": "governance",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": "u-member",
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "on_behalf_of_requires_admin"
+      }
+    },
+    {
+      "name": "non-admin principal cannot drive exposure",
+      "facts": {
+        "context": {
+          "action_class": "exposure_widening",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": true,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": "u-approver",
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "on_behalf_of_requires_admin"
+      }
+    },
+    {
+      "name": "admin principal governance still asks",
+      "facts": {
+        "context": {
+          "action_class": "governance",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": "u-admin",
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "approval_required",
+        "reason": "preset_requires_approval"
+      }
+    },
+    {
+      "name": "owner principal counts as admin",
+      "facts": {
+        "context": {
+          "action_class": "governance",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": "u-owner",
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "approval_required",
+        "reason": "preset_requires_approval"
+      }
+    },
+    {
+      "name": "a trigger is never consent, even with an always grant",
+      "facts": {
+        "context": {
+          "action_class": "external_send",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": true,
+          "grant": {
+            "scoped": false,
+            "always": true
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "approval_required",
+        "reason": "trigger_is_not_consent"
+      }
+    },
+    {
+      "name": "trigger does not affect internal edits",
+      "facts": {
+        "context": {
+          "action_class": "reversible_edit",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": true,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "preset_allows"
+      }
+    },
+    {
+      "name": "always grant covers external send",
+      "facts": {
+        "context": {
+          "action_class": "external_send",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": true
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "policy_grant"
+      }
+    },
+    {
+      "name": "always grant never covers purge",
+      "facts": {
+        "context": {
+          "action_class": "purge",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": true
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "approval_required",
+        "reason": "preset_requires_approval"
+      }
+    },
+    {
+      "name": "scoped grant covers purge",
+      "facts": {
+        "context": {
+          "action_class": "purge",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": true,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "policy_grant"
+      }
+    },
+    {
+      "name": "admin rule can make a read ask",
+      "facts": {
+        "context": {
+          "action_class": "read",
+          "explicit_permission": {
+            "permission": "allow",
+            "requires_approval": true
+          },
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "approval_required",
+        "reason": "agent_rule_requires_approval"
+      }
+    },
+    {
+      "name": "admin rule allows external send",
+      "facts": {
+        "context": {
+          "action_class": "external_send",
+          "explicit_permission": {
+            "permission": "allow",
+            "requires_approval": false
+          },
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "agent_rule_allows"
+      }
+    },
+    {
+      "name": "admin rule is no always exception for structural",
+      "facts": {
+        "context": {
+          "action_class": "structural",
+          "explicit_permission": {
+            "permission": "allow",
+            "requires_approval": false
+          },
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "approval_required",
+        "reason": "preset_requires_approval"
+      }
+    },
+    {
+      "name": "personal preset purges",
+      "facts": {
+        "context": {
+          "action_class": "purge",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        },
+        "workspace": {
+          "preset": "personal"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "preset_allows"
+      }
+    },
+    {
+      "name": "company preset asks before delete",
+      "facts": {
+        "context": {
+          "action_class": "delete",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        },
+        "workspace": {
+          "preset": "company"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "approval_required",
+        "reason": "preset_requires_approval"
+      }
+    },
+    {
+      "name": "unknown class fails closed as external send",
+      "facts": {
+        "context": {
+          "action_class": "teleport",
+          "explicit_permission": null,
+          "approval_exempt": false,
+          "trigger_started": false,
+          "grant": {
+            "scoped": false,
+            "always": false
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "approval_required",
+        "reason": "preset_requires_approval"
+      }
+    },
+    {
+      "name": "humans do not invoke agent tools",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "tool.invoke"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "actor_kind_not_permitted"
+      }
+    }
+  ]
+}

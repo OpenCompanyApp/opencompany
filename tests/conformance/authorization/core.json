@@ -1,0 +1,361 @@
+{
+  "format": "opencompany.authz.vectors/v1",
+  "description": "Decision order basics: unknown actions, workspace boundary, actor kind, fixed roles and the owner.",
+  "facts": {
+    "now": "2026-11-23T00:00:00Z",
+    "workspace": {
+      "id": "ws1",
+      "owner_id": "u-owner",
+      "preset": "team"
+    },
+    "actors": {
+      "u-owner": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Olive"
+      },
+      "u-admin": {
+        "kind": "human",
+        "workspace_role": "admin",
+        "platform_operator": false,
+        "name": "Ada Admin"
+      },
+      "u-approver": {
+        "kind": "human",
+        "workspace_role": "approver",
+        "platform_operator": false,
+        "name": "Abe"
+      },
+      "u-member": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Mia"
+      },
+      "u-member2": {
+        "kind": "human",
+        "workspace_role": "member",
+        "platform_operator": false,
+        "name": "Max"
+      },
+      "u-viewer": {
+        "kind": "human",
+        "workspace_role": "viewer",
+        "platform_operator": false,
+        "name": "Vic"
+      },
+      "u-outsider": {
+        "kind": "human",
+        "workspace_role": null,
+        "platform_operator": false,
+        "name": "Otto"
+      },
+      "a-ada": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-member",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Ada"
+      },
+      "a-bob": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "u-admin",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Bob"
+      },
+      "a-carl": {
+        "kind": "agent",
+        "workspace_id": "ws1",
+        "manager_id": "a-ada",
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Carl"
+      },
+      "a-foreign": {
+        "kind": "agent",
+        "workspace_id": "ws2",
+        "manager_id": null,
+        "channel_grants": null,
+        "contact_rules": {},
+        "name": "Foreign"
+      }
+    },
+    "resource": {
+      "type": "workspace",
+      "id": "ws1",
+      "workspace_id": "ws1"
+    },
+    "context": {}
+  },
+  "cases": [
+    {
+      "name": "unknown action fails closed",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "workspace.explode"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "unknown_action"
+      }
+    },
+    {
+      "name": "request for a different workspace than the facts",
+      "request": {
+        "workspace": "ws2",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "workspace.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "workspace_unknown"
+      }
+    },
+    {
+      "name": "actor missing from facts",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-ghost",
+        "on_behalf_of": null,
+        "action": "workspace.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "actor_unknown"
+      }
+    },
+    {
+      "name": "human who is not a member",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-outsider",
+        "on_behalf_of": null,
+        "action": "workspace.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "actor_not_in_workspace"
+      }
+    },
+    {
+      "name": "agent from another workspace",
+      "facts": {
+        "resource": {
+          "type": "channel",
+          "id": "c1",
+          "workspace_id": "ws1",
+          "channel_type": "public",
+          "members": {}
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-foreign",
+        "on_behalf_of": null,
+        "action": "channel.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "actor_not_in_workspace"
+      }
+    },
+    {
+      "name": "resource from another workspace",
+      "facts": {
+        "resource": {
+          "type": "workspace",
+          "id": "ws2",
+          "workspace_id": "ws2"
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "workspace.write"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "workspace_boundary"
+      }
+    },
+    {
+      "name": "member may write",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "workspace.write"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "viewer is read only",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "workspace.write"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "role_read_only"
+      }
+    },
+    {
+      "name": "viewer may read",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-viewer",
+        "on_behalf_of": null,
+        "action": "workspace.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "owner is a member even without a membership row",
+      "facts": {
+        "actors": {
+          "u-owner": {
+            "workspace_role": null
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-owner",
+        "on_behalf_of": null,
+        "action": "workspace.write"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "unknown stored role holds nothing",
+      "facts": {
+        "actors": {
+          "u-member": {
+            "workspace_role": "superuser"
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "workspace.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "capability_required"
+      }
+    },
+    {
+      "name": "agent cannot take a human-only action",
+      "request": {
+        "workspace": "ws1",
+        "actor": "a-ada",
+        "on_behalf_of": null,
+        "action": "settings.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "human_only_action"
+      }
+    },
+    {
+      "name": "API key cannot take a human action",
+      "facts": {
+        "actors": {
+          "k1": {
+            "kind": "api_key",
+            "workspace_id": "ws1",
+            "revoked": false,
+            "expires_at": "2027-01-01T00:00:00Z",
+            "scopes": {
+              "actions": [],
+              "models": []
+            }
+          }
+        }
+      },
+      "request": {
+        "workspace": "ws1",
+        "actor": "k1",
+        "on_behalf_of": null,
+        "action": "workspace.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "actor_kind_not_permitted"
+      }
+    },
+    {
+      "name": "admin may read the audit ledger",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "audit.read"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "member may not read the audit ledger",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-member",
+        "on_behalf_of": null,
+        "action": "audit.read"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "capability_required"
+      }
+    },
+    {
+      "name": "admin may edit policy",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-admin",
+        "on_behalf_of": null,
+        "action": "policy.edit"
+      },
+      "expect": {
+        "effect": "allow",
+        "reason": "capability"
+      }
+    },
+    {
+      "name": "approver may not edit policy",
+      "request": {
+        "workspace": "ws1",
+        "actor": "u-approver",
+        "on_behalf_of": null,
+        "action": "policy.edit"
+      },
+      "expect": {
+        "effect": "deny",
+        "reason": "capability_required"
+      }
+    }
+  ]
+}
