@@ -105,15 +105,14 @@ It is aimed at teams and companies, not individuals.
   - Moving an agent between modes keeps its identity, memory and VFS access.
 - **Computers come from providers.** OpenCompany defines a `ComputerProvider` contract: create,
   start, stop, snapshot, fork, exec, files, browser, screen stream and ports. It is shaped on
-  Bowerbird's public Workspace API `v1alpha` (bwb-cloud decision 0011); browser and screen stream are
+  Bowerbird's public Workspace API `v1alpha`; browser and screen stream are
   OpenCompany extensions. See the [computer contract](architecture/computer-provider-contract.md).
 - **Provider order:**
   1. Local Docker or Firecracker on the self-hosted machine (self-host default).
-  2. [boat](https://boat.dev) as the first hosted partner: EU regions, about $0.018 per hour for
-     2 vCPU / 4 GB, stopped time free (Bowerbird research, 2026-10-04).
+  2. [boat](https://boat.dev) as the first hosted partner (EU regions).
   3. E2B and Daytona.
-  4. Bowerbird agent sandboxes once its S1 milestone ships. OpenCompany is Bowerbird's first design
-     partner and dogfood customer.
+  4. Bowerbird agent sandboxes once they launch. OpenCompany is an early design partner and
+     dogfood customer.
   5. **Connected hosts** (bring your own machine; locked 2026-11-02): a Raspberry Pi, home server,
      laptop, VPS or office machine. The full design is in [`oc` CLI and hosts](planning/oc-cli-and-hosts.md).
      - **Connection.** The `oc` binary runs as a daemon (`oc host up`, `oc host install-service`)
@@ -196,8 +195,19 @@ It is aimed at teams and companies, not individuals.
   - Web, mobile and desktop apps share one backend. Telegram and other channels stay server-side
     adapters.
   - Inertia is frozen: no new Inertia pages or page props.
-  - Still open: whether the web client leaves this repository, Wayfinder versus a generated OpenAPI
-    client, and the mobile and desktop stack.
+  - **Client and backend stack** (decided 2026-11-09):
+    - `/api/v1` is spec-first: the OpenAPI document is the contract, and new clients use a
+      TypeScript client generated from it, which replaces Wayfinder for them over time.
+    - The realtime stream has its own contract (cursors and resume) and is not tied to Reverb, so
+      the gateway behind it can change.
+    - Desktop is Electron wrapping the same Vue SPA. Mobile starts as an installable PWA with Web
+      Push, then Capacitor wraps the same SPA for native push, notification actions and biometrics.
+    - A shared Rust client core on the `oc-api` crate (sync, stream, offline cache, auth,
+      approvals) serves `oc`, Electron and mobile.
+    - Later, a Rust backend gradually replaces PHP behind the unchanged `/api/v1` contract, one
+      piece at a time; no big-bang rewrite. Phase 0 writes governance conformance vectors that
+      both implementations must pass.
+  - Still open: whether the web client leaves this repository.
 - **Telegram** is the first external surface. Slack, X and others are later entry points into the
   same conversations.
 
@@ -538,7 +548,7 @@ Connections ──produce──▶ Events ──match──▶ Triggers ──st
     - stop;
     - status and events, by webhook or polling, into the event log;
     - results: a PR, diff, files, logs and cost.
-  - **Three routes:**
+  - **Two routes:**
     1. **Hosted cloud-agent providers over their APIs:** Cursor Cloud Agents (public beta, API
        still changing), the GitHub Copilot coding agent through the GitHub connection, OpenAI
        Codex cloud, Google Jules, and Claude Code cloud tasks (HTTP trigger), as each API allows.
@@ -546,8 +556,6 @@ Connections ──produce──▶ Events ──match──▶ Triggers ──st
        host: Claude Code, Codex CLI, Gemini/Antigravity CLI, Grok Build, OpenCode or Goose, using
        the user's own subscriptions. This route is self-host friendly. The computer's egress rules,
        the VFS projection, approvals and audit all apply.
-    3. **Bowerbird Agents** (future), through the Bowerbird connection. See "Relationship to
-       Bowerbird".
   - **Messenger.** "@Cursor fix the flaky test", or a teammate decides to delegate. A run card
     tracks the outside agent's status. Results arrive as PR links, change sets or artifacts, with
     "revert this run" where possible.
@@ -564,7 +572,6 @@ Connections ──produce──▶ Events ──match──▶ Triggers ──st
     |---|---|
     | 2 (needs computers) | The ACP runner on computers and hosts; the Copilot coding agent through the GitHub connection |
     | 3 | Cursor Cloud Agents once its API settles; Codex, Jules and Claude Code where their APIs allow |
-    | With Bowerbird S1 or later | Bowerbird Agents |
 - **Events:** one durable, append-only workspace log with a standard envelope: type, source, subject,
   actor, time, idempotency key, untrusted payload, and causality chain and depth. Sources are internal
   domain changes, connections, channels and time. The log replaces the scattered per-feature event
@@ -752,27 +759,27 @@ Phases may overlap. Phase 0 security work always takes priority over new surface
 
 ## Relationship to Bowerbird
 
-Locked 2026-11-02. Full design: [OpenCompany × Bowerbird](planning/bowerbird-synergy.md). The
-portfolio is now two products, **Bowerbird** and **OpenCompany**. Aya is discontinued.
+Locked 2026-11-02. Boundary summary: [OpenCompany and Bowerbird](planning/bowerbird-boundary.md).
+[Bowerbird](https://bowerbird.si) is a sister product. Aya is discontinued.
 
-OpenCompany is Bowerbird's flagship customer, not a competing product. The shared contract is the
-Workspace API. OpenCompany never waits on Bowerbird: boat and local providers ship first, and the
-Bowerbird provider follows when its sandboxes are live.
+OpenCompany is a Bowerbird customer, not a competing product. The shared contract is the Workspace
+API. OpenCompany never waits on Bowerbird: boat and local providers ship first, and the Bowerbird
+provider follows once Bowerbird's agent sandboxes launch.
 
 - **Split by workload.**
   - OpenCompany owns *business* automation: routines, events, approvals, agent work, and the human
     surface.
   - Bowerbird owns *software delivery and heavy, durable pipelines*: CI/CD, builds, and
     reproducible runs with evidence.
-  - Neither depends on the other. This supersedes Bowerbird docs that give Bowerbird ownership of
+  - Neither depends on the other. This supersedes older docs that gave Bowerbird ownership of
     OpenCompany's triggers and workflows.
 - **Computers.**
-  - OpenCompany is the reference consumer and first design partner of Workspace API `v1alpha`.
+  - OpenCompany is a reference consumer and early design partner of Workspace API `v1alpha`.
     It runs the conformance and agent-experience suites.
   - OpenCompany proposes `browser`, `screen` and `desktop_stream` as an optional capability.
-  - OpenCompany Cloud defaults to Bowerbird sandboxes once S1 passes its gate, and boat remains a
-    provider.
-  - OpenCompany's own CI moves to Bowerbird Runners when C1 opens.
+  - Once Bowerbird's agent sandboxes launch and prove reliable, OpenCompany Cloud may default to
+    them; boat remains a provider.
+  - OpenCompany's own CI can move to Bowerbird's hosted runners once they are available.
 - **One mruby engine and dialect.**
   - Bowerbird owns the mruby guest. OpenCompany owns its host bindings and permissions.
   - Engine releases must pass OpenCompany's Code Mode evals.
@@ -782,45 +789,26 @@ Bowerbird provider follows when its sandboxes are live.
   - CI, run and review events flow into the OpenCompany event log.
   - Actions available to agents: re-run, cancel, and approve or reject a deployment.
   - Bowerbird reviews appear as OpenCompany approval cards on Home, mobile and Telegram.
-  - Usage records and spend-limited agent tokens back OpenCompany's compute budgets.
+  - Bowerbird usage records feed OpenCompany's compute budgets.
 - **Shared agent-first CLI crates.** These cover contexts, device login, keychain, structured
   errors, schema and guide, and the eval harness. They live in Bowerbird's public client track under
   Apache-2.0, and `oc` consumes them.
+- **Coding agents** stay provider-neutral: OpenCompany delegates through the `ExternalAgentProvider`
+  contract (pillar 9), and an ACP coding CLI can run on any computer, including a Bowerbird sandbox.
 - **Roost** stays neutral. OpenCompany's computer-provider picker may show live Roost prices.
-- **Bowerbird Agents (future Bowerbird product idea, locked as direction 2026-11-02).**
-  - **What it is:** managed coding agents. Any ACP-compatible coding CLI runs in Bowerbird S1
-    sandboxes, connected to Bowerbird CI, Runners and evidence. Results come back as PRs with proof
-    that checks passed, billed per second from the wallet.
-  - **Why it fits:** it falls on Bowerbird's side of the workload split, because coding is software
-    delivery.
-  - **Relationship:** OpenCompany ↔ Bowerbird mirrors Grok Bot ↔ Cursor, except both sides are ours
-    and the integration stays provider-neutral. OpenCompany reaches Bowerbird Agents through the same
-    `ExternalAgentProvider` contract as Cursor or Copilot, and they are never exclusive.
-- **Cross-sell, both ways:**
-  - "Managed computer, powered by Bowerbird" when an agent gets a computer.
-  - Connecting GitHub suggests the Bowerbird connection, which leads to Runners and Cache.
-  - A heavy routine can graduate to a pipeline.
-  - Bowerbird's console offers "Review and supervise in OpenCompany".
-  - Sandbox customers are offered OpenCompany.
-  - Founding Builder Pass and launch channels include an OpenCompany Cloud trial.
-- **Phase 5 (optional): one Bowerbird account and wallet.**
-  - Compute for OpenCompany agents and CI draws from the prepaid wallet.
-  - OpenCompany Cloud bills its own seats and plans. Partner credits can be bundled both ways.
-  - **Self-hosted OpenCompany never requires a Bowerbird account.**
+- **Cross-links:** "Managed computer, powered by Bowerbird" when an agent gets a computer, and
+  connecting GitHub suggests the Bowerbird connection.
+- **Self-hosted OpenCompany never requires a Bowerbird account.** Any later account linking on
+  Cloud is optional, and OpenCompany Cloud bills its own seats and plans.
 - **Brand:** "OpenCompany, by Bowerbird" as an endorsement. OpenCompany keeps its own identity and
   domain.
-- **Dogfooding:**
-  - The Bowerbird team uses OpenCompany, and later moves Bowerbird planning into OpenCompany Issues
-    (Phase 4). Until then Bowerbird keeps Linear.
-  - The shared PHP `integrations` repository plan is obsolete.
+- **Dogfooding:** the Bowerbird team uses OpenCompany, and later moves its planning into
+  OpenCompany Issues (Phase 4). The shared PHP `integrations` repository plan is obsolete.
 - **Sequencing:**
-  - **Now:** shared CLI crates, one engine, OpenCompany CI on Bowerbird at C1.
-  - **Phase 2 with S1:** the Bowerbird computer driver.
+  - **Now:** shared CLI crates and one engine.
+  - **Phase 2, once Bowerbird's agent sandboxes launch:** the Bowerbird computer driver.
   - **Phases 3–4:** the Bowerbird connection, pipeline graduation, planning in Issues.
-  - **Phase 5 with C4/C5:** the shared account and wallet, and bundles.
-  - **After S1:** Bowerbird Agents as an external agent provider.
-- **Open:** which GitHub org and legal entity hold OpenCompany (`OpenCompanyApp`,
-  `BowerbirdHQ`/`bowerbird-si`, Ginger Media BV, or another structure), and the wallet currency.
+- **Open:** which GitHub organisation and legal entity hold OpenCompany.
 
 ## Open questions
 
@@ -831,8 +819,7 @@ Bowerbird provider follows when its sandboxes are live.
   "credentials never enter the computer".
 - The default connection ownership (personal or shared) for each connection category.
 - Whether the Activepieces sidecar ships in the default docker-compose or only in docs.
-- The mobile and desktop client stack; whether mobile web gets push before native apps.
-- Whether the web client leaves this repository, and Wayfinder versus a generated OpenAPI client.
+- Whether the web client leaves this repository.
 - Which of today's `Task` and list models becomes Issues
   ([work apps](planning/agent-native-work-apps.md)).
 - Interim approval authority in Phase 1, before Phase 3 approver policies exist. Proposed: only

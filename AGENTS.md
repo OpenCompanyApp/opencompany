@@ -1,6 +1,6 @@
 # OpenCompany Repo Guide
 
-This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep them identical.
+`AGENTS.md` is the canonical instruction file. `CLAUDE.md` contains only `@AGENTS.md`; never copy rules into it.
 
 ## Product Direction
 
@@ -52,7 +52,7 @@ This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep th
 ## Routing
 
 - Frontend route generation is owned by Laravel Wayfinder, not Ziggy.
-- Inertia pages are frozen (API-first). Wayfinder remains the routing stack for the existing pages; whether the API clients use Wayfinder or a generated OpenAPI client is still open in `docs/PRODUCT_DIRECTION.md`.
+- Inertia pages are frozen (API-first). Wayfinder remains the routing stack for the existing pages; new API clients use a TypeScript client generated from the spec-first `/api/v1` OpenAPI document (decided 2026-11-09, `docs/PRODUCT_DIRECTION.md`).
 - Generated frontend route/action sources live in `resources/js/routes`, `resources/js/actions`, and `resources/js/wayfinder`.
 - Run `npm run wayfinder:generate` after changing Laravel routes or controller actions that are called from Vue.
 - Prefer generated route/action imports and helpers from `resources/js/composables/useWorkspace.ts` over string-built URLs.
@@ -65,7 +65,7 @@ This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep th
 - Provider transport behavior, model metadata, prompt caching, cost accounting, Codex OAuth, embeddings, and the OpenAI-compatible gateway are app-owned.
 - The integration package system is being deleted and the `../integrations` repository is archived read-only (Phase 0 nuclear cleanup). Do not add code to it, depend on new packages from it, or patch it. Old package source may be read only to mine code for native connectors.
 - Deep connectors (storage mounts such as Google Drive and OneDrive, mailboxes, calendars) are app-owned under `app/Domain/Connections/`. Generic reach goes through the rebuilt MCP client on `laravel/mcp`, API manifests, SKILL.md skills and inbound webhooks. Leave a breadcrumb comment in connector code stating that it is intentionally app-owned and not a package, so future agents do not "extract" it back into a package.
-- Bowerbird boundary (`docs/planning/bowerbird-synergy.md`): OpenCompany owns business automation (routines, events, approvals, agent work); Bowerbird owns software delivery and heavy durable pipelines. Bowerbird is reached only through the `ComputerProvider` driver, the Bowerbird deep connection, the shared mruby engine (Bowerbird owns the guest, OpenCompany owns host bindings and permissions) and shared CLI crates. Self-hosted OpenCompany must never require a Bowerbird account. Aya is discontinued.
+- Bowerbird boundary (`docs/planning/bowerbird-boundary.md`): OpenCompany owns business automation (routines, events, approvals, agent work); Bowerbird owns software delivery and heavy durable pipelines. Bowerbird is reached only through the `ComputerProvider` driver, the Bowerbird deep connection, the shared mruby engine (Bowerbird owns the guest, OpenCompany owns host bindings and permissions) and shared CLI crates. Self-hosted OpenCompany must never require a Bowerbird account. Aya is discontinued.
 - Do not patch `vendor/` for durable fixes.
 - Avoid hardcoding provider IDs, model IDs, API formats, URLs, capabilities, auth modes, or runtime support lists outside the app-owned provider/model catalogs or config.
 
@@ -82,7 +82,7 @@ This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep th
 
 ## Docs
 
-- Repo rules and local setup: `CLAUDE.md`
+- Repo rules and local setup: `AGENTS.md`
 - Docs index: `docs/INDEX.md`
 - Runtime audit: `docs/architecture/runtime-alignment-implementation-audit.md`
 - Plane tool is available via `mcp-cli`
@@ -97,7 +97,7 @@ This file is intentionally mirrored in both `AGENTS.md` and `CLAUDE.md`. Keep th
   or replace functionality required by the complete AGPL self-hosted application.
 - Contributions default to inbound equals outbound with DCO certification. Do not infer copyright
   assignment or proprietary relicensing authority from a pull request.
-- Keep `AGENTS.md` and `CLAUDE.md` byte-for-byte identical.
+- `CLAUDE.md` contains only `@AGENTS.md`.
 
 ## Browser Automation
 

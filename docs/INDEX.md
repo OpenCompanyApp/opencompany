@@ -39,7 +39,7 @@ Verified: 2026-11-02.
 | Document | Class | What it covers |
 |---|---|---|
 | [README.md](../README.md) | Active | Public project overview, quick start, what exists today versus planned |
-| [AGENTS.md](../AGENTS.md) / [CLAUDE.md](../CLAUDE.md) | Active | Repo rules for coding agents; byte-identical mirrors |
+| [AGENTS.md](../AGENTS.md) / [CLAUDE.md](../CLAUDE.md) | Active | Repo rules for coding agents; `CLAUDE.md` contains only `@AGENTS.md` |
 | [LICENSE.md](../LICENSE.md) | Active | License text; controls over every summary |
 | [LICENSING.md](../LICENSING.md), [COMMERCIAL_USE.md](../COMMERCIAL_USE.md), [TRADEMARKS.md](../TRADEMARKS.md), [CONTRIBUTING.md](../CONTRIBUTING.md) | Active | See Start Here |
 
@@ -51,7 +51,7 @@ Each is a plan, not an implementation claim.
 |---|---|---|
 | [connections-events-routines.md](planning/connections-events-routines.md) | Active (accepted design) | Pillar 9: Connections → Events → Triggers → Routines → Runs; deep connectors and generic tier, OAuth broker, vault, event log with causality chain, routines, proactivity as configuration, what gets deleted |
 | [artifacts-and-forms.md](planning/artifacts-and-forms.md) | Active (accepted design) | Pillar 7: Artifacts as the ninth core primitive (Pages and interactive artifacts, bindings with no private storage, sandboxed user-content origin, mruby `endpoint` profile, publishing ladder, governance) and Forms as a view on any Table with one governed submission pipeline; phased across Phases 0–5 |
-| [bowerbird-synergy.md](planning/bowerbird-synergy.md) | Active (accepted design) | OpenCompany × Bowerbird: workload split, computers on Workspace API `v1alpha`, one mruby engine and dialect, Bowerbird as a deep connection, shared CLI crates, cross-sell, optional shared account and wallet, sequencing; Aya discontinued |
+| [bowerbird-boundary.md](planning/bowerbird-boundary.md) | Active (accepted design) | OpenCompany and Bowerbird: workload split, and the only four ways they meet (computer driver on Workspace API `v1alpha`, deep connection, shared mruby engine, shared CLI crates); self-hosted never needs a Bowerbird account |
 | [data-sovereignty.md](planning/data-sovereignty.md) | Active (accepted design) | Pillar 11: object downloads, the round-trippable `.ocarchive` workspace archive, encrypted backups to customer-owned storage, the one-way Git mirror, Cloud exit guarantees, BYO models and no phone-home, export governance; phased across Phases 0–5 |
 | [oc-cli-and-hosts.md](planning/oc-cli-and-hosts.md) | Active (accepted design) | Pillars 2 and 10: the agent-first Rust `oc` CLI (public API only, `oc mcp serve`, separate Apache-2.0 `opencompany-cli` repo) and Connected hosts via the outbound `oc host` daemon; phased across Phases 0–5 |
 | [ui-structure-and-agent-editing.md](planning/ui-structure-and-agent-editing.md) | Active (accepted design) | Pillars 4 and 7: current UI findings, Home, the one rail, three panes, change sets and "revert this run", Spaces and anti-mess rules, core primitives and add-on apps, new Vue 3 + Reka client |
@@ -91,7 +91,7 @@ Each is a plan, not an implementation claim.
 | [interagent-comms.md](architecture/interagent-comms.md) | Active, partially superseded | Agent-to-agent ask/delegate/notify and delegation tracking; behaviour-mode gating superseded by the policy model |
 | [technology-decisions.md](architecture/technology-decisions.md) | Active | Stack choices: Laravel AI SDK, app-owned provider runtime, Laravel queues |
 | [domain-driven-design-architecture.md](architecture/domain-driven-design-architecture.md) | Active, partially superseded | Proposed DDD modular-monolith target architecture; behaviour-mode and integration-package contexts superseded |
-| [bowerbird-durable-automation-integration.md](architecture/bowerbird-durable-automation-integration.md) | Superseded | Superseded by the workload split ([bowerbird-synergy.md](planning/bowerbird-synergy.md)): OpenCompany owns business automation; Bowerbird owns software delivery and heavy durable pipelines |
+| [bowerbird-durable-automation-integration.md](architecture/bowerbird-durable-automation-integration.md) | Superseded | Superseded by the workload split ([bowerbird-boundary.md](planning/bowerbird-boundary.md)): OpenCompany owns business automation; Bowerbird owns software delivery and heavy durable pipelines |
 | [ai-tool-packages.md](architecture/ai-tool-packages.md) | Superseded | Earlier `ai-tool-*` package strategy; the package system is deleted (pillar 9) |
 | [laravel-ai-sdk.md](architecture/laravel-ai-sdk.md) | Historical | Earlier Laravel AI SDK strategy; current runtime lives in ai-provider-runtime-architecture.md |
 | [observability.md](architecture/observability.md) | Superseded | Observability proposal superseded by the current AI runtime ledger (per its own status) |
@@ -250,7 +250,7 @@ Org → Team; Automation → Routines; three file stores → one Files store.
 | **Tasks** | Agent cases at `/tasks` — discrete work items that agents execute (becoming runs inside threads and the agent profile) |
 | **Home** | The planned attention page: needs-you, then results, then FYI; replaces Dashboard, Activity and Workload |
 | **`oc`** | The planned agent-first Rust CLI and connected-host daemon; a client of the public API, with `oc mcp serve` exposing the workspace to local coding agents |
-| **Agent connection** | A planned connection kind for delegating a task to an outside agent (Cursor Cloud Agents, Copilot coding agent, Codex, Jules, Claude Code, ACP coding CLIs, later Bowerbird Agents) through the provider-neutral `ExternalAgentProvider` contract; launching one is an external action and its events are untrusted (Phases 2–3) |
+| **Agent connection** | A planned connection kind for delegating a task to an outside agent (Cursor Cloud Agents, Copilot coding agent, Codex, Jules, Claude Code, ACP coding CLIs) through the provider-neutral `ExternalAgentProvider` contract; launching one is an external action and its events are untrusted (Phases 2–3) |
 | **Connected host** | A user's own machine (Raspberry Pi, home server, laptop, VPS) linked through the outbound-only `oc host` daemon, with per-agent capability grants (computer, local MCP bridge, VFS projection, event source); labelled self-managed (planned, Phase 2) |
 | **`.ocarchive`** | The planned workspace archive: every primitive, app data, history, event log, files, agents, Spaces and policies, round-trippable into self-hosted or Cloud; secrets excluded by default; spec published under Apache-2.0 |
 | **Git mirror** | An optional, planned one-way continuous mirror of Docs (Markdown), Tables (CSV), Issues and artifact source to the customer's Git host; OpenCompany remains the source of truth (Phase 3) |

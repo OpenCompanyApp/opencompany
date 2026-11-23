@@ -36,7 +36,7 @@ Related designs:
   budgets and audit, with upgrades, backups and monitoring handled by the operator.
 - **Managed computers.** Agents can get a computer without the customer running sandbox
   infrastructure. Cloud starts with [boat](https://boat.dev) and moves to Bowerbird agent sandboxes
-  when they exist (after Bowerbird's S1 milestone), through the same `ComputerProvider` drivers that
+  once they launch, through the same `ComputerProvider` drivers that
   self-hosters use.
 - **Computer optional on Cloud too.** VFS-only agents are first class on Cloud. A Cloud workspace with
   no computers is a complete product, and per-agent computer access follows the same governance
@@ -166,9 +166,9 @@ High level only; topology choices are open.
   boat computers on Cloud need a partner agreement (Product Direction, Phase 5). boat also has no idle
   timer; OpenCompany owns idle stop. Until such an agreement exists, Cloud customers
   can still attach their own boat account through the same driver, as self-hosters do.
-- **Bowerbird by default after S1.** Once Bowerbird's S1 sandboxes pass their gate, Cloud computers
-  default to Bowerbird sandboxes, offered as "Managed computer, powered by Bowerbird". boat remains a
-  provider. OpenCompany never waits on Bowerbird; boat and local providers ship
+- **Bowerbird once its sandboxes launch.** Once Bowerbird's agent sandboxes launch and prove
+  reliable, Cloud computers may default to them, offered as "Managed computer, powered by
+  Bowerbird". boat remains a provider. OpenCompany never waits on Bowerbird; boat and local providers ship
   first.
 - **Trust boundary disclosure.** Every managed provider is disclosed to the customer, with region,
   as a party that processes the computer's files and outputs. Cloud never falls back silently to a
@@ -183,22 +183,19 @@ High level only; topology choices are open.
   using the same public API, device-flow login and token types. Windows host support is also Phase 5.
 - **Shared team computer** on Cloud is an open question (below).
 
-## Bowerbird account and wallet (Phase 5, optional)
+## Bowerbird on Cloud (optional)
 
-From [OpenCompany × Bowerbird](bowerbird-synergy.md#bundles-and-money):
+See [OpenCompany and Bowerbird](bowerbird-boundary.md):
 
-- **One optional Bowerbird account and wallet.** A Cloud customer may link one Bowerbird account;
-  compute for OpenCompany agents and for CI then draws from the prepaid Bowerbird wallet.
-- **Cloud bills its own seats and plans.** The wallet covers compute only; OpenCompany Cloud's own
-  seats and plans are billed by Cloud.
-- **Partner credits** can be bundled both ways.
-- **Self-host never requires Bowerbird.** Self-hosted OpenCompany never needs a Bowerbird account,
-  wallet or provider; Bowerbird is one provider among several.
+- **Optional account linking.** A Cloud customer may later link a Bowerbird account. It is never
+  required.
+- **Cloud bills its own seats and plans.**
+- **Self-host never requires Bowerbird.** Self-hosted OpenCompany never needs a Bowerbird account or
+  provider; Bowerbird is one provider among several.
 - **Brand.** "OpenCompany, by Bowerbird" is an endorsement; OpenCompany keeps its own identity and
   domain.
-- **Cross-sell.** Bowerbird's Founding Builder Pass and launch channels include an OpenCompany Cloud
-  trial; Bowerbird's console offers "Review and supervise in OpenCompany"; OpenCompany offers managed
-  Bowerbird computers and, through the Bowerbird connection, Runners and Cache.
+- **Cross-links.** OpenCompany offers managed Bowerbird computers and, through the Bowerbird
+  connection, Bowerbird's CI services.
 
 ## Compute pass-through and metering
 
@@ -317,9 +314,7 @@ Phase 5 exit: *Paying pilot workspaces on hosted Cloud; self-host parity maintai
 - **Regions:** which regions follow the EU first, and how computer-provider regions are matched to
   the workspace region.
 - **Deletion window:** the documented window for removal from provider backups.
-- **Entity, org and wallet currency:** which legal entity and GitHub organisation hold OpenCompany
-  (`OpenCompanyApp`, `BowerbirdHQ`/`bowerbird-si`, Ginger Media BV or another structure), and the
-  wallet currency (open in [OpenCompany × Bowerbird](bowerbird-synergy.md#open-questions)).
+- **Entity and organisation:** which legal entity and GitHub organisation hold OpenCompany.
 - **Activepieces sidecar:** whether Cloud operates an Activepieces sidecar for customers, and whether
   it ships in the default docker-compose for self-host (Product Direction open question).
 - **Operator OAuth clients:** which providers Cloud pre-registers clients for, and how customers

@@ -1,14 +1,6 @@
 <template>
   <SettingsSection title="Agent Defaults" icon="ph:robot">
     <div class="space-y-4">
-      <SettingsField label="Default Agent Behavior" description="Controls how newly created agents behave by default">
-        <select v-model="agentSettings.default_behavior" class="settings-input">
-          <option value="autonomous">Autonomous (minimal supervision)</option>
-          <option value="supervised">Supervised (ask before actions)</option>
-          <option value="strict">Strict (require approval for everything)</option>
-        </select>
-      </SettingsField>
-
       <SettingsField label="Auto-spawn Agents">
         <label class="flex items-center gap-3 cursor-pointer">
           <div class="relative">
@@ -61,7 +53,7 @@ import SettingsField from '@/Components/settings/SettingsField.vue'
 import SaveButton from '@/Components/settings/SaveButton.vue'
 
 const props = defineProps<{
-  initialSettings: { default_behavior: string; auto_spawn: boolean; budget_approval_threshold: number }
+  initialSettings: { auto_spawn: boolean; budget_approval_threshold: number }
   savingCategory: string | null
   savedCategory: string | null
 }>()

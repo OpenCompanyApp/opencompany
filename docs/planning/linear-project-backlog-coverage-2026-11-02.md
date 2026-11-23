@@ -27,7 +27,7 @@ No dates or assignees were set.
 | 2 | GIN-2001 `ExternalAgentProvider` contract · GIN-2002 ACP runner on computers and hosts · GIN-2003 Copilot coding agent · GIN-2006 delegation run card · GIN-2007 external-action gate and provider/repo allowlist · GIN-2008 usage into budgets |
 | 3 | GIN-2004 Cursor Cloud Agents (API in beta) · GIN-2005 Codex cloud, Jules, Claude Code cloud tasks |
 
-GIN-2009 Bowerbird Agents provider is under GIN-1977, after S1, in Phase 3 Connections (labelled Later).
+GIN-2009 (a later Bowerbird-hosted agent provider) is under GIN-1977, in Phase 3 Connections (labelled Later).
 
 ### App catalog (pillar 7)
 
@@ -44,18 +44,18 @@ One ticket per app under GIN-1893, with no child issues:
 
 ## OpenCompany × Bowerbird pass (2026-11-02, commit 3e12a28)
 
-[OpenCompany × Bowerbird](bowerbird-synergy.md) is accepted, and Aya is discontinued. The new epic is
+[OpenCompany and Bowerbird](bowerbird-boundary.md) is accepted, and Aya is discontinued. The new epic is
 **GIN-1977**. No Bowerbird Linear projects were edited and no dates were set.
 
 | Sequencing | Issues |
 |---|---|
-| Now | GIN-1979 shared mruby engine and dialect spec with Code Mode evals in the engine gate (Phase 0 mruby) · GIN-1983 OpenCompany CI on Bowerbird Runners at C1 (Phase 0 CI) · GIN-1943 shared CLI crates, kept under GIN-1931 and linked |
+| Now | GIN-1979 shared mruby engine and dialect spec with Code Mode evals in the engine gate (Phase 0 mruby) · GIN-1983 OpenCompany CI on Bowerbird's hosted runners once available (Phase 0 CI) · GIN-1943 shared CLI crates, kept under GIN-1931 and linked |
 | Phase 2 | GIN-1781 Bowerbird `ComputerProvider` driver with conformance and agent-experience suites (rewritten, moved from Phase 5) · GIN-1978 browser/screen/desktop_stream proposal · GIN-1982 Roost prices in the picker |
 | Phases 3–4 | GIN-1981 Bowerbird deep connection · GIN-1984 cross-sell surfaces · GIN-1980 routine → pipeline graduation |
-| Phase 5 | GIN-1985 shared account, wallet and bundles |
-| Owner decision | GIN-1986 GitHub org, legal entity, wallet currency |
+| Phase 5 | GIN-1985 optional account linking |
+| Owner decision | GIN-1986 GitHub organisation and legal entity |
 
-GIN-1814 was also updated: Cloud defaults to Bowerbird sandboxes after S1.
+GIN-1814 was also updated: Cloud may default to Bowerbird sandboxes once they launch and prove reliable.
 
 Some GIN issues already had relations to BWB issues from earlier passes: GIN-1781, 1933, 1934, 1936,
 1937 and 1943. They are left as they are.
@@ -148,6 +148,7 @@ reversibility. Linear changes under GIN-1750 (no dates or assignees):
 | GIN-1908 | Space-level permissions, agents as Space members | Phase 4 · Work apps and apps platform |
 | GIN-1909 | "Why can't Ada see this?" decision-trace explainer | Phase 3 · budgets, audit and observability |
 | GIN-1910 | Preset-dependent Governance UI | Phase 3 · roles, approvals and hard-deny floor |
+| GIN-2022 | Field-level approval rules on app and Table record fields (`approval_rules`; decision-order step 14a; only add gates, never loosen them; humans and agents alike) | Phase 3 · roles, approvals and hard-deny floor |
 
 Rewritten to reversibility gating rather than canceled:
 - GIN-1862 is now the policy engine with the pillar 5 table, replacing behaviour modes.

@@ -71,7 +71,7 @@ capabilities:
 | `Mailbox` | Gmail, Outlook, IMAP | Agent and shared inboxes; one-time codes |
 | `Calendar` | Google, Microsoft, CalDAV | Built-in calendar |
 | Later | Notion/Confluence import, Git repositories | Docs, Files |
-| Bowerbird (Tier 1-style, Phases 3–4) | Bowerbird CI, runs and reviews | Events in the event log; agent actions to re-run, cancel and approve or reject a deployment; Bowerbird reviews as approval cards; usage records and spend-limited agent tokens backing compute budgets ([OpenCompany × Bowerbird](bowerbird-synergy.md)) |
+| Bowerbird (Tier 1-style, Phases 3–4) | Bowerbird CI, runs and reviews | Events in the event log; agent actions to re-run, cancel and approve or reject a deployment; Bowerbird reviews as approval cards; Bowerbird usage records feeding compute budgets ([OpenCompany and Bowerbird](bowerbird-boundary.md)) |
 
 *Breadcrumb for future agents:* deep connectors are intentionally app-owned. The old rule that
 integration code lives in `../integrations` no longer applies, because that repository is archived.
@@ -157,8 +157,6 @@ change sets, approvals and audit. See [Product Direction](../PRODUCT_DIRECTION.m
   2. An ACP (Agent Client Protocol) runner for coding CLIs on an agent's computer or a connected
      host, using the user's own subscriptions. Computer egress rules, the VFS projection, approvals
      and audit apply.
-  3. Bowerbird Agents later, through the Bowerbird connection
-     ([OpenCompany × Bowerbird](bowerbird-synergy.md)).
 - **Events and policy.** Status events and results from outside agents are untrusted payloads.
   Launching an outside agent sends company context outside, so it is an external action: it asks
   the first time per provider and repository, then offers a one-tap "always", and admins can
@@ -166,8 +164,7 @@ change sets, approvals and audit. See [Product Direction](../PRODUCT_DIRECTION.m
   code to an outside agent. Provider keys stay in the vault and are injected per call; reported
   usage feeds the agent's budget.
 - **Phasing:** Phase 2 for the ACP runner and the Copilot coding agent; Phase 3 for Cursor Cloud
-  Agents once its API settles, and Codex, Jules and Claude Code where their APIs allow; Bowerbird
-  Agents with Bowerbird S1 or later.
+  Agents once its API settles, and Codex, Jules and Claude Code where their APIs allow.
 
 ### 2. Events
 
@@ -257,7 +254,7 @@ flow builders.
 **Graduation to Bowerbird pipelines.** A heavy script routine can graduate to a Bowerbird pipeline
 with the same Ruby, through the shared mruby dialect. The trigger, approvals and context stay in
 OpenCompany; Bowerbird only executes the pipeline. Bowerbird never owns OpenCompany triggers or
-workflows ([OpenCompany × Bowerbird](bowerbird-synergy.md)).
+workflows ([OpenCompany and Bowerbird](bowerbird-boundary.md)).
 
 **Authoring:**
 
@@ -340,4 +337,4 @@ connectors before deletion.
 - Event retention defaults and storage growth on self-hosted installs.
 - ~~Whether heavy pipeline-style routines later run on Bowerbird as an optional executor behind the
   routine contract.~~ Resolved 2026-11-02: heavy script routines can graduate to a Bowerbird
-  pipeline; OpenCompany keeps the trigger, approvals and context ([OpenCompany × Bowerbird](bowerbird-synergy.md)).
+  pipeline; OpenCompany keeps the trigger, approvals and context ([OpenCompany and Bowerbird](bowerbird-boundary.md)).

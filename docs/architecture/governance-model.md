@@ -274,7 +274,7 @@ default. The table matches pillar 5; "proposal" means a change-set or plan card 
 | `delete` | Delete a record, issue, doc or file (moves to trash for 30 days) | Trash auto-applies | Trash auto-applies; **purge needs approval** | **Trash is a proposal; purge needs two approvers** |
 | `external_draft` | Email draft, calendar hold, unsent post | Auto-apply | Auto-apply | Auto-apply |
 | `external_send` | Send email, post, submit a form, mutating MCP or API-manifest call | Ask the first time per target, then one-tap "always for this recipient or domain" | Same; the agent's manager approves | Same; routine-started runs may only reach admin-allowlisted targets |
-| `agent_delegation` (an `external_send`) | Launch or follow up an outside agent (Cursor Cloud Agents, Copilot coding agent, Codex cloud, Jules, Claude Code cloud tasks, an ACP coding CLI, Bowerbird Agents); this sends company context outside | Ask the first time per **provider and repository**, then one-tap "always" | Same; the agent's manager approves; only admin-allowlisted providers and repositories | Same; the allowlist restricts by default; routine-started launches only to allowlisted provider/repository pairs |
+| `agent_delegation` (an `external_send`) | Launch or follow up an outside agent (Cursor Cloud Agents, Copilot coding agent, Codex cloud, Jules, Claude Code cloud tasks, an ACP coding CLI); this sends company context outside | Ask the first time per **provider and repository**, then one-tap "always" | Same; the agent's manager approves; only admin-allowlisted providers and repositories | Same; the allowlist restricts by default; routine-started launches only to allowlisted provider/repository pairs |
 | `spend` | Purchases, paid API calls, card use | Ask, or a per-agent spend cap | Budget per agent | Budget plus two approvers above a threshold |
 | `exposure_widening` | Approve a connected host; share link; publish an artifact or form by signed link or publicly; widen a published surface (new write endpoint, new or wider binding, new egress domain, AI or connections for visitors, custom domain); open a computer port; add an MCP server or egress domain; share a connection | Ask | Admin | Admin plus a second approver |
 | `structural` | Create a Space, Table, field or relation; schema change; install or upgrade an app | Proposal (owner approves) | Proposal | Proposal per Space policy |
@@ -599,7 +599,7 @@ Rules:
 
 Outside agents are delegates reached through the provider-neutral `ExternalAgentProvider` contract
 ([pillar 9, agent connections](../PRODUCT_DIRECTION.md#9-connections-events-and-routines)): hosted cloud-agent APIs, coding-agent CLIs over ACP on a computer
-or connected host, and later Bowerbird Agents. Governance:
+or connected host. Governance:
 
 - **An external action.** Launching an outside agent sends company context (task, files, repository
   access) outside, so it is `agent_delegation`, gated like `external_send`: ask the first time per
@@ -778,7 +778,7 @@ Consistent with the [Product Direction phases](../PRODUCT_DIRECTION.md#phases), 
 | Apps | — | — | — | Mail on the manifest model | Calendar | App manifest runtime, CRM, third-party manifest review |
 | Artifacts and forms | Renderer packages, no artifacts | User-content origin and sandbox proxy design; Code Mode bridge re-homed | Artifacts at private, Space and workspace level with read bindings | Endpoint profile, write bindings via change sets, AI bridge quotas, static bundles from computers; Forms v1 with public submission | Signed and public publishing, published queries, registry, abuse controls, kill switch; Forms v2 | Artifacts as app custom views and packaging |
 | Export and backups | — | `.ocarchive` format with the baseline schema; no-telemetry/no-remote-flags CI check | Object downloads, `oc export` | Workspace archive export/import, `oc admin backup/restore` | Scheduled encrypted backups, Git mirror, export gates, GDPR export, backup verification | — |
-| Agent delegation | — | — | — | ACP runner on computers and hosts; Copilot coding agent; provider/repository allowlist | Cursor, Codex, Jules, Claude Code cloud where APIs allow | Bowerbird Agents with S1 or later |
+| Agent delegation | — | — | — | ACP runner on computers and hosts; Copilot coding agent; provider/repository allowlist | Cursor, Codex, Jules, Claude Code cloud where APIs allow | — |
 | Connected hosts | — | Host token type | — | Outbound `oc host`, container sandbox, Admin → Hosts, SSH hosts | Local MCP bridge, event source, `oc mount`, bwrap | — |
 
 ## Acceptance criteria
